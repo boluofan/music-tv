@@ -23,9 +23,9 @@
 
 ## 界面预览
 
-| 快速登录 | 歌曲列表 | 播放界面 |
-| :---: | :---: | :---: |
-| <img src="1.login-page.png" width="300"> | <img src="2.list-page.png" width="300"> | <img src="3.player-page.png" width="300"> |
+| 快速登录 | 歌单广场 | 搜索界面 | 排行榜界面 | 大屏播放器界面 |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="1.login-page.png" width="300"> | <img src="2.list-page.png" width="300"> | <img src="4.search-page.png" width="300"> | <img src="5.top-page.png" width="300"> | <img src="3.player-page.png" width="300"> |
 
 ---
 
@@ -50,7 +50,7 @@ cd music-tv
 ```
 
 **项目要求：**
-- Android SDK 21+
+- Android SDK 21+ (安卓5.0以上)
 - Android Studio Chipmunk+
 
 ---
