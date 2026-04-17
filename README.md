@@ -76,4 +76,4 @@ cd music-tv
 
 ## 开源协议
 
-[MIT License](LICENSE)
+[Apache License 2.0 License](LICENSE)
