@@ -82,11 +82,11 @@ public class SearchWebServer extends NanoHTTPD {
                 "            <label>选择平台</label>\n" +
                 "            <select id=\"source\">\n" +
                 "                <option value=\"all\">聚合搜索</option>\n" +
-                "                <option value=\"kw\">酷我音乐</option>\n" +
-                "                <option value=\"kg\">酷狗音乐</option>\n" +
-                "                <option value=\"tx\">QQ音乐</option>\n" +
-                "                <option value=\"wy\">网易云音乐</option>\n" +
-                "                <option value=\"mg\">咪咕音乐</option>\n" +
+                "                <option value=\"kw\">小窝音乐</option>\n" +
+                "                <option value=\"kg\">小枸音乐</option>\n" +
+                "                <option value=\"tx\">小秋音乐</option>\n" +
+                "                <option value=\"wy\">小芸音乐</option>\n" +
+                "                <option value=\"mg\">小蜜音乐</option>\n" +
                 "            </select>\n" +
                 "        </div>\n" +
                 "        <div class=\"field\">\n" +

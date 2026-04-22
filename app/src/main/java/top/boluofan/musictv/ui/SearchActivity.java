@@ -96,10 +96,10 @@ public class SearchActivity extends AppCompatActivity {
     private List<String> hotSearchWords = new ArrayList<>();
     
     private final String[] SOURCES = {"all", "kw", "kg", "tx", "wy", "mg"};
-    private final String[] SOURCE_NAMES = {"聚合搜索", "酷我", "酷狗", "QQ音乐", "网易云", "咪咕"};
+    private final String[] SOURCE_NAMES = {"聚合搜索", "小窝", "小枸", "小秋音乐", "小芸", "小蜜"};
     
     private final String[] ALL_SOURCES = {"kw", "kg", "tx", "wy", "mg"};
-    private final String[] ALL_SOURCE_NAMES = {"酷我", "酷狗", "QQ音乐", "网易云", "咪咕"};
+    private final String[] ALL_SOURCE_NAMES = {"小窝", "小枸", "小秋音乐", "小芸", "小蜜"};
     
     private static final int SEARCH_SERVER_PORT = 8089;
     private SearchWebServer searchWebServer;

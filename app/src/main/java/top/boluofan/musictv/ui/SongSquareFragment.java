@@ -42,7 +42,7 @@ public class SongSquareFragment extends Fragment {
     private int currentSourceIndex = 0;
     
     private final String[] SOURCES = {"mg", "kw", "kg", "tx", "wy"};
-    private final String[] SOURCE_NAMES = {"咪咕", "酷我", "酷狗", "QQ音乐", "网易云"};
+    private final String[] SOURCE_NAMES = {"小蜜", "小窝", "小枸", "小秋音乐", "小芸"};
     
     private SquarePlaylistAdapter playlistAdapter;
     private int currentPage = 1;

@@ -121,7 +121,7 @@
                 android:id="@+id/tvPlaylistSource"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="来源: 咪咕"
+                android:text="来源: 小蜜"
                 android:textColor="#6B7280"
                 android:textSize="11sp"
                 android:layout_marginTop="2dp" />

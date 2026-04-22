@@ -70,7 +70,7 @@ public class PlaylistDetailActivity extends AppCompatActivity {
     private List<MusicInfo> songs = new ArrayList<>();
     
     private final String[] SOURCES = {"mg", "kw", "kg", "tx", "wy"};
-    private final String[] SOURCE_NAMES = {"咪咕", "酷我", "酷狗", "QQ音乐", "网易云"};
+    private final String[] SOURCE_NAMES = {"小蜜", "小窝", "小枸", "小秋音乐", "小芸"};
     
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
