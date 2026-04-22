@@ -8,7 +8,7 @@ public class SourceInfo {
     public static final SourceInfo KW = new SourceInfo("kw", "kuwo", "小窝音乐");
     public static final SourceInfo KG = new SourceInfo("kg", "kugou", "小枸音乐");
     public static final SourceInfo TX = new SourceInfo("tx", "tencent", "小秋音乐");
-    public static final SourceInfo WY = new SourceInfo("wy", "wy", "小芸");
+    public static final SourceInfo WY = new SourceInfo("wy", "wy", "小芸音乐");
     public static final SourceInfo MG = new SourceInfo("mg", "migu", "小蜜音乐");
     public static final SourceInfo ALL = new SourceInfo("all", "all", "全部");
 

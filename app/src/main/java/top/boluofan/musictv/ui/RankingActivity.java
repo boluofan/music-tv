@@ -65,7 +65,7 @@ public class RankingActivity extends AppCompatActivity {
     private int currentBoardIndex = 0;
     
     private final String[] SOURCES = {"tx", "mg", "kw", "kg", "wy"};
-    private final String[] SOURCE_NAMES = {"小秋音乐", "小蜜", "小窝", "小枸", "小芸"};
+    private final String[] SOURCE_NAMES = {"小秋", "小蜜", "小窝", "小枸", "小芸"};
     
     private List<BoardInfo> boards = new ArrayList<>();
     private List<MusicInfo> songs = new ArrayList<>();

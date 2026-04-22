@@ -146,7 +146,7 @@ public class LxMusicAdapter extends RecyclerView.Adapter<LxMusicAdapter.ViewHold
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         private static final String[] SOURCES = {"kw", "kg", "tx", "wy", "mg"};
-        private static final String[] SOURCE_NAMES = {"小窝", "小枸", "小秋音乐", "小芸", "小蜜"};
+        private static final String[] SOURCE_NAMES = {"小窝", "小枸", "小秋", "小芸", "小蜜"};
         
         private static String getSourceDisplayName(String source) {
             if (source == null || source.isEmpty()) return null;
