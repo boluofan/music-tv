@@ -1,6 +1,7 @@
 package top.boluofan.musictv.api.model;
 
 import com.google.gson.annotations.SerializedName;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -148,12 +149,17 @@ public class MusicInfo {
     }
 
     public String getSongmid() {
-        if (songmid != null && !songmid.isEmpty()) return songmid;
+        if (songmid != null && !songmid.isEmpty()) {
+            try {
+                return new BigDecimal(songmid).toPlainString();
+            } catch (NumberFormatException e) {
+                return songmid;
+            }
+        }
         if (meta != null && meta.songId != null) {
             Object songId = meta.songId;
             if (songId instanceof Number) {
-                long longVal = ((Number) songId).longValue();
-                return String.valueOf(longVal);
+                return new BigDecimal(songId.toString()).toPlainString();
             }
             return String.valueOf(songId);
         }
