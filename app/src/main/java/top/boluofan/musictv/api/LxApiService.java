@@ -38,7 +38,7 @@ public interface LxApiService {
             @Body ListData listData
     );
 
-    @GET("api/music/search")
+    @GET("search")
     Call<List<MusicInfo>> searchMusic(
             @Query("name") String keyword,
             @Query("source") String source,
@@ -46,25 +46,25 @@ public interface LxApiService {
             @Query("limit") int limit
     );
 
-    @POST("api/music/url")
+    @POST("url")
     Call<MusicUrlResponse> getMusicUrl(@Body Map<String, Object> body);
 
-    @GET("api/music/lyric")
+    @GET("lyric")
     Call<LyricInfo> getLyric(@Query("source") String source, @Query("songmid") String songmid, @Query("quality") String quality);
 
-    @GET("api/music/hotSearch")
+    @GET("hotSearch")
     Call<ResponseBody> getHotSearch(@Query("source") String source);
 
-    @GET("api/music/tipSearch")
+    @GET("tipSearch")
     Call<ResponseBody> tipSearch(
             @Query("name") String keyword,
             @Query("source") String source
     );
 
-    @GET("api/music/songList/tags")
+    @GET("songList/tags")
     Call<ResponseBody> getSongListTags(@Query("source") String source);
 
-    @GET("api/music/songList/list")
+    @GET("songList/list")
     Call<ResponseBody> getSongListList(
             @Query("source") String source,
             @Query("tagId") String tagId,
@@ -72,27 +72,27 @@ public interface LxApiService {
             @Query("page") int page
     );
 
-    @GET("api/music/songList/detail")
+    @GET("songList/detail")
     Call<Playlist> getPlaylistDetail(
             @Query("source") String source,
             @Query("id") String id,
             @Query("page") int page
     );
 
-    @GET("api/music/songList/search")
+    @GET("songList/search")
     Call<ResponseBody> searchSongList(
             @Query("source") String source,
             @Query("text") String keyword,
             @Query("page") int page
     );
 
-    @GET("api/music/config")
+    @GET("config")
     Call<ResponseBody> getPlayerConfig();
 
-    @POST("api/music/cache/lyric")
+    @POST("cache/lyric")
     Call<ResponseBody> cacheLyric(@Body Map<String, Object> body);
 
-    @GET("api/music/cache/lyric")
+    @GET("cache/lyric")
     Call<ResponseBody> getCachedLyric(
             @Query("source") String source,
             @Query("songmid") String songmid,
@@ -123,23 +123,23 @@ public interface LxApiService {
             @Body Map<String, Object> body
     );
 
-    @GET("api/music/comment")
+    @GET("comment")
     Call<ResponseBody> getComment(
             @Query("source") String source,
             @Query("songmid") String songmid
     );
 
-    @GET("api/music/leaderboard/boards")
+    @GET("leaderboard/boards")
     Call<ResponseBody> getLeaderboardBoards(@Query("source") String source);
 
-    @GET("api/music/leaderboard/list")
+    @GET("leaderboard/list")
     Call<ResponseBody> getLeaderboardList(
             @Query("source") String source,
             @Query("bangid") String bangId,
             @Query("page") int page
     );
 
-    @POST("api/music/user/list/remove")
+    @POST("user/list/remove")
     Call<ResponseBody> removeSongsFromPlaylist(
             @Header("x-user-name") String username,
             @Header("x-user-password") String password,

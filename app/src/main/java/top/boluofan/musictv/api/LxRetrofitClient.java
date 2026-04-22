@@ -20,9 +20,15 @@ public class LxRetrofitClient {
     private static final String KEY_QUALITY = "quality";
     private static final String KEY_ADMIN_PASSWORD = "admin_password";
     private static final String KEY_BACKGROUND_PLAY = "background_play";
+    private static final String KEY_API_TYPE = "api_type";
 
     private static Retrofit retrofit = null;
     private static String currentBaseUrl = null;
+
+    public static final String API_TYPE_LXserver = "music";
+    public static final String API_TYPE_MiMusic = "tv";
+    private static final String PATH_PREFIX_TV = "api/tv/";
+    private static final String PATH_PREFIX_MUSIC = "api/music/";
 
     public static final String QUALITY_FLAC = "flac";
     public static final String QUALITY_320K = "320k";
@@ -43,6 +49,17 @@ public class LxRetrofitClient {
         if (!baseUrl.endsWith("/")) {
             baseUrl += "/";
         }
+
+        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
+        String pathPrefix;
+        if (API_TYPE_MiMusic.equals(apiType)) {
+            pathPrefix = PATH_PREFIX_TV;
+        } else {
+            pathPrefix = PATH_PREFIX_MUSIC;
+        }
+
+        baseUrl = baseUrl.replaceAll("(api/tv/|api/music/)", "");
+        baseUrl = baseUrl + pathPrefix;
 
         if (retrofit != null && baseUrl.equals(currentBaseUrl)) {
             return retrofit;
@@ -92,20 +109,48 @@ public class LxRetrofitClient {
         return prefs.getString(KEY_SERVER_URL, "");
     }
 
-    public static void saveConfig(Context context, String serverUrl, String username, String password, String token) {
+    public static String getApiType(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit()
+        return prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
+    }
+
+    public static void setApiType(Context context, String apiType) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_API_TYPE, apiType).apply();
+        resetClient();
+    }
+
+    public static String getPathPrefix(Context context) {
+        String apiType = getApiType(context);
+        if (API_TYPE_MiMusic.equals(apiType)) {
+            return PATH_PREFIX_TV;
+        }
+        return PATH_PREFIX_MUSIC;
+    }
+
+    public static void saveConfig(Context context, String serverUrl, String username, String password, String token) {
+        saveConfig(context, serverUrl, username, password, token, null);
+    }
+
+    public static void saveConfig(Context context, String serverUrl, String username, String password, String token, String apiType) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit()
                 .putString(KEY_SERVER_URL, serverUrl)
                 .putString(KEY_USERNAME, username)
                 .putString(KEY_PASSWORD, password)
-                .putString(KEY_TOKEN, token)
-                .apply();
+                .putString(KEY_TOKEN, token);
+        if (apiType != null) {
+            editor.putString(KEY_API_TYPE, apiType);
+        }
+        editor.apply();
         resetClient();
     }
 
     public static void clearConfig(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
         prefs.edit().clear().apply();
+        prefs.edit().putString(KEY_API_TYPE, apiType).apply();
         resetClient();
     }
 

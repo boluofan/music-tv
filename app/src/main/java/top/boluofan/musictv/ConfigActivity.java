@@ -7,11 +7,13 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
@@ -47,6 +49,7 @@ public class ConfigActivity extends AppCompatActivity {
     private View layoutManual;
     private View layoutQr;
     private Button btnToggleMode;
+    private RadioGroup rgApiType;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,8 +66,21 @@ public class ConfigActivity extends AppCompatActivity {
         layoutManual = findViewById(R.id.layoutManual);
         layoutQr = findViewById(R.id.layoutQr);
         btnToggleMode = findViewById(R.id.btnToggleMode);
+        rgApiType = findViewById(R.id.rgApiType);
 
         etUrl.setText("http://localhost:9527");
+
+        View.OnFocusChangeListener focusLogger = (v, hasFocus) -> {
+            Log.d(TAG, "Focus changed: " + v.getClass().getSimpleName() + " id=" + v.getId() + " hasFocus=" + hasFocus);
+        };
+        findViewById(R.id.rbLxserver).setOnFocusChangeListener(focusLogger);
+        findViewById(R.id.rbMiMusic).setOnFocusChangeListener(focusLogger);
+        etUrl.setOnFocusChangeListener(focusLogger);
+        etUsername.setOnFocusChangeListener(focusLogger);
+        etPassword.setOnFocusChangeListener(focusLogger);
+        etToken.setOnFocusChangeListener(focusLogger);
+        btnConnect.setOnFocusChangeListener(focusLogger);
+        btnToggleMode.setOnFocusChangeListener(focusLogger);
         
         String serverUrlFromSettings = getIntent().getStringExtra("server_url");
         String usernameFromSettings = getIntent().getStringExtra("username");
@@ -87,6 +103,13 @@ public class ConfigActivity extends AppCompatActivity {
         String savedToken = LxRetrofitClient.getToken(this);
         if (!savedToken.isEmpty()) {
             etToken.setText(savedToken);
+        }
+
+        String savedApiType = LxRetrofitClient.getApiType(this);
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(savedApiType)) {
+            rgApiType.check(R.id.rbMiMusic);
+        } else {
+            rgApiType.check(R.id.rbLxserver);
         }
 
         btnToggleMode.setOnClickListener(v -> {
@@ -156,10 +179,14 @@ public class ConfigActivity extends AppCompatActivity {
             }
             String finalUrl = urlRaw.endsWith("/") ? urlRaw : urlRaw + "/";
 
+            String apiType = rgApiType.getCheckedRadioButtonId() == R.id.rbMiMusic
+                    ? LxRetrofitClient.API_TYPE_MiMusic
+                    : LxRetrofitClient.API_TYPE_LXserver;
+
             btnConnect.setEnabled(false);
             btnConnect.setText("连接中...");
 
-            LxRetrofitClient.saveConfig(this, finalUrl, username, password, token);
+            LxRetrofitClient.saveConfig(this, finalUrl, username, password, token, apiType);
             LxRetrofitClient.resetClient();
 
             if (username.isEmpty() || password.isEmpty()) {
