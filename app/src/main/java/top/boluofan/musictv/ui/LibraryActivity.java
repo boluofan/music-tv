@@ -26,6 +26,9 @@ import top.boluofan.musictv.FloatingPlayerWindow;
 import top.boluofan.musictv.api.LxApiService;
 import top.boluofan.musictv.api.LxRetrofitClient;
 import top.boluofan.musictv.api.model.ListData;
+import top.boluofan.musictv.api.model.MiPlaylist;
+import top.boluofan.musictv.api.model.MiPlaylistSongsResponse;
+import top.boluofan.musictv.api.model.MiSong;
 import top.boluofan.musictv.api.model.MusicInfo;
 import top.boluofan.musictv.api.model.Playlist;
 import top.boluofan.musictv.ui.adapter.LxMusicAdapter;
@@ -61,6 +64,7 @@ public class LibraryActivity extends AppCompatActivity {
     
     private ListData listData;
     private Playlist currentPlaylist;
+    private List<MiPlaylist> miPlaylistList;
     private Handler handler;
 
     @Override
@@ -135,8 +139,18 @@ public class LibraryActivity extends AppCompatActivity {
     }
 
     private void loadUserData() {
+        String apiType = LxRetrofitClient.getApiType(this);
+
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType)) {
+            loadMiMusicUserData();
+        } else {
+            loadLxMusicUserData();
+        }
+    }
+
+    private void loadLxMusicUserData() {
         LxApiService apiService = LxRetrofitClient.getApiService(this);
-        
+
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
@@ -147,12 +161,13 @@ public class LibraryActivity extends AppCompatActivity {
             finish();
             return;
         }
-        
-        apiService.getUserList(username, password,token).enqueue(new Callback<ListData>() {
+
+        apiService.getUserList(username, password, token).enqueue(new Callback<ListData>() {
             @Override
             public void onResponse(Call<ListData> call, Response<ListData> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     listData = response.body();
+                    miPlaylistList = null;
                     updatePlaylistList();
                 } else {
                     Toast.makeText(LibraryActivity.this, "加载失败", Toast.LENGTH_SHORT).show();
@@ -166,46 +181,93 @@ public class LibraryActivity extends AppCompatActivity {
         });
     }
 
-    private void updatePlaylistList() {
-        if (listData == null) return;
-        
-        java.util.Map<String, List<String>> playlistData = new java.util.HashMap<>();
-        
-        Playlist defaultPlaylist = listData.getDefaultPlaylist();
-        if (defaultPlaylist != null && defaultPlaylist.getSongs() != null && !defaultPlaylist.getSongs().isEmpty()) {
-            List<String> songNames = new ArrayList<>();
-            for (MusicInfo song : defaultPlaylist.getSongs()) {
-                songNames.add(song.getName());
-            }
-            playlistData.put(defaultPlaylist.getName(), songNames);
+    private void loadMiMusicUserData() {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));
+            finish();
+            return;
         }
-        
-        Playlist lovePlaylist = listData.getLovePlaylist();
-        if (lovePlaylist != null && lovePlaylist.getSongs() != null && !lovePlaylist.getSongs().isEmpty()) {
-            List<String> songNames = new ArrayList<>();
-            for (MusicInfo song : lovePlaylist.getSongs()) {
-                songNames.add(song.getName());
-            }
-            playlistData.put(lovePlaylist.getName(), songNames);
-        }
-        
-        if (listData.getUserList() != null) {
-            for (Playlist playlist : listData.getUserList()) {
-                List<String> songNames = new ArrayList<>();
-                if (playlist.getSongs() != null) {
-                    for (MusicInfo song : playlist.getSongs()) {
-                        songNames.add(song.getName());
-                    }
+
+        apiService.getMiMusicPlaylists(100, 0).enqueue(new Callback<top.boluofan.musictv.api.model.MiPlaylistListResponse>() {
+            @Override
+            public void onResponse(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Response<top.boluofan.musictv.api.model.MiPlaylistListResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    miPlaylistList = response.body().getPlaylists();
+                    listData = null;
+                    updatePlaylistList();
+                } else {
+                    Toast.makeText(LibraryActivity.this, "加载失败", Toast.LENGTH_SHORT).show();
                 }
+            }
+
+            @Override
+            public void onFailure(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Throwable t) {
+                Toast.makeText(LibraryActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void updatePlaylistList() {
+        java.util.Map<String, List<String>> playlistData = new java.util.HashMap<>();
+
+        if (miPlaylistList != null && !miPlaylistList.isEmpty()) {
+            // MiMusic 模式
+            for (MiPlaylist playlist : miPlaylistList) {
+                List<String> songNames = new ArrayList<>();
+                // MiMusic API 返回的歌单有 song_count，但不包含歌曲详情
+                // 歌曲详情需要通过 loadMiMusicPlaylistSongs 单独加载
                 playlistData.put(playlist.getName(), songNames);
             }
-        }
-        
-        playlistAdapter.setData(playlistData);
-        
-        if (!playlistData.isEmpty()) {
-            String firstKey = playlistData.keySet().iterator().next();
-            loadPlaylistSongs(firstKey);
+            playlistAdapter.setData(playlistData);
+            // 设置每个歌单的歌曲数量
+            for (MiPlaylist playlist : miPlaylistList) {
+                playlistAdapter.setPlaylistSongCount(playlist.getName(), playlist.getSongCount() != null ? playlist.getSongCount() : 0);
+            }
+
+            if (!playlistData.isEmpty()) {
+                String firstKey = playlistData.keySet().iterator().next();
+                loadPlaylistSongs(firstKey);
+            }
+        } else if (listData != null) {
+            // 洛雪音乐模式
+            Playlist defaultPlaylist = listData.getDefaultPlaylist();
+            if (defaultPlaylist != null && defaultPlaylist.getSongs() != null && !defaultPlaylist.getSongs().isEmpty()) {
+                List<String> songNames = new ArrayList<>();
+                for (MusicInfo song : defaultPlaylist.getSongs()) {
+                    songNames.add(song.getName());
+                }
+                playlistData.put(defaultPlaylist.getName(), songNames);
+            }
+
+            Playlist lovePlaylist = listData.getLovePlaylist();
+            if (lovePlaylist != null && lovePlaylist.getSongs() != null && !lovePlaylist.getSongs().isEmpty()) {
+                List<String> songNames = new ArrayList<>();
+                for (MusicInfo song : lovePlaylist.getSongs()) {
+                    songNames.add(song.getName());
+                }
+                playlistData.put(lovePlaylist.getName(), songNames);
+            }
+
+            if (listData.getUserList() != null) {
+                for (Playlist playlist : listData.getUserList()) {
+                    List<String> songNames = new ArrayList<>();
+                    if (playlist.getSongs() != null) {
+                        for (MusicInfo song : playlist.getSongs()) {
+                            songNames.add(song.getName());
+                        }
+                    }
+                    playlistData.put(playlist.getName(), songNames);
+                }
+            }
+
+            playlistAdapter.setData(playlistData);
+
+            if (!playlistData.isEmpty()) {
+                String firstKey = playlistData.keySet().iterator().next();
+                loadPlaylistSongs(firstKey);
+            }
         }
     }
 
@@ -222,35 +284,100 @@ public class LibraryActivity extends AppCompatActivity {
     }
 
     private void loadPlaylistSongs(String playlistName) {
-        if (listData == null) return;
-        
-        Playlist targetPlaylist = null;
-        
-        Playlist defaultPlaylist = listData.getDefaultPlaylist();
-        if (defaultPlaylist != null && defaultPlaylist.getName().equals(playlistName)) {
-            targetPlaylist = defaultPlaylist;
-        }
-        
-        if (targetPlaylist == null) {
-            Playlist lovePlaylist = listData.getLovePlaylist();
-            if (lovePlaylist != null && lovePlaylist.getName().equals(playlistName)) {
-                targetPlaylist = lovePlaylist;
+        if (miPlaylistList != null && !miPlaylistList.isEmpty()) {
+            // MiMusic 模式
+            loadMiMusicPlaylistSongs(playlistName);
+        } else if (listData != null) {
+            // 洛雪音乐模式
+            Playlist targetPlaylist = null;
+
+            Playlist defaultPlaylist = listData.getDefaultPlaylist();
+            if (defaultPlaylist != null && defaultPlaylist.getName().equals(playlistName)) {
+                targetPlaylist = defaultPlaylist;
             }
-        }
-        
-        if (targetPlaylist == null && listData.getUserList() != null) {
-            for (Playlist playlist : listData.getUserList()) {
-                if (playlist.getName().equals(playlistName)) {
-                    targetPlaylist = playlist;
-                    break;
+
+            if (targetPlaylist == null) {
+                Playlist lovePlaylist = listData.getLovePlaylist();
+                if (lovePlaylist != null && lovePlaylist.getName().equals(playlistName)) {
+                    targetPlaylist = lovePlaylist;
                 }
             }
+
+            if (targetPlaylist == null && listData.getUserList() != null) {
+                for (Playlist playlist : listData.getUserList()) {
+                    if (playlist.getName().equals(playlistName)) {
+                        targetPlaylist = playlist;
+                        break;
+                    }
+                }
+            }
+
+            if (targetPlaylist != null) {
+                currentPlaylist = targetPlaylist;
+                updateSongList();
+            }
         }
-        
-        if (targetPlaylist != null) {
-            currentPlaylist = targetPlaylist;
-            updateSongList();
+    }
+
+    private void loadMiMusicPlaylistSongs(String playlistName) {
+        if (miPlaylistList == null) return;
+
+        MiPlaylist targetMiPlaylist = null;
+        for (MiPlaylist playlist : miPlaylistList) {
+            if (playlist.getName().equals(playlistName)) {
+                targetMiPlaylist = playlist;
+                break;
+            }
         }
+
+        if (targetMiPlaylist == null) return;
+
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) return;
+
+        // 保存当前选中的 Playlist 用于播放
+        currentPlaylist = targetMiPlaylist.toPlaylist();
+
+        tvPlaylistTitle.setText(targetMiPlaylist.getName());
+        tvSongCount.setText(targetMiPlaylist.getSongCount() + " 首歌曲");
+        songAdapter.setSongs(null);
+
+        apiService.getMiMusicPlaylistSongs(targetMiPlaylist.getId(), 500, 0)
+                .enqueue(new Callback<MiPlaylistSongsResponse>() {
+                    @Override
+                    public void onResponse(Call<MiPlaylistSongsResponse> call, Response<MiPlaylistSongsResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<MusicInfo> songs = new ArrayList<>();
+                            List<MiSong> miSongs = response.body().getSongs();
+                            if (miSongs != null) {
+                                for (MiSong miSong : miSongs) {
+                                    songs.add(miSong.toMusicInfo());
+                                }
+                            }
+                            currentPlaylist.setSongs(songs);
+                            currentPlaylist.setSongCount(songs.size());
+                            updateSongList();
+
+                            // 更新播放列表适配器的数据
+                            java.util.Map<String, List<String>> playlistData = playlistAdapter.getData();
+                            if (playlistData != null) {
+                                List<String> songNames = new ArrayList<>();
+                                for (MusicInfo song : songs) {
+                                    songNames.add(song.getName());
+                                }
+                                playlistData.put(playlistName, songNames);
+                                playlistAdapter.notifyPlaylistUpdated(playlistName, songNames);
+                            }
+                        } else {
+                            Toast.makeText(LibraryActivity.this, "加载歌曲失败", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<MiPlaylistSongsResponse> call, Throwable t) {
+                        Toast.makeText(LibraryActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     private void playSongAtIndex(int index) {

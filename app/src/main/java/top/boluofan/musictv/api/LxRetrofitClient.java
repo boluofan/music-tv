@@ -151,6 +151,50 @@ public class LxRetrofitClient {
         return client != null ? client.create(LxApiService.class) : null;
     }
 
+    // MiMusic API 客户端 - 使用直接 API 路径（不是 plugin 路径）
+    public static Retrofit getMiMusicApiClient(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String baseUrl = prefs.getString(KEY_SERVER_URL, "");
+
+        if (baseUrl.isEmpty()) {
+            baseUrl = "http://localhost:9527/";
+        }
+
+        if (!baseUrl.startsWith("http")) {
+            baseUrl = "http://" + baseUrl;
+        }
+
+        if (!baseUrl.endsWith("/")) {
+            baseUrl += "/";
+        }
+
+        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
+        if (!API_TYPE_MiMusic.equals(apiType)) {
+            return null;
+        }
+
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .addInterceptor(new AuthInterceptor())
+                .addInterceptor(logging);
+
+        return new Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(builder.build())
+                .build();
+    }
+
+    public static LxApiService getMiMusicApiService(Context context) {
+        Retrofit client = getMiMusicApiClient(context);
+        return client != null ? client.create(LxApiService.class) : null;
+    }
+
     public static String getUsername(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_USERNAME, "");

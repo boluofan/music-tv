@@ -69,7 +69,12 @@ public class ConfigActivity extends AppCompatActivity {
         btnToggleMode = findViewById(R.id.btnToggleMode);
         rgApiType = findViewById(R.id.rgApiType);
 
-        etUrl.setText("http://localhost:9527");
+        String savedApiType = LxRetrofitClient.getApiType(this);
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(savedApiType)) {
+            etUrl.setText("http://localhost:9527");
+        } else {
+            etUrl.setText("http://localhost:58091/api/v1");
+        }
 
         View.OnFocusChangeListener focusLogger = (v, hasFocus) -> {
             Log.d(TAG, "Focus changed: " + v.getClass().getSimpleName() + " id=" + v.getId() + " hasFocus=" + hasFocus);
@@ -106,7 +111,6 @@ public class ConfigActivity extends AppCompatActivity {
             etToken.setText(savedToken);
         }
 
-        String savedApiType = LxRetrofitClient.getApiType(this);
         if (LxRetrofitClient.API_TYPE_MiMusic.equals(savedApiType)) {
             rgApiType.check(R.id.rbMiMusic);
         } else {

@@ -8,12 +8,15 @@ import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.POST;
+import retrofit2.http.Path;
 import retrofit2.http.Query;
 import top.boluofan.musictv.api.model.HotListResponse;
 import top.boluofan.musictv.api.model.ListData;
 import top.boluofan.musictv.api.model.LoginResponse;
 import top.boluofan.musictv.api.model.LyricInfo;
 import top.boluofan.musictv.api.model.MiAuthTokenResponse;
+import top.boluofan.musictv.api.model.MiPlaylistListResponse;
+import top.boluofan.musictv.api.model.MiPlaylistSongsResponse;
 import top.boluofan.musictv.api.model.MusicInfo;
 import top.boluofan.musictv.api.model.MusicUrlResponse;
 import top.boluofan.musictv.api.model.Playlist;
@@ -149,5 +152,20 @@ public interface LxApiService {
             @Header("x-user-password") String password,
             @Header("x-user-token") String token,
             @Body Map<String, Object> body
+    );
+
+    // MiMusic API - 用户歌单列表
+    @GET("playlists")
+    Call<MiPlaylistListResponse> getMiMusicPlaylists(
+            @Query("limit") int limit,
+            @Query("offset") int offset
+    );
+
+    // MiMusic API - 歌单歌曲列表
+    @GET("playlists/{listId}/songs")
+    Call<MiPlaylistSongsResponse> getMiMusicPlaylistSongs(
+            @Path("listId") int listId,
+            @Query("limit") int limit,
+            @Query("offset") int offset
     );
 }
