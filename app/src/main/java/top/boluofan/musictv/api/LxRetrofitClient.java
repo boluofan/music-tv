@@ -28,6 +28,7 @@ public class LxRetrofitClient {
     public static final String API_TYPE_LXserver = "music";
     public static final String API_TYPE_MiMusic = "tv";
     private static final String PATH_PREFIX_TV = "api/tv/";
+    private static final String PATH_PREFIX_PLUGIN = "plugin/lxmusic/";
     private static final String PATH_PREFIX_MUSIC = "api/music/";
 
     public static final String QUALITY_FLAC = "flac";
@@ -43,7 +44,7 @@ public class LxRetrofitClient {
         }
 
         if (!baseUrl.startsWith("http")) {
-            baseUrl = "https://" + baseUrl;
+            baseUrl = "http://" + baseUrl;
         }
 
         if (!baseUrl.endsWith("/")) {
@@ -51,15 +52,11 @@ public class LxRetrofitClient {
         }
 
         String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
-        String pathPrefix;
         if (API_TYPE_MiMusic.equals(apiType)) {
-            pathPrefix = PATH_PREFIX_TV;
+            baseUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
         } else {
-            pathPrefix = PATH_PREFIX_MUSIC;
+            baseUrl = baseUrl + PATH_PREFIX_MUSIC;
         }
-
-        baseUrl = baseUrl.replaceAll("(api/tv/|api/music/)", "");
-        baseUrl = baseUrl + pathPrefix;
 
         if (retrofit != null && baseUrl.equals(currentBaseUrl)) {
             return retrofit;

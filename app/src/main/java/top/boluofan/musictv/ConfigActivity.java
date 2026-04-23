@@ -174,6 +174,29 @@ public class ConfigActivity extends AppCompatActivity {
                 return;
             }
 
+            // 校验 URL 格式是否合法（使用 OkHttp HttpUrl 严格校验）
+            String testUrl = urlRaw;
+            if (!testUrl.startsWith("http")) {
+                testUrl = "https://" + testUrl;
+            }
+            try {
+                okhttp3.HttpUrl httpUrl = okhttp3.HttpUrl.parse(testUrl);
+                if (httpUrl == null || httpUrl.host() == null || httpUrl.host().isEmpty()) {
+                    Toast.makeText(this, "服务器地址格式错误", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "服务器地址格式错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 校验 baseUrl 必须以 /api/v* 结尾（仅 MiMusic 模式）
+            if (rgApiType.getCheckedRadioButtonId() == R.id.rbMiMusic
+                    && !urlRaw.matches(".*/api/v\\d+/?$")) {
+                Toast.makeText(this, "MiMusic 模式服务器地址必须以 /api/v* 结尾", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             if (!urlRaw.startsWith("http")) {
                 urlRaw = "https://" + urlRaw;
             }
