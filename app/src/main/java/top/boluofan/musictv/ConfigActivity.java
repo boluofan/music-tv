@@ -198,6 +198,13 @@ public class ConfigActivity extends AppCompatActivity {
                 return;
             }
 
+            // MiMusic 模式必须输入用户名密码
+            if (rgApiType.getCheckedRadioButtonId() == R.id.rbMiMusic
+                    && (username.isEmpty() || password.isEmpty())) {
+                Toast.makeText(this, "MiMusic 模式必须输入用户名和密码", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             if (!urlRaw.startsWith("http")) {
                 urlRaw = "https://" + urlRaw;
             }

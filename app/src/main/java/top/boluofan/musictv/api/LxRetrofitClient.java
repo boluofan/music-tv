@@ -229,8 +229,7 @@ public class LxRetrofitClient {
     public static void clearConfig(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
-        prefs.edit().clear().apply();
-        prefs.edit().putString(KEY_API_TYPE, apiType).apply();
+        prefs.edit().clear().putString(KEY_API_TYPE, apiType).apply();
         resetClient();
     }
 
