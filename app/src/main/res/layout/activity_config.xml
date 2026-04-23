@@ -148,7 +148,7 @@
                     android:layout_width="0dp"
                     android:layout_height="40dp"
                     android:layout_weight="1"
-                    android:text="lxserver"
+                    android:text="LXServer"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:buttonTint="#6366F1"
@@ -227,7 +227,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="lxserver 用户名"
+                android:text="用户名"
                 android:textColor="#9CA3AF"
                 android:textSize="13sp"
                 android:layout_marginBottom="4dp" />
@@ -258,7 +258,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="lxserver 密码"
+                android:text="密码"
                 android:textColor="#9CA3AF"
                 android:textSize="13sp"
                 android:layout_marginBottom="4dp" />
@@ -322,7 +322,7 @@
                 android:layout_height="56dp"
                 android:layout_marginTop="32dp"
                 android:background="@drawable/bg_btn_primary"
-                android:text="连接 lxserver"
+                android:text="登录"
                 android:textColor="#FFFFFF"
                 android:textSize="18sp"
                 android:textStyle="bold"

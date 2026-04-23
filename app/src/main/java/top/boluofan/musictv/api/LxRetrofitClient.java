@@ -4,7 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
 import android.util.Log;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
@@ -17,6 +19,8 @@ public class LxRetrofitClient {
     private static final String KEY_USERNAME = "username";
     private static final String KEY_PASSWORD = "password";
     private static final String KEY_TOKEN = "x-user-token";
+    private static final String KEY_MI_ACCESS_TOKEN = "mi_access_token";
+    private static final String KEY_MI_REFRESH_TOKEN = "mi_refresh_token";
     private static final String KEY_QUALITY = "quality";
     private static final String KEY_ADMIN_PASSWORD = "admin_password";
     private static final String KEY_BACKGROUND_PLAY = "background_play";
@@ -24,6 +28,23 @@ public class LxRetrofitClient {
 
     private static Retrofit retrofit = null;
     private static String currentBaseUrl = null;
+
+    static class AuthInterceptor implements Interceptor {
+        @Override
+        public okhttp3.Response intercept(Chain chain) throws IOException {
+            okhttp3.Request request = chain.request();
+            String apiType = getApiType(top.boluofan.musictv.MusicTvApp.getInstance());
+            if (API_TYPE_MiMusic.equals(apiType)) {
+                String token = getMiAccessToken(top.boluofan.musictv.MusicTvApp.getInstance());
+                if (token != null && !token.isEmpty()) {
+                    request = request.newBuilder()
+                            .header("Authorization", "Bearer " + token)
+                            .build();
+                }
+            }
+            return chain.proceed(request);
+        }
+    }
 
     public static final String API_TYPE_LXserver = "music";
     public static final String API_TYPE_MiMusic = "tv";
@@ -71,6 +92,7 @@ public class LxRetrofitClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
+                .addInterceptor(new AuthInterceptor())
                 .addInterceptor(logging);
 
         retrofit = new Retrofit.Builder()
@@ -86,6 +108,49 @@ public class LxRetrofitClient {
         return getClient(context).create(LxApiService.class);
     }
 
+    public static Retrofit getMiMusicAuthClient(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String baseUrl = prefs.getString(KEY_SERVER_URL, "");
+
+        if (baseUrl.isEmpty()) {
+            baseUrl = "http://localhost:9527/";
+        }
+
+        if (!baseUrl.startsWith("http")) {
+            baseUrl = "http://" + baseUrl;
+        }
+
+        if (!baseUrl.endsWith("/")) {
+            baseUrl += "/";
+        }
+
+        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
+        if (!API_TYPE_MiMusic.equals(apiType)) {
+            return null;
+        }
+
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .addInterceptor(new AuthInterceptor())
+                .addInterceptor(logging);
+
+        return new Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(builder.build())
+                .build();
+    }
+
+    public static LxApiService getMiMusicAuthService(Context context) {
+        Retrofit client = getMiMusicAuthClient(context);
+        return client != null ? client.create(LxApiService.class) : null;
+    }
+
     public static String getUsername(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_USERNAME, "");
@@ -99,6 +164,24 @@ public class LxRetrofitClient {
     public static String getToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_TOKEN, "");
+    }
+
+    public static String getMiAccessToken(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_MI_ACCESS_TOKEN, "");
+    }
+
+    public static String getMiRefreshToken(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_MI_REFRESH_TOKEN, "");
+    }
+
+    public static void saveMiMusicToken(Context context, String accessToken, String refreshToken) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+                .putString(KEY_MI_ACCESS_TOKEN, accessToken)
+                .putString(KEY_MI_REFRESH_TOKEN, refreshToken)
+                .apply();
     }
 
     public static String getServerUrl(Context context) {

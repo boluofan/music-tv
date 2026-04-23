@@ -13,6 +13,7 @@ import top.boluofan.musictv.api.model.HotListResponse;
 import top.boluofan.musictv.api.model.ListData;
 import top.boluofan.musictv.api.model.LoginResponse;
 import top.boluofan.musictv.api.model.LyricInfo;
+import top.boluofan.musictv.api.model.MiAuthTokenResponse;
 import top.boluofan.musictv.api.model.MusicInfo;
 import top.boluofan.musictv.api.model.MusicUrlResponse;
 import top.boluofan.musictv.api.model.Playlist;
@@ -22,6 +23,9 @@ public interface LxApiService {
 
     @POST("api/user/verify")
     Call<LoginResponse> verifyUser(@Body Map<String, String> body);
+
+    @POST("auth/login")
+    Call<MiAuthTokenResponse> miMusicLogin(@Body Map<String, String> body);
 
     @GET("api/user/list")
     Call<ListData> getUserList(

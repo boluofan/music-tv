@@ -31,6 +31,7 @@ import java.util.Map;
 import top.boluofan.musictv.api.LxApiService;
 import top.boluofan.musictv.api.LxRetrofitClient;
 import top.boluofan.musictv.api.model.LoginResponse;
+import top.boluofan.musictv.api.model.MiAuthTokenResponse;
 import top.boluofan.musictv.ui.LibraryActivity;
 import top.boluofan.musictv.util.DialogHelper;
 
@@ -225,6 +226,39 @@ public class ConfigActivity extends AppCompatActivity {
             java.util.HashMap<String, String> body = new java.util.HashMap<>();
             body.put("username", username);
             body.put("password", password);
+
+            if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType)) {
+                LxApiService authService = LxRetrofitClient.getMiMusicAuthService(this);
+                if (authService != null) {
+                    authService.miMusicLogin(body).enqueue(new retrofit2.Callback<MiAuthTokenResponse>() {
+                        @Override
+                        public void onResponse(retrofit2.Call<MiAuthTokenResponse> call, retrofit2.Response<MiAuthTokenResponse> response) {
+                            btnConnect.setEnabled(true);
+                            btnConnect.setText("连　接");
+
+                            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                Toast.makeText(ConfigActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
+                                LxRetrofitClient.saveMiMusicToken(ConfigActivity.this,
+                                        response.body().getAccessToken(), response.body().getRefreshToken());
+                            } else {
+                                Toast.makeText(ConfigActivity.this, "用户名或密码错误，将以游客身份使用", Toast.LENGTH_LONG).show();
+                            }
+                            startActivity(new Intent(ConfigActivity.this, top.boluofan.musictv.ui.MainActivity.class));
+                            finish();
+                        }
+
+                        @Override
+                        public void onFailure(retrofit2.Call<MiAuthTokenResponse> call, Throwable t) {
+                            btnConnect.setEnabled(true);
+                            btnConnect.setText("连　接");
+                            Toast.makeText(ConfigActivity.this, "连接超时，将以游客身份使用", Toast.LENGTH_LONG).show();
+                            startActivity(new Intent(ConfigActivity.this, top.boluofan.musictv.ui.MainActivity.class));
+                            finish();
+                        }
+                    });
+                    return;
+                }
+            }
 
             apiService.verifyUser(body).enqueue(new retrofit2.Callback<LoginResponse>() {
                 @Override
