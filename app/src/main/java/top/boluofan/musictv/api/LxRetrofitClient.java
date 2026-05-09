@@ -48,8 +48,8 @@ public class LxRetrofitClient {
 
     public static final String API_TYPE_LXserver = "music";
     public static final String API_TYPE_MiMusic = "tv";
-    private static final String PATH_PREFIX_TV = "api/tv/";
-    private static final String PATH_PREFIX_PLUGIN = "plugin/lxmusic/";
+    private static final String PATH_PREFIX_TV = "tv-api/";
+    private static final String PATH_PREFIX_PLUGIN = "plugin/";
     private static final String PATH_PREFIX_MUSIC = "api/music/";
 
     public static final String QUALITY_FLAC = "flac";
@@ -113,7 +113,7 @@ public class LxRetrofitClient {
         String baseUrl = prefs.getString(KEY_SERVER_URL, "");
 
         if (baseUrl.isEmpty()) {
-            baseUrl = "http://localhost:9527/";
+            baseUrl = "http://localhost:58091/api/v1";
         }
 
         if (!baseUrl.startsWith("http")) {
@@ -157,7 +157,7 @@ public class LxRetrofitClient {
         String baseUrl = prefs.getString(KEY_SERVER_URL, "");
 
         if (baseUrl.isEmpty()) {
-            baseUrl = "http://localhost:9527/";
+            baseUrl = "http://localhost:58091/api/v1";
         }
 
         if (!baseUrl.startsWith("http")) {

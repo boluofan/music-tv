@@ -71,9 +71,9 @@ public class ConfigActivity extends AppCompatActivity {
 
         String savedApiType = LxRetrofitClient.getApiType(this);
         if (LxRetrofitClient.API_TYPE_MiMusic.equals(savedApiType)) {
-            etUrl.setText("http://localhost:9527");
-        } else {
             etUrl.setText("http://localhost:58091/api/v1");
+        } else {
+            etUrl.setText("http://localhost:9527");
         }
 
         View.OnFocusChangeListener focusLogger = (v, hasFocus) -> {
