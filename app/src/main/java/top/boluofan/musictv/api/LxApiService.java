@@ -5,6 +5,7 @@ import java.util.Map;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.POST;
@@ -167,5 +168,12 @@ public interface LxApiService {
             @Path("listId") int listId,
             @Query("limit") int limit,
             @Query("offset") int offset
+    );
+
+    // MiMusic API - 从歌单删除歌曲
+    @DELETE("playlists/{playlistId}/songs/{songId}")
+    Call<ResponseBody> removeSongFromPlaylist(
+            @Path("playlistId") int playlistId,
+            @Path("songId") int songId
     );
 }

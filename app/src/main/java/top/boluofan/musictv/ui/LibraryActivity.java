@@ -64,6 +64,7 @@ public class LibraryActivity extends AppCompatActivity {
     
     private ListData listData;
     private Playlist currentPlaylist;
+    private MiPlaylist currentMiPlaylist;
     private List<MiPlaylist> miPlaylistList;
     private Handler handler;
 
@@ -149,6 +150,10 @@ public class LibraryActivity extends AppCompatActivity {
     }
 
     private void loadLxMusicUserData() {
+        // 清除 MiMusic 相关状态
+        currentMiPlaylist = null;
+        miPlaylistList = null;
+
         LxApiService apiService = LxRetrofitClient.getApiService(this);
 
         String username = LxRetrofitClient.getUsername(this);
@@ -332,6 +337,9 @@ public class LibraryActivity extends AppCompatActivity {
 
         if (targetMiPlaylist == null) return;
 
+        // 保存当前 MiPlaylist 引用用于删除操作
+        currentMiPlaylist = targetMiPlaylist;
+
         LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
         if (apiService == null) return;
 
@@ -488,6 +496,56 @@ public class LibraryActivity extends AppCompatActivity {
     private void deleteSong(MusicInfo song, int position, String songId) {
         if (currentPlaylist == null) return;
 
+        String apiType = LxRetrofitClient.getApiType(this);
+
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType) && currentMiPlaylist != null) {
+            // MiMusic 模式：使用 DELETE /playlists/{playlistId}/songs/{songId}
+            deleteSongMiMusic(song, songId);
+        } else {
+            // 洛雪音乐模式：获取完整列表，修改后保存
+            deleteSongLxMusic(song, songId);
+        }
+    }
+
+    private void deleteSongMiMusic(MusicInfo song, String songId) {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 将字符串 songId 转换为整数
+        int songIdInt;
+        try {
+            songIdInt = Integer.parseInt(songId);
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "无法获取歌曲ID", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int playlistId = currentMiPlaylist.getId();
+
+        apiService.removeSongFromPlaylist(playlistId, songIdInt).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                runOnUiThread(() -> {
+                    if (response.isSuccessful()) {
+                        Toast.makeText(LibraryActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
+                        loadUserData();
+                    } else {
+                        Toast.makeText(LibraryActivity.this, "删除失败", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                runOnUiThread(() -> Toast.makeText(LibraryActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private void deleteSongLxMusic(MusicInfo song, String songId) {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
@@ -499,7 +557,7 @@ public class LibraryActivity extends AppCompatActivity {
 
         LxApiService apiService = LxRetrofitClient.getApiService(this);
 
-        apiService.getUserList(username, password,token).enqueue(new Callback<ListData>() {
+        apiService.getUserList(username, password, token).enqueue(new Callback<ListData>() {
             @Override
             public void onResponse(Call<ListData> call, Response<ListData> response) {
                 if (!response.isSuccessful() || response.body() == null) {
