@@ -46,6 +46,7 @@ public class MiPlaylist {
         playlist.setDesc(description != null ? description : "");
         playlist.setPicUrl(coverUrl != null ? coverUrl : (coverPath != null ? coverPath : ""));
         playlist.setSongCount(songCount != null ? songCount : 0);
+        playlist.setSource("mimusic");
         return playlist;
     }
 

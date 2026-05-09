@@ -24,6 +24,8 @@ import top.boluofan.musictv.R;
 import top.boluofan.musictv.FloatingPlayerWindow;
 import top.boluofan.musictv.api.LxApiService;
 import top.boluofan.musictv.api.LxRetrofitClient;
+import top.boluofan.musictv.api.model.MiPlaylist;
+import top.boluofan.musictv.api.model.MiPlaylistListResponse;
 import top.boluofan.musictv.api.model.Playlist;
 import top.boluofan.musictv.ui.adapter.SquarePlaylistAdapter;
 
@@ -190,6 +192,15 @@ public class SongSquareFragment extends Fragment {
     }
     
     private void loadSources() {
+        // 检查是否是 MiMusic 模式
+        if (getActivity() != null) {
+            String apiType = LxRetrofitClient.getApiType(getActivity());
+            if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType)) {
+                currentSource = "mimusic";
+                loadPlaylists();
+                return;
+            }
+        }
         selectSource(0);
     }
 
@@ -197,7 +208,13 @@ public class SongSquareFragment extends Fragment {
         if (isLoading) return;
         isLoading = true;
         showLoading(true);
-        
+
+        // 检查是否是 MiMusic 模式
+        if ("mimusic".equals(currentSource)) {
+            loadMiMusicPlaylists();
+            return;
+        }
+
         LxApiService apiService = LxRetrofitClient.getApiService(requireContext());
         apiService.getSongListList(currentSource, "", "hot", currentPage).enqueue(new Callback<okhttp3.ResponseBody>() {
             @Override
@@ -242,14 +259,59 @@ public class SongSquareFragment extends Fragment {
             }
         });
     }
-    
+
+    private void loadMiMusicPlaylists() {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(requireContext());
+        if (apiService == null) {
+            isLoading = false;
+            showLoading(false);
+            Toast.makeText(requireContext(), "请先登录", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        apiService.getMiMusicPlaylists(100, (currentPage - 1) * 100).enqueue(new Callback<MiPlaylistListResponse>() {
+            @Override
+            public void onResponse(Call<MiPlaylistListResponse> call, Response<MiPlaylistListResponse> response) {
+                isLoading = false;
+                showLoading(false);
+                if (response.isSuccessful() && response.body() != null && response.body().getPlaylists() != null) {
+                    List<MiPlaylist> miPlaylists = response.body().getPlaylists();
+                    if (currentPage == 1) {
+                        playlists.clear();
+                    }
+                    hasMore = miPlaylists.size() >= 100;
+                    for (MiPlaylist miPlaylist : miPlaylists) {
+                        playlists.add(miPlaylist.toPlaylist());
+                    }
+                    updatePlaylistList();
+                } else {
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MiPlaylistListResponse> call, Throwable t) {
+                isLoading = false;
+                showLoading(false);
+                Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void loadMorePlaylists() {
         if (isLoadingMore || !hasMore) return;
+
+        // MiMusic 模式使用分页加载
+        if ("mimusic".equals(currentSource)) {
+            loadMoreMiMusicPlaylists();
+            return;
+        }
+
         isLoadingMore = true;
         currentPage++;
-        
+
         playlistAdapter.setShowFooter(true);
-        
+
         LxApiService apiService = LxRetrofitClient.getApiService(requireContext());
         apiService.getSongListList(currentSource, "", "hot", currentPage).enqueue(new Callback<okhttp3.ResponseBody>() {
             @Override
@@ -277,6 +339,49 @@ public class SongSquareFragment extends Fragment {
 
             @Override
             public void onFailure(Call<okhttp3.ResponseBody> call, Throwable t) {
+                isLoadingMore = false;
+                playlistAdapter.setShowFooter(false);
+                currentPage--;
+            }
+        });
+    }
+
+    private void loadMoreMiMusicPlaylists() {
+        if (isLoadingMore || !hasMore) return;
+        isLoadingMore = true;
+        currentPage++;
+
+        playlistAdapter.setShowFooter(true);
+
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(requireContext());
+        if (apiService == null) {
+            isLoadingMore = false;
+            playlistAdapter.setShowFooter(false);
+            currentPage--;
+            return;
+        }
+
+        apiService.getMiMusicPlaylists(100, (currentPage - 1) * 100).enqueue(new Callback<MiPlaylistListResponse>() {
+            @Override
+            public void onResponse(Call<MiPlaylistListResponse> call, Response<MiPlaylistListResponse> response) {
+                isLoadingMore = false;
+                playlistAdapter.setShowFooter(false);
+                if (response.isSuccessful() && response.body() != null && response.body().getPlaylists() != null) {
+                    List<MiPlaylist> miPlaylists = response.body().getPlaylists();
+                    hasMore = miPlaylists.size() >= 100;
+                    List<Playlist> convertedPlaylists = new ArrayList<>();
+                    for (MiPlaylist miPlaylist : miPlaylists) {
+                        convertedPlaylists.add(miPlaylist.toPlaylist());
+                    }
+                    playlists.addAll(convertedPlaylists);
+                    playlistAdapter.addData(convertedPlaylists);
+                } else {
+                    currentPage--;
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MiPlaylistListResponse> call, Throwable t) {
                 isLoadingMore = false;
                 playlistAdapter.setShowFooter(false);
                 currentPage--;

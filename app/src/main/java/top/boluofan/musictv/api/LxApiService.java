@@ -16,6 +16,7 @@ import top.boluofan.musictv.api.model.ListData;
 import top.boluofan.musictv.api.model.LoginResponse;
 import top.boluofan.musictv.api.model.LyricInfo;
 import top.boluofan.musictv.api.model.MiAuthTokenResponse;
+import top.boluofan.musictv.api.model.MiPlaylist;
 import top.boluofan.musictv.api.model.MiPlaylistListResponse;
 import top.boluofan.musictv.api.model.MiPlaylistSongsResponse;
 import top.boluofan.musictv.api.model.MusicInfo;
@@ -161,6 +162,10 @@ public interface LxApiService {
             @Query("limit") int limit,
             @Query("offset") int offset
     );
+
+    // MiMusic API - 歌单详情
+    @GET("playlists/{id}")
+    Call<MiPlaylist> getMiMusicPlaylistDetail(@Path("id") int id);
 
     // MiMusic API - 歌单歌曲列表
     @GET("playlists/{listId}/songs")
