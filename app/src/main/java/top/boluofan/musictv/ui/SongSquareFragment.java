@@ -192,15 +192,8 @@ public class SongSquareFragment extends Fragment {
     }
     
     private void loadSources() {
-        // 检查是否是 MiMusic 模式
-        if (getActivity() != null) {
-            String apiType = LxRetrofitClient.getApiType(getActivity());
-            if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType)) {
-                currentSource = "mimusic";
-                loadPlaylists();
-                return;
-            }
-        }
+        // MiMusic 模式下，SongSquare 不加载用户歌单（用户歌单在"我的歌单"中加载）
+        // SongSquare 只展示各平台歌单广场
         selectSource(0);
     }
 
