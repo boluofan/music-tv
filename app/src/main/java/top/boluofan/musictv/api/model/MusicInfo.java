@@ -30,7 +30,7 @@ public class MusicInfo {
     @SerializedName("albumName")
     private String albumName;
 
-    @SerializedName("songmid")
+    @SerializedName(value = "songmid", alternate = {"musicId"})
     private String songmid;
 
     @SerializedName("hash")
