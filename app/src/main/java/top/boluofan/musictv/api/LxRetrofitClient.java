@@ -151,7 +151,7 @@ public class LxRetrofitClient {
         return client != null ? client.create(LxApiService.class) : null;
     }
 
-    // MiMusic API 客户端 - 使用直接 API 路径（不是 plugin 路径）
+    // MiMusic API 客户端 - 使用 plugin/tv-api 路径
     public static Retrofit getMiMusicApiClient(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String baseUrl = prefs.getString(KEY_SERVER_URL, "");
@@ -172,6 +172,8 @@ public class LxRetrofitClient {
         if (!API_TYPE_MiMusic.equals(apiType)) {
             return null;
         }
+
+        baseUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
 
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BODY);

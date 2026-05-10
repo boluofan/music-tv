@@ -148,7 +148,7 @@ public class SongSquareFragment extends Fragment {
             Intent intent = new Intent(requireContext(), PlaylistDetailActivity.class);
             intent.putExtra("playlist_id", playlist.getId());
             intent.putExtra("playlist_name", playlist.getName());
-            intent.putExtra("playlist_source", playlist.getSource());
+            intent.putExtra("playlist_source", currentSource);
             intent.putExtra("playlist_cover", playlist.getCoverUrl());
             startActivity(intent);
         });

@@ -77,16 +77,17 @@ public class PlaylistDetailActivity extends AppCompatActivity {
     
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        android.util.Log.d(TAG, "onCreate called");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_playlist_detail);
-        
+
         initViews();
         setupListeners();
         loadIntentData();
-        
+
         floatingPlayerWindow = new FloatingPlayerWindow(this);
         floatingPlayerWindow.connectToService();
-        
+
         loadPlaylistDetail();
     }
     
@@ -414,14 +415,40 @@ public class PlaylistDetailActivity extends AppCompatActivity {
     }
     
     private void loadPlaylistDetail() {
+        android.util.Log.d(TAG, "loadPlaylistDetail: playlistId=" + playlistId + ", playlistSource=" + playlistSource);
         if (playlistId == null || playlistSource == null) {
+            android.util.Log.d(TAG, "loadPlaylistDetail: early return due to null");
             return;
         }
 
         // 检查是否是 MiMusic 模式
         String apiType = LxRetrofitClient.getApiType(this);
-        if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType) && "mimusic".equals(playlistSource)) {
-            loadMiMusicPlaylistDetail();
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType)) {
+            // MiMusic 模式：通过 MiMusic 插件调用 songList/detail
+            showLoading(true);
+            LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+            if (apiService == null) {
+                showLoading(false);
+                Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            apiService.getPlaylistDetail(playlistSource, playlistId, 1).enqueue(new Callback<Playlist>() {
+                @Override
+                public void onResponse(Call<Playlist> call, Response<Playlist> response) {
+                    showLoading(false);
+                    if (response.isSuccessful() && response.body() != null) {
+                        updateUI(response.body());
+                    } else {
+                        Toast.makeText(PlaylistDetailActivity.this, "加载失败", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<Playlist> call, Throwable t) {
+                    showLoading(false);
+                    Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
             return;
         }
 
