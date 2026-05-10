@@ -30,12 +30,21 @@ public class LxRetrofitClient {
     private static String currentBaseUrl = null;
 
     static class AuthInterceptor implements Interceptor {
+        private final Context mContext;
+
+        AuthInterceptor(Context context) {
+            this.mContext = context.getApplicationContext();
+        }
+
         @Override
         public okhttp3.Response intercept(Chain chain) throws IOException {
             okhttp3.Request request = chain.request();
-            String apiType = getApiType(top.boluofan.musictv.MusicTvApp.getInstance());
+            if (mContext == null) {
+                return chain.proceed(request);
+            }
+            String apiType = getApiType(mContext);
             if (API_TYPE_MiMusic.equals(apiType)) {
-                String token = getMiAccessToken(top.boluofan.musictv.MusicTvApp.getInstance());
+                String token = getMiAccessToken(mContext);
                 if (token != null && !token.isEmpty()) {
                     request = request.newBuilder()
                             .header("Authorization", "Bearer " + token)
@@ -92,7 +101,7 @@ public class LxRetrofitClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(new AuthInterceptor())
+                .addInterceptor(new AuthInterceptor(context))
                 .addInterceptor(logging);
 
         retrofit = new Retrofit.Builder()
@@ -136,7 +145,7 @@ public class LxRetrofitClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(new AuthInterceptor())
+                .addInterceptor(new AuthInterceptor(context))
                 .addInterceptor(logging);
 
         return new Retrofit.Builder()
@@ -151,7 +160,7 @@ public class LxRetrofitClient {
         return client != null ? client.create(LxApiService.class) : null;
     }
 
-    // MiMusic API 客户端 - 使用 plugin/tv-api 路径
+    // MiMusic 用户歌单 API 客户端 - 使用 playlists/ 路径
     public static Retrofit getMiMusicApiClient(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String baseUrl = prefs.getString(KEY_SERVER_URL, "");
@@ -173,7 +182,7 @@ public class LxRetrofitClient {
             return null;
         }
 
-        baseUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
+        baseUrl = baseUrl;
 
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BODY);
@@ -182,7 +191,7 @@ public class LxRetrofitClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(new AuthInterceptor())
+                .addInterceptor(new AuthInterceptor(context))
                 .addInterceptor(logging);
 
         return new Retrofit.Builder()

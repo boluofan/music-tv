@@ -424,14 +424,9 @@ public class PlaylistDetailActivity extends AppCompatActivity {
         // 检查是否是 MiMusic 模式
         String apiType = LxRetrofitClient.getApiType(this);
         if (LxRetrofitClient.API_TYPE_MiMusic.equals(apiType)) {
-            // MiMusic 模式：通过 MiMusic 插件调用 songList/detail
+            // MiMusic 模式：使用 getApiService，它的 baseUrl 是 /plugin/tv-api/
             showLoading(true);
-            LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
-            if (apiService == null) {
-                showLoading(false);
-                Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            LxApiService apiService = LxRetrofitClient.getApiService(this);
             apiService.getPlaylistDetail(playlistSource, playlistId, 1).enqueue(new Callback<Playlist>() {
                 @Override
                 public void onResponse(Call<Playlist> call, Response<Playlist> response) {
