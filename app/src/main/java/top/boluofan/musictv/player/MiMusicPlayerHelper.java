@@ -48,10 +48,13 @@ public class MiMusicPlayerHelper {
         extras.putString("file_path", miSong.getFilePath() != null ? miSong.getFilePath() : "");
 
         Uri artworkUri = null;
-        if (miSong.getCoverUrl() != null && !miSong.getCoverUrl().isEmpty()) {
-            artworkUri = Uri.parse(miSong.getCoverUrl());
-        } else if (miSong.getCoverPath() != null && !miSong.getCoverPath().isEmpty()) {
-            artworkUri = Uri.parse(miSong.getCoverPath());
+        String coverUrl = miSong.getCoverUrl();
+        String coverPath = miSong.getCoverPath();
+        if (coverUrl != null && !coverUrl.isEmpty()) {
+            artworkUri = Uri.parse(coverUrl);
+        } else if (coverPath != null && !coverPath.isEmpty()) {
+            // 本地歌曲封面：/cover/{base62编码的路径}{扩展名}?access_token=xxx
+            artworkUri = Uri.parse(buildCoverUrl(context, coverPath, accessToken));
         }
 
         MediaMetadata.Builder metadataBuilder = new MediaMetadata.Builder()
@@ -182,6 +185,13 @@ public class MiMusicPlayerHelper {
         extras.putString("original_name", musicInfo.getName());
         extras.putString("mi_song_type", miSongType != null ? miSongType : "");
         extras.putString("file_path", filePath != null ? filePath : "");
+        // 如果有内嵌歌词，也存入 extras，供 PlayerActivity 直接使用
+        if (musicInfo.getMeta() != null && musicInfo.getMeta().getExtras() != null) {
+            String lyric = musicInfo.getMeta().getExtras().getString("lyric");
+            if (lyric != null && !lyric.isEmpty()) {
+                extras.putString("lyrics", lyric);
+            }
+        }
 
         Uri artworkUri = musicInfo.getPicUrl() != null ? Uri.parse(musicInfo.getPicUrl()) : null;
 
@@ -298,6 +308,50 @@ public class MiMusicPlayerHelper {
 
         String result = baseUrl + "/music/" + encodedPath + ext + "?access_token=" + token;
         Log.d(TAG, "Local song URL: " + result);
+        return result;
+    }
+
+    /**
+     * 构建本地歌曲封面 URL（公开方法，供外部调用）
+     * 格式: /cover/{base62编码的路径}{扩展名}?access_token=xxx
+     *
+     * @param context Context
+     * @param coverPath 封面路径，如 "/app/data/covers/26/af/xxx.jpg"
+     * @param accessToken 访问令牌
+     * @return 封面完整 URL
+     */
+    public static String buildCoverUrl(Context context, String coverPath, String accessToken) {
+        if (coverPath == null || coverPath.isEmpty()) {
+            return "";
+        }
+        return buildCoverUrlInternal(context, coverPath, accessToken);
+    }
+
+    /**
+     * 构建本地歌曲封面 URL
+     * 格式: /cover/{base62编码的路径}{扩展名}?access_token=xxx
+     */
+    private static String buildCoverUrlInternal(Context context, String coverPath, String accessToken) {
+        String baseUrl = LxRetrofitClient.getPureServerUrl(context);
+
+        // 获取路径和扩展名
+        String pathWithoutExt = getPathWithoutExtension(coverPath);
+        String ext = getExtension(coverPath);
+
+        // Base62 编码
+        String encodedPath = base62Encode(pathWithoutExt);
+
+        // 获取 token
+        String token = accessToken;
+        if (token == null || token.isEmpty()) {
+            token = LxRetrofitClient.getMiAccessToken(context);
+        }
+        if (token == null) {
+            token = "";
+        }
+
+        String result = baseUrl + "/cover/" + encodedPath + ext + "?access_token=" + token;
+        Log.d(TAG, "Cover URL: " + result);
         return result;
     }
 

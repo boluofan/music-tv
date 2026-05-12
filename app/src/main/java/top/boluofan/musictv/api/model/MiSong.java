@@ -97,6 +97,8 @@ public class MiSong {
         extras.putString("file_path", filePath != null ? filePath : "");
         extras.putString("url", url != null ? url : "");
         extras.putString("cache_hash", cacheHash != null ? cacheHash : "");
+        extras.putString("lyric", lyric != null ? lyric : "");
+        extras.putString("lyric_source", lyricSource != null ? lyricSource : "");
         meta.setExtras(extras);
         info.setMeta(meta);
 
