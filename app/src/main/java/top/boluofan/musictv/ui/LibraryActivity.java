@@ -200,7 +200,16 @@ public class LibraryActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Response<top.boluofan.musictv.api.model.MiPlaylistListResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    miPlaylistList = response.body().getPlaylists();
+                    // 只展示 type="normal" 的歌单，过滤掉 type="radio"
+                    List<top.boluofan.musictv.api.model.MiPlaylist> allPlaylists = response.body().getPlaylists();
+                    miPlaylistList = new java.util.ArrayList<>();
+                    if (allPlaylists != null) {
+                        for (top.boluofan.musictv.api.model.MiPlaylist p : allPlaylists) {
+                            if ("normal".equals(p.getType())) {
+                                miPlaylistList.add(p);
+                            }
+                        }
+                    }
                     listData = null;
                     updatePlaylistList();
                 } else {
