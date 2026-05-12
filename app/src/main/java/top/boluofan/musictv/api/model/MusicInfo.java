@@ -1,5 +1,6 @@
 package top.boluofan.musictv.api.model;
 
+import android.os.Bundle;
 import com.google.gson.annotations.SerializedName;
 import java.math.BigDecimal;
 import java.util.List;
@@ -216,6 +217,10 @@ public class MusicInfo {
         @SerializedName("_qualitys")
         private Map<String, QualityDetail> _qualitys;
 
+        // 非 JSON 字段，用于在 MiMusic 场景下传递额外播放信息
+        // （如 mi_song_type, file_path, url 等）
+        private Bundle extras;
+
         public Object getSongId() {
             return songId;
         }
@@ -254,6 +259,14 @@ public class MusicInfo {
 
         public void set_qualitys(Map<String, QualityDetail> _qualitys) {
             this._qualitys = _qualitys;
+        }
+
+        public Bundle getExtras() {
+            return extras;
+        }
+
+        public void setExtras(Bundle extras) {
+            this.extras = extras;
         }
     }
 

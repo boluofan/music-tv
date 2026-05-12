@@ -101,6 +101,9 @@ public class MusicService extends MediaSessionService {
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(this).setDataSourceFactory(resolvingFactory))
                 .setAudioAttributes(audioAttributes, true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
+                .setLoadControl(new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                        .setBufferDurationsMs(15000, 30000, 1500, 2000)
+                        .build())
                 .build();
 
         Intent intent = new Intent(this, top.boluofan.musictv.ui.LibraryActivity.class);

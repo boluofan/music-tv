@@ -244,6 +244,31 @@ public class LxRetrofitClient {
         return prefs.getString(KEY_SERVER_URL, "");
     }
 
+    /**
+     * 获取纯净的服务器 URL（不包含 API 路径前缀）
+     * 例如: https://mimusic.boluofan.top:23456/api/v1 -> https://mimusic.boluofan.top:23456
+     */
+    public static String getPureServerUrl(Context context) {
+        String baseUrl = getServerUrl(context);
+        if (baseUrl.isEmpty()) {
+            return "http://localhost:58091";
+        }
+        // 移除末尾的斜杠
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        // 移除 /api/v1 或 /plugin/ 等前缀
+        int apiIndex = baseUrl.indexOf("/api/v1");
+        if (apiIndex > 0) {
+            baseUrl = baseUrl.substring(0, apiIndex);
+        }
+        int pluginIndex = baseUrl.indexOf("/plugin/");
+        if (pluginIndex > 0) {
+            baseUrl = baseUrl.substring(0, pluginIndex);
+        }
+        return baseUrl;
+    }
+
     public static String getApiType(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);

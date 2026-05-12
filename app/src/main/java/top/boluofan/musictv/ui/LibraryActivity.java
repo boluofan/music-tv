@@ -33,6 +33,7 @@ import top.boluofan.musictv.api.model.MusicInfo;
 import top.boluofan.musictv.api.model.Playlist;
 import top.boluofan.musictv.ui.adapter.LxMusicAdapter;
 import top.boluofan.musictv.PlaylistAdapter;
+import top.boluofan.musictv.player.MiMusicPlayerHelper;
 import top.boluofan.musictv.util.DialogHelper;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
@@ -391,39 +392,60 @@ public class LibraryActivity extends AppCompatActivity {
     private void playSongAtIndex(int index) {
         if (currentPlaylist == null || currentPlaylist.getSongs() == null || player == null) return;
         if (index < 0 || index >= currentPlaylist.getSongs().size()) return;
-        
+
+        // 检测是否是 MiMusic 模式
+        boolean isMiMusicMode = LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this));
+        String accessToken = isMiMusicMode ? LxRetrofitClient.getMiAccessToken(this) : null;
+
         List<MediaItem> mediaItems = new ArrayList<>();
         for (MusicInfo song : currentPlaylist.getSongs()) {
-            MediaItem item = createMediaItem(song);
+            MediaItem item;
+            if (isMiMusicMode && song.getSource() != null && "mimusic".equals(song.getSource())) {
+                // MiMusic 用户歌单歌曲，使用专用播放方法
+                item = MiMusicPlayerHelper.createMediaItem(this, song, accessToken);
+            } else {
+                item = createMediaItem(song);
+            }
             mediaItems.add(item);
         }
-        
+
         player.setMediaItems(mediaItems, index, 0);
         player.prepare();
         player.play();
-        
+
         songAdapter.setPlayingIndex(index);
     }
-    
+
     private void playAll(boolean shuffle) {
         if (currentPlaylist == null || currentPlaylist.getSongs() == null || currentPlaylist.getSongs().isEmpty()) {
             Toast.makeText(this, "没有可播放的歌曲", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
         if (player == null) return;
-        
+
+        // 检测是否是 MiMusic 模式
+        boolean isMiMusicMode = LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this));
+        String accessToken = isMiMusicMode ? LxRetrofitClient.getMiAccessToken(this) : null;
+
         List<MediaItem> mediaItems = new ArrayList<>();
         for (MusicInfo song : currentPlaylist.getSongs()) {
-            mediaItems.add(createMediaItem(song));
+            MediaItem item;
+            if (isMiMusicMode && song.getSource() != null && "mimusic".equals(song.getSource())) {
+                // MiMusic 用户歌单歌曲，使用专用播放方法
+                item = MiMusicPlayerHelper.createMediaItem(this, song, accessToken);
+            } else {
+                item = createMediaItem(song);
+            }
+            mediaItems.add(item);
         }
-        
+
         int startIndex = shuffle ? (int) (Math.random() * currentPlaylist.getSongs().size()) : 0;
-        
+
         player.setMediaItems(mediaItems, startIndex, 0);
         player.prepare();
         player.play();
-        
+
         Toast.makeText(this, shuffle ? "随机播放" : "播放全部", Toast.LENGTH_SHORT).show();
     }
 

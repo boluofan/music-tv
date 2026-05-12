@@ -1,5 +1,6 @@
 package top.boluofan.musictv.api.model;
 
+import android.os.Bundle;
 import com.google.gson.annotations.SerializedName;
 
 /**
@@ -86,6 +87,19 @@ public class MiSong {
             int seconds = totalSeconds % 60;
             info.setInterval(String.format("%d:%02d", minutes, seconds));
         }
+
+        // 将 MiSong 的原始信息存入 meta extras，以便后续播放时使用
+        // 这些信息用于 MiMusicPlayerHelper 判断是本地歌曲还是网络歌曲
+        MusicInfo.MusicMeta meta = new MusicInfo.MusicMeta();
+        meta.setSongId(id);
+        Bundle extras = new Bundle();
+        extras.putString("mi_song_type", type != null ? type : "");
+        extras.putString("file_path", filePath != null ? filePath : "");
+        extras.putString("url", url != null ? url : "");
+        extras.putString("cache_hash", cacheHash != null ? cacheHash : "");
+        meta.setExtras(extras);
+        info.setMeta(meta);
+
         return info;
     }
 
@@ -95,8 +109,10 @@ public class MiSong {
     public String getArtist() { return artist; }
     public String getAlbum() { return album; }
     public Double getDuration() { return duration; }
+    public String getFilePath() { return filePath; }
     public String getUrl() { return url; }
     public String getCoverUrl() { return coverUrl; }
+    public String getCoverPath() { return coverPath; }
     public String getLyric() { return lyric; }
     public String getCacheHash() { return cacheHash; }
 }
