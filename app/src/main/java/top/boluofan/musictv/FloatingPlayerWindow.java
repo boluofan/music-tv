@@ -6,11 +6,13 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
@@ -18,7 +20,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
@@ -60,6 +61,18 @@ public class FloatingPlayerWindow {
     private int collapsedWidth = 96;
     private int expandedWidth = 300;
 
+    private static final String PREF_NAME = "floating_player_pos";
+    private static final String KEY_POS_X = "pos_x";
+    private static final String KEY_POS_Y = "pos_y";
+    private static final int DEFAULT_POS_X = -1;
+    private static final int DEFAULT_POS_Y = 0;
+
+    private boolean isDragging = false;
+    private int mDragStartX;
+    private int mDragStartY;
+    private int mPosX = DEFAULT_POS_X;
+    private int mPosY = DEFAULT_POS_Y;
+
     public FloatingPlayerWindow(Activity activity) {
         this.activity = activity;
         this.context = activity.getApplicationContext();
@@ -78,19 +91,29 @@ public class FloatingPlayerWindow {
 
     private void setupContainer() {
         ViewGroup rootView = (ViewGroup) activity.getWindow().getDecorView();
-        
+
         View existingContainer = rootView.findViewById(R.id.floatingPlayerContainer);
         if (existingContainer != null && existingContainer.getParent() != null) {
             ((ViewGroup) existingContainer.getParent()).removeView(existingContainer);
         }
-        
+
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        mPosX = prefs.getInt(KEY_POS_X, DEFAULT_POS_X);
+        mPosY = prefs.getInt(KEY_POS_Y, DEFAULT_POS_Y);
+
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 collapsedWidth,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        params.setMargins(0, PLAYER_MARGIN_TOP, 0, 0);
-        params.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
-        
+
+        int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+        int defaultX = (screenWidth - collapsedWidth) / 2;
+
+        if (mPosX == DEFAULT_POS_X) {
+            mPosX = defaultX;
+        }
+        params.setMargins(mPosX, mPosY, 0, 0);
+
         container.setLayoutParams(params);
         
         if (container.getParent() == null) {
@@ -111,7 +134,11 @@ public class FloatingPlayerWindow {
     }
 
     private void setupListeners() {
-        container.setOnClickListener(v -> openPlayer());
+        container.setOnClickListener(v -> {
+            if (!isDragging) {
+                openPlayer();
+            }
+        });
 
         container.setOnFocusChangeListener((v, hasFocus) -> {
             isFocused = hasFocus;
@@ -128,10 +155,65 @@ public class FloatingPlayerWindow {
 
         container.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
-                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || 
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
                     keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
                     openPlayer();
                     return true;
+                }
+            }
+            return false;
+        });
+
+        container.setOnTouchListener((v, event) -> {
+            if (!isFocused) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        mDragStartX = (int) event.getRawX();
+                        mDragStartY = (int) event.getRawY();
+                        isDragging = false;
+                        v.setPressed(true);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        int deltaX = (int) (event.getRawX() - mDragStartX);
+                        int deltaY = (int) (event.getRawY() - mDragStartY);
+
+                        if (!isDragging && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+                            isDragging = true;
+                            v.setPressed(false);
+                        }
+
+                        if (isDragging) {
+                            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) v.getLayoutParams();
+                            int newX = params.leftMargin + deltaX;
+                            int newY = params.topMargin + deltaY;
+
+                            int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+                            int maxX = screenWidth - v.getWidth();
+                            int maxY = context.getResources().getDisplayMetrics().heightPixels - v.getHeight();
+
+                            newX = Math.max(0, Math.min(newX, maxX));
+                            newY = Math.max(0, Math.min(newY, maxY));
+
+                            params.setMargins(newX, newY, 0, 0);
+                            v.setLayoutParams(params);
+
+                            mDragStartX = (int) event.getRawX();
+                            mDragStartY = (int) event.getRawY();
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setPressed(false);
+                        if (isDragging) {
+                            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) v.getLayoutParams();
+                            mPosX = params.leftMargin;
+                            mPosY = params.topMargin;
+                            savePosition();
+                        }
+                        isDragging = false;
+                        return true;
                 }
             }
             return false;
@@ -431,18 +513,26 @@ public class FloatingPlayerWindow {
         if (container == null || container.getVisibility() != View.VISIBLE) {
             return false;
         }
-        
+
         if (currentFocus == null) {
             return requestFocus();
         }
-        
+
         int[] location = new int[2];
         currentFocus.getLocationOnScreen(location);
-        
+
         if (location[0] <= 60) {
             return requestFocus();
         }
-        
+
         return false;
+    }
+
+    private void savePosition() {
+        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putInt(KEY_POS_X, mPosX)
+                .putInt(KEY_POS_Y, mPosY)
+                .apply();
     }
 }
