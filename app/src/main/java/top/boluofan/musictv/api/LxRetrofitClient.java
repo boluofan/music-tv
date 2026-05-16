@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.util.Base64;
 import android.util.Log;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
@@ -26,8 +28,25 @@ public class LxRetrofitClient {
     private static final String KEY_BACKGROUND_PLAY = "background_play";
     private static final String KEY_API_TYPE = "api_type";
 
-    private static Retrofit retrofit = null;
-    private static String currentBaseUrl = null;
+    // 缓存 Key
+    private static final String CACHE_LX_MUSIC = "lx_music";
+    private static final String CACHE_LX_USER = "lx_user";
+    private static final String CACHE_MIMUSIC_API = "mimusic_api";
+    private static final String CACHE_MIMUSIC_AUTH = "mimusic_auth";
+
+    private static final Map<String, Retrofit> RETROFIT_CACHE = new HashMap<>();
+    private static final Map<String, String> BASE_URL_CACHE = new HashMap<>();
+
+    public static final String API_TYPE_LXserver = "music";
+    public static final String API_TYPE_MiMusic = "tv";
+    private static final String PATH_PREFIX_TV = "lxmusic-api/";
+    private static final String PATH_PREFIX_PLUGIN = "plugin/";
+    private static final String PATH_LX_MUSIC = "api/music/";
+    private static final String PATH_LX_USER = "api/user/";
+
+    public static final String QUALITY_FLAC = "flac";
+    public static final String QUALITY_320K = "320k";
+    public static final String QUALITY_128K = "128k";
 
     static class AuthInterceptor implements Interceptor {
         private final Context mContext;
@@ -55,114 +74,76 @@ public class LxRetrofitClient {
         }
     }
 
-    public static final String API_TYPE_LXserver = "music";
-    public static final String API_TYPE_MiMusic = "tv";
-    private static final String PATH_PREFIX_TV = "lxmusic-api/";
-    private static final String PATH_PREFIX_PLUGIN = "plugin/";
-    private static final String PATH_LX_MUSIC = "api/music/";
-    private static final String PATH_LX_USER = "api/user/";
-
-    public static final String QUALITY_FLAC = "flac";
-    public static final String QUALITY_320K = "320k";
-    public static final String QUALITY_128K = "128k";
-
-    public static Retrofit getClient(Context context,Boolean isAuth) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String baseUrl = prefs.getString(KEY_SERVER_URL, "");
-
-        if (baseUrl.isEmpty()) {
-            baseUrl = "http://localhost:9527/";
+    private static String normalizeBaseUrl(String baseUrl, String defaultUrl) {
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            baseUrl = defaultUrl;
         }
-
         if (!baseUrl.startsWith("http")) {
             baseUrl = "http://" + baseUrl;
         }
-
         if (!baseUrl.endsWith("/")) {
             baseUrl += "/";
         }
+        return baseUrl;
+    }
 
-        if (isAuth) {
-            baseUrl = baseUrl + PATH_LX_USER;
-        } else {
-            baseUrl = baseUrl + PATH_LX_MUSIC;
-        }
-
-        if (retrofit != null && baseUrl.equals(currentBaseUrl)) {
-            return retrofit;
-        }
-
-        currentBaseUrl = baseUrl;
-
+    private static OkHttpClient buildOkHttpClient(Context context) {
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+        return new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .addInterceptor(new AuthInterceptor(context))
-                .addInterceptor(logging);
+                .addInterceptor(logging)
+                .build();
+    }
 
-        retrofit = new Retrofit.Builder()
+    private static Retrofit getOrCreateRetrofit(Context context, String cacheKey, String baseUrl) {
+        Retrofit cachedRetrofit = RETROFIT_CACHE.get(cacheKey);
+        String cachedBaseUrl = BASE_URL_CACHE.get(cacheKey);
+        if (cachedRetrofit != null && cachedBaseUrl != null && cachedBaseUrl.equals(baseUrl)) {
+            return cachedRetrofit;
+        }
+        OkHttpClient client = buildOkHttpClient(context);
+        Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create())
-                .client(builder.build())
+                .client(client)
                 .build();
-
+        RETROFIT_CACHE.put(cacheKey, retrofit);
+        BASE_URL_CACHE.put(cacheKey, baseUrl);
         return retrofit;
     }
 
+    public static Retrofit getClient(Context context, boolean isAuth) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String baseUrl = normalizeBaseUrl(prefs.getString(KEY_SERVER_URL, ""), "http://localhost:9527/");
+        String path = isAuth ? PATH_LX_USER : PATH_LX_MUSIC;
+        String fullUrl = baseUrl + path;
+        String cacheKey = isAuth ? CACHE_LX_USER : CACHE_LX_MUSIC;
+        return getOrCreateRetrofit(context, cacheKey, fullUrl);
+    }
+
     public static LxApiService getApiService(Context context) {
-        boolean isMiMusicMode = isMiMusicApi(context);
-        // 检查是否是 MiMusic 模式
-        if (isMiMusicMode) {
+        if (isMiMusicApi(context)) {
             return getMiMusicApiService(context);
-        }else {
-            return getClient(context,false).create(LxApiService.class);
+        } else {
+            return getClient(context, false).create(LxApiService.class);
         }
     }
 
     public static LxApiService getLxAuthService(Context context) {
-        return getClient(context,true).create(LxApiService.class);
+        return getClient(context, true).create(LxApiService.class);
     }
 
     public static Retrofit getMiMusicAuthClient(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String baseUrl = prefs.getString(KEY_SERVER_URL, "");
-
-        if (baseUrl.isEmpty()) {
-            baseUrl = "http://localhost:58091/api/v1";
-        }
-
-        if (!baseUrl.startsWith("http")) {
-            baseUrl = "http://" + baseUrl;
-        }
-
-        if (!baseUrl.endsWith("/")) {
-            baseUrl += "/";
-        }
-
-        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
-        if (!API_TYPE_MiMusic.equals(apiType)) {
+        String baseUrl = normalizeBaseUrl(prefs.getString(KEY_SERVER_URL, ""), "http://localhost:58091/api/v1");
+        if (!API_TYPE_MiMusic.equals(getApiType(context))) {
             return null;
         }
-
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(new AuthInterceptor(context))
-                .addInterceptor(logging);
-
-        return new Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(builder.build())
-                .build();
+        return getOrCreateRetrofit(context, CACHE_MIMUSIC_AUTH, baseUrl);
     }
 
     public static LxApiService getMiMusicAuthService(Context context) {
@@ -170,40 +151,14 @@ public class LxRetrofitClient {
         return client != null ? client.create(LxApiService.class) : null;
     }
 
-    // MiMusic 用户歌单 API 客户端 - 使用 playlists/ 路径
     public static Retrofit getMiMusicApiClient(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String baseUrl = prefs.getString(KEY_SERVER_URL, "");
-
-        if (baseUrl.isEmpty()) {
-            baseUrl = "http://localhost:58091/api/v1";
+        String baseUrl = normalizeBaseUrl(prefs.getString(KEY_SERVER_URL, ""), "http://localhost:58091/api/v1");
+        if (!API_TYPE_MiMusic.equals(getApiType(context))) {
+            return null;
         }
-
-        if (!baseUrl.startsWith("http")) {
-            baseUrl = "http://" + baseUrl;
-        }
-
-        if (!baseUrl.endsWith("/")) {
-            baseUrl += "/";
-        }
-
-        baseUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
-
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(new AuthInterceptor(context))
-                .addInterceptor(logging);
-
-        return new Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(builder.build())
-                .build();
+        String fullUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
+        return getOrCreateRetrofit(context, CACHE_MIMUSIC_API, fullUrl);
     }
 
     public static LxApiService getMiMusicApiService(Context context) {
@@ -223,7 +178,7 @@ public class LxRetrofitClient {
 
     public static String getToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(KEY_TOKEN, "lx_tk_cf07e4417804b0817ef2c6e16c906e9f");
+        return prefs.getString(KEY_TOKEN, "");
     }
 
     public static String getMiAccessToken(Context context) {
@@ -249,20 +204,14 @@ public class LxRetrofitClient {
         return prefs.getString(KEY_SERVER_URL, "");
     }
 
-    /**
-     * 获取纯净的服务器 URL（不包含 API 路径前缀）
-     * 例如: https://mimusic.boluofan.top:23456/api/v1 -> https://mimusic.boluofan.top:23456
-     */
     public static String getPureServerUrl(Context context) {
         String baseUrl = getServerUrl(context);
         if (baseUrl.isEmpty()) {
             return "http://localhost:58091";
         }
-        // 移除末尾的斜杠
         while (baseUrl.endsWith("/")) {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
-        // 移除 /api/v1 或 /plugin/ 等前缀
         int apiIndex = baseUrl.indexOf("/api/v1");
         if (apiIndex > 0) {
             baseUrl = baseUrl.substring(0, apiIndex);
@@ -278,20 +227,14 @@ public class LxRetrofitClient {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
     }
-    /**
-     * 判断当前是否为 MiMusic 接口类型
-     */
+
     public static boolean isMiMusicApi(Context context) {
         return API_TYPE_MiMusic.equals(getApiType(context));
     }
 
-    /**
-     * 判断当前是否为 LX Server 接口类型
-     */
     public static boolean isLXServerApi(Context context) {
         return API_TYPE_LXserver.equals(getApiType(context));
     }
-
 
     public static void setApiType(Context context, String apiType) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -300,8 +243,7 @@ public class LxRetrofitClient {
     }
 
     public static String getPathPrefix(Context context) {
-        String apiType = getApiType(context);
-        if (API_TYPE_MiMusic.equals(apiType)) {
+        if (isMiMusicApi(context)) {
             return PATH_PREFIX_TV;
         }
         return PATH_LX_MUSIC;
@@ -335,9 +277,9 @@ public class LxRetrofitClient {
     public static void clearUserInfo(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit()
-            .remove(KEY_USERNAME)
-            .remove(KEY_PASSWORD)
-            .apply();
+                .remove(KEY_USERNAME)
+                .remove(KEY_PASSWORD)
+                .apply();
     }
 
     public static boolean isLoggedIn(Context context) {
@@ -367,8 +309,8 @@ public class LxRetrofitClient {
     }
 
     public static void resetClient() {
-        retrofit = null;
-        currentBaseUrl = null;
+        RETROFIT_CACHE.clear();
+        BASE_URL_CACHE.clear();
     }
 
     public static String getBasicAuthHeader() {
