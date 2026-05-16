@@ -202,12 +202,6 @@ public class SongSquareFragment extends Fragment {
         isLoading = true;
         showLoading(true);
 
-        // 检查是否是 MiMusic 模式
-        if ("mimusic".equals(currentSource)) {
-            loadMiMusicPlaylists();
-            return;
-        }
-
         LxApiService apiService = LxRetrofitClient.getApiService(requireContext());
         apiService.getSongListList(currentSource, "", "hot", currentPage).enqueue(new Callback<okhttp3.ResponseBody>() {
             @Override
@@ -293,9 +287,9 @@ public class SongSquareFragment extends Fragment {
 
     private void loadMorePlaylists() {
         if (isLoadingMore || !hasMore) return;
-
+        boolean isMiMusicMode = LxRetrofitClient.isMiMusicApi(requireContext());
         // MiMusic 模式使用分页加载
-        if ("mimusic".equals(currentSource)) {
+        if (isMiMusicMode) {
             loadMoreMiMusicPlaylists();
             return;
         }

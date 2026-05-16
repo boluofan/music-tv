@@ -57,7 +57,7 @@ public class LxRetrofitClient {
 
     public static final String API_TYPE_LXserver = "music";
     public static final String API_TYPE_MiMusic = "tv";
-    private static final String PATH_PREFIX_TV = "tv-api/";
+    private static final String PATH_PREFIX_TV = "lxmusic-api/";
     private static final String PATH_PREFIX_PLUGIN = "plugin/";
     private static final String PATH_LX_MUSIC = "api/music/";
     private static final String PATH_LX_USER = "api/user/";
@@ -114,7 +114,13 @@ public class LxRetrofitClient {
     }
 
     public static LxApiService getApiService(Context context) {
-        return getClient(context,false).create(LxApiService.class);
+        boolean isMiMusicMode = isMiMusicApi(context);
+        // 检查是否是 MiMusic 模式
+        if (isMiMusicMode) {
+            return getMiMusicApiService(context);
+        }else {
+            return getClient(context,false).create(LxApiService.class);
+        }
     }
 
     public static LxApiService getLxAuthService(Context context) {
@@ -181,12 +187,7 @@ public class LxRetrofitClient {
             baseUrl += "/";
         }
 
-        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
-        if (!API_TYPE_MiMusic.equals(apiType)) {
-            return null;
-        }
-
-        baseUrl = baseUrl;
+        baseUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
 
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BODY);
@@ -222,7 +223,7 @@ public class LxRetrofitClient {
 
     public static String getToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(KEY_TOKEN, "");
+        return prefs.getString(KEY_TOKEN, "lx_tk_cf07e4417804b0817ef2c6e16c906e9f");
     }
 
     public static String getMiAccessToken(Context context) {
@@ -277,6 +278,20 @@ public class LxRetrofitClient {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
     }
+    /**
+     * 判断当前是否为 MiMusic 接口类型
+     */
+    public static boolean isMiMusicApi(Context context) {
+        return API_TYPE_MiMusic.equals(getApiType(context));
+    }
+
+    /**
+     * 判断当前是否为 LX Server 接口类型
+     */
+    public static boolean isLXServerApi(Context context) {
+        return API_TYPE_LXserver.equals(getApiType(context));
+    }
+
 
     public static void setApiType(Context context, String apiType) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
