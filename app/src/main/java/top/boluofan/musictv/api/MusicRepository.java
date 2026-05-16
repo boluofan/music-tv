@@ -32,7 +32,7 @@ public class MusicRepository {
 
     private MusicRepository(Context context) {
         this.context = context.getApplicationContext();
-        this.apiService = LxRetrofitClient.getApiService(context);
+        this.apiService = LxRetrofitClient.getLxAuthService(context);
     }
 
     public static synchronized MusicRepository getInstance(Context context) {

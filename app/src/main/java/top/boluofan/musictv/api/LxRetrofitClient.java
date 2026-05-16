@@ -59,13 +59,14 @@ public class LxRetrofitClient {
     public static final String API_TYPE_MiMusic = "tv";
     private static final String PATH_PREFIX_TV = "tv-api/";
     private static final String PATH_PREFIX_PLUGIN = "plugin/";
-    private static final String PATH_PREFIX_MUSIC = "api/music/";
+    private static final String PATH_LX_MUSIC = "api/music/";
+    private static final String PATH_LX_USER = "api/user/";
 
     public static final String QUALITY_FLAC = "flac";
     public static final String QUALITY_320K = "320k";
     public static final String QUALITY_128K = "128k";
 
-    public static Retrofit getClient(Context context) {
+    public static Retrofit getClient(Context context,Boolean isAuth) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String baseUrl = prefs.getString(KEY_SERVER_URL, "");
 
@@ -81,11 +82,10 @@ public class LxRetrofitClient {
             baseUrl += "/";
         }
 
-        String apiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
-        if (API_TYPE_MiMusic.equals(apiType)) {
-            baseUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
+        if (isAuth) {
+            baseUrl = baseUrl + PATH_LX_USER;
         } else {
-            baseUrl = baseUrl + PATH_PREFIX_MUSIC;
+            baseUrl = baseUrl + PATH_LX_MUSIC;
         }
 
         if (retrofit != null && baseUrl.equals(currentBaseUrl)) {
@@ -114,7 +114,11 @@ public class LxRetrofitClient {
     }
 
     public static LxApiService getApiService(Context context) {
-        return getClient(context).create(LxApiService.class);
+        return getClient(context,false).create(LxApiService.class);
+    }
+
+    public static LxApiService getLxAuthService(Context context) {
+        return getClient(context,true).create(LxApiService.class);
     }
 
     public static Retrofit getMiMusicAuthClient(Context context) {
@@ -285,7 +289,7 @@ public class LxRetrofitClient {
         if (API_TYPE_MiMusic.equals(apiType)) {
             return PATH_PREFIX_TV;
         }
-        return PATH_PREFIX_MUSIC;
+        return PATH_LX_MUSIC;
     }
 
     public static void saveConfig(Context context, String serverUrl, String username, String password, String token) {

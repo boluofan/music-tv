@@ -150,7 +150,7 @@ public class LibraryFragment extends Fragment {
             return;
         }
         
-        LxApiService apiService = LxRetrofitClient.getApiService(requireContext());
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(requireContext());
         String username = LxRetrofitClient.getUsername(requireContext());
         String password = LxRetrofitClient.getPassword(requireContext());
         String token = LxRetrofitClient.getToken(requireContext());

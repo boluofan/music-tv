@@ -155,7 +155,7 @@ public class LibraryActivity extends AppCompatActivity {
         currentMiPlaylist = null;
         miPlaylistList = null;
 
-        LxApiService apiService = LxRetrofitClient.getApiService(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
 
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
@@ -593,7 +593,7 @@ public class LibraryActivity extends AppCompatActivity {
             return;
         }
 
-        LxApiService apiService = LxRetrofitClient.getApiService(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
 
         apiService.getUserList(username, password, token).enqueue(new Callback<ListData>() {
             @Override

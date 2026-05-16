@@ -222,7 +222,7 @@ public class RankingActivity extends AppCompatActivity {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getApiService(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
         
         btnFavorite.setEnabled(false);
         
@@ -338,7 +338,7 @@ public class RankingActivity extends AppCompatActivity {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getApiService(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
 
         apiService.getUserList(username, password,token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
             @Override
@@ -378,7 +378,7 @@ public class RankingActivity extends AppCompatActivity {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getApiService(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
 
         apiService.getUserList(username, password, token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
             @Override
@@ -422,7 +422,7 @@ public class RankingActivity extends AppCompatActivity {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getApiService(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
 
         List<MusicInfo> songList = playlist.getSongs();
         if (songList == null) {

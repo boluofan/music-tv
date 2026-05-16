@@ -233,7 +233,6 @@ public class ConfigActivity extends AppCompatActivity {
                 return;
             }
 
-            LxApiService apiService = LxRetrofitClient.getApiService(this);
             java.util.HashMap<String, String> body = new java.util.HashMap<>();
             body.put("username", username);
             body.put("password", password);
@@ -267,34 +266,35 @@ public class ConfigActivity extends AppCompatActivity {
                             finish();
                         }
                     });
-                    return;
                 }
-            }
+            }else {
 
-            apiService.verifyUser(body).enqueue(new retrofit2.Callback<LoginResponse>() {
-                @Override
-                public void onResponse(retrofit2.Call<LoginResponse> call, retrofit2.Response<LoginResponse> response) {
-                    btnConnect.setEnabled(true);
-                    btnConnect.setText("连　接");
+                LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
+                apiService.verifyUser(body).enqueue(new retrofit2.Callback<LoginResponse>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<LoginResponse> call, retrofit2.Response<LoginResponse> response) {
+                        btnConnect.setEnabled(true);
+                        btnConnect.setText("连　接");
 
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        Toast.makeText(ConfigActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(ConfigActivity.this, "用户名或密码错误，将以游客身份使用", Toast.LENGTH_LONG).show();
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                            Toast.makeText(ConfigActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(ConfigActivity.this, "用户名或密码错误，将以游客身份使用", Toast.LENGTH_LONG).show();
+                        }
+                        startActivity(new Intent(ConfigActivity.this, top.boluofan.musictv.ui.MainActivity.class));
+                        finish();
                     }
-                    startActivity(new Intent(ConfigActivity.this, top.boluofan.musictv.ui.MainActivity.class));
-                    finish();
-                }
 
-                @Override
-                public void onFailure(retrofit2.Call<LoginResponse> call, Throwable t) {
-                    btnConnect.setEnabled(true);
-                    btnConnect.setText("连　接");
-                    Toast.makeText(ConfigActivity.this, "连接超时，将以游客身份使用", Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(ConfigActivity.this, top.boluofan.musictv.ui.MainActivity.class));
-                    finish();
-                }
-            });
+                    @Override
+                    public void onFailure(retrofit2.Call<LoginResponse> call, Throwable t) {
+                        btnConnect.setEnabled(true);
+                        btnConnect.setText("连　接");
+                        Toast.makeText(ConfigActivity.this, "连接超时，将以游客身份使用", Toast.LENGTH_LONG).show();
+                        startActivity(new Intent(ConfigActivity.this, top.boluofan.musictv.ui.MainActivity.class));
+                        finish();
+                    }
+                });
+            }
         });
     }
 

@@ -26,20 +26,20 @@ import top.boluofan.musictv.api.model.SearchResult;
 
 public interface LxApiService {
 
-    @POST("api/user/verify")
+    @POST("verify")
     Call<LoginResponse> verifyUser(@Body Map<String, String> body);
 
     @POST("auth/login")
     Call<MiAuthTokenResponse> miMusicLogin(@Body Map<String, String> body);
 
-    @GET("api/user/list")
+    @GET("list")
     Call<ListData> getUserList(
             @Header("x-user-name") String username,
             @Header("x-user-password") String password,
             @Header("x-user-token") String token
     );
 
-    @POST("api/user/list")
+    @POST("list")
     Call<ResponseBody> updateUserList(
             @Header("x-user-name") String username,
             @Header("x-user-password") String password,
