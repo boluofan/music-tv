@@ -1,5 +1,6 @@
 package top.boluofan.musictv.ui.adapter;
 
+import android.graphics.drawable.AnimationDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -198,9 +199,13 @@ public class LxMusicAdapter extends RecyclerView.Adapter<LxMusicAdapter.ViewHold
                 tvSource.setVisibility(View.GONE);
             }
             
-            if (isCurrentSong) {
+            if (isCurrentSong && isPlayingNow) {
                 ivEqualizer.setVisibility(View.VISIBLE);
                 tvIndex.setVisibility(View.GONE);
+                ivEqualizer.setImageResource(R.drawable.anim_equalizer);
+                if (ivEqualizer.getDrawable() instanceof AnimationDrawable) {
+                    ((AnimationDrawable) ivEqualizer.getDrawable()).start();
+                }
             } else {
                 ivEqualizer.setVisibility(View.GONE);
                 tvIndex.setVisibility(View.VISIBLE);

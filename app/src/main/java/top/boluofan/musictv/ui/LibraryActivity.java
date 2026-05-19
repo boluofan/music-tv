@@ -205,8 +205,9 @@ public class LibraryActivity extends AppCompatActivity {
                     miPlaylistList = new java.util.ArrayList<>();
                     if (allPlaylists != null) {
                         for (top.boluofan.musictv.api.model.MiPlaylist p : allPlaylists) {
+                            Integer songCount = p.getSongCount();
                             String type = p.getType();
-                            if (type == null || type.isEmpty() || "normal".equals(type)) {
+                            if (songCount > 0 && (type.isEmpty() || "normal".equals(type))) {
                                 miPlaylistList.add(p);
                             }
                         }
