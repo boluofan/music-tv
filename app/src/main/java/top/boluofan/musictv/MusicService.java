@@ -71,8 +71,8 @@ public class MusicService extends MediaSessionService {
                         String songmid = uri.getQueryParameter("songmid");
                         String name = uri.getQueryParameter("name");
 
-                        if (source == null || songmid == null) {
-                            throw new IOException("Missing source or songmid for URL resolution");
+                        if (source == null || songmid == null || songmid.isEmpty()) {
+                            throw new IOException("Missing or empty source or songmid for URL resolution");
                         }
 
                         Log.d(TAG, "Resolving URL for: source=" + source + ", songmid=" + songmid + ", name=" + name);

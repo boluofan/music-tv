@@ -20,22 +20,22 @@ public class MiPlaylist {
     @SerializedName("description")
     private String description;
 
-    @SerializedName("cover_path")
+    @SerializedName(value = "cover_path", alternate = {"coverPath"})
     private String coverPath;
 
-    @SerializedName("cover_url")
+    @SerializedName(value = "cover_url", alternate = {"coverUrl"})
     private String coverUrl;
 
     @SerializedName("labels")
     private List<String> labels;
 
-    @SerializedName("song_count")
+    @SerializedName(value = "song_count", alternate = {"songCount"})
     private Integer songCount;
 
-    @SerializedName("created_at")
+    @SerializedName(value = "created_at", alternate = {"createdAt"})
     private String createdAt;
 
-    @SerializedName("updated_at")
+    @SerializedName(value = "updated_at", alternate = {"updatedAt"})
     private String updatedAt;
 
     // 转换为 Playlist

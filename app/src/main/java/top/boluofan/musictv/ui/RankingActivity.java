@@ -603,11 +603,15 @@ public class RankingActivity extends AppCompatActivity {
                             for (int i = 0; i < list.size(); i++) {
                                 JsonObject item = list.get(i).getAsJsonObject();
                                 MusicInfo music = new MusicInfo();
-                                music.setId(item.has("id") ? item.get("id").getAsString() : "");
+                                String musicId = item.has("id") ? item.get("id").getAsString() :
+                                    (item.has("musicId") ? item.get("musicId").getAsString() : "");
+                                music.setId(musicId);
                                 music.setName(item.has("name") ? item.get("name").getAsString() : "");
                                 music.setSinger(item.has("singer") ? item.get("singer").getAsString() : "");
                                 music.setSource(currentSource);
-                                music.setSongmid(item.has("songmid") ? item.get("songmid").getAsString() : "");
+                                String songmid = item.has("songmid") ? item.get("songmid").getAsString() :
+                                    (item.has("musicId") ? item.get("musicId").getAsString() : "");
+                                music.setSongmid(songmid);
                                 music.setPicUrl(item.has("img") ? item.get("img").getAsString() : 
                                     (item.has("picUrl") ? item.get("picUrl").getAsString() : ""));
                                 music.setAlbumName(item.has("album") ? item.get("album").getAsString() : "");

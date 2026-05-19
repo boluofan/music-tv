@@ -200,12 +200,13 @@ public class LibraryActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Response<top.boluofan.musictv.api.model.MiPlaylistListResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    // 只展示 type="normal" 的歌单，过滤掉 type="radio"
+                    // 展示非电台的歌单（type 为空或 "normal"），过滤掉 type="radio"
                     List<top.boluofan.musictv.api.model.MiPlaylist> allPlaylists = response.body().getPlaylists();
                     miPlaylistList = new java.util.ArrayList<>();
                     if (allPlaylists != null) {
                         for (top.boluofan.musictv.api.model.MiPlaylist p : allPlaylists) {
-                            if ("normal".equals(p.getType())) {
+                            String type = p.getType();
+                            if (type == null || type.isEmpty() || "normal".equals(type)) {
                                 miPlaylistList.add(p);
                             }
                         }
@@ -350,7 +351,7 @@ public class LibraryActivity extends AppCompatActivity {
         // 保存当前 MiPlaylist 引用用于删除操作
         currentMiPlaylist = targetMiPlaylist;
 
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(this);
         if (apiService == null) return;
 
         // 保存当前选中的 Playlist 用于播放

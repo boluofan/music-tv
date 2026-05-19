@@ -481,7 +481,7 @@ public class PlaylistDetailActivity extends AppCompatActivity {
 
         showLoading(true);
 
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(this);
         if (apiService == null) {
             showLoading(false);
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
