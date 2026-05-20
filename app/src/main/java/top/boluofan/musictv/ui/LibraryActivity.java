@@ -187,7 +187,7 @@ public class LibraryActivity extends AppCompatActivity {
     }
 
     private void loadMiMusicUserData() {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(this);
         if (apiService == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));

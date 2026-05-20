@@ -247,44 +247,6 @@ public class SongSquareFragment extends Fragment {
         });
     }
 
-    private void loadMiMusicPlaylists() {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(requireContext());
-        if (apiService == null) {
-            isLoading = false;
-            showLoading(false);
-            Toast.makeText(requireContext(), "请先登录", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        apiService.getMiMusicPlaylists(100, (currentPage - 1) * 100).enqueue(new Callback<MiPlaylistListResponse>() {
-            @Override
-            public void onResponse(Call<MiPlaylistListResponse> call, Response<MiPlaylistListResponse> response) {
-                isLoading = false;
-                showLoading(false);
-                if (response.isSuccessful() && response.body() != null && response.body().getPlaylists() != null) {
-                    List<MiPlaylist> miPlaylists = response.body().getPlaylists();
-                    if (currentPage == 1) {
-                        playlists.clear();
-                    }
-                    hasMore = miPlaylists.size() >= 100;
-                    for (MiPlaylist miPlaylist : miPlaylists) {
-                        playlists.add(miPlaylist.toPlaylist());
-                    }
-                    updatePlaylistList();
-                } else {
-                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<MiPlaylistListResponse> call, Throwable t) {
-                isLoading = false;
-                showLoading(false);
-                Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
     private void loadMorePlaylists() {
         if (isLoadingMore || !hasMore) return;
         boolean isMiMusicMode = LxRetrofitClient.isMiMusicApi(requireContext());
@@ -340,7 +302,7 @@ public class SongSquareFragment extends Fragment {
 
         playlistAdapter.setShowFooter(true);
 
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(requireContext());
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(requireContext());
         if (apiService == null) {
             isLoadingMore = false;
             playlistAdapter.setShowFooter(false);

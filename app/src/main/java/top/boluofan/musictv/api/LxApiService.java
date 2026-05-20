@@ -163,10 +163,6 @@ public interface LxApiService {
             @Query("offset") int offset
     );
 
-    // MiMusic API - 歌单详情
-    @GET("playlists/{id}")
-    Call<MiPlaylist> getMiMusicPlaylistDetail(@Path("id") int id);
-
     // MiMusic API - 歌单歌曲列表
     @GET("playlists/{listId}/songs")
     Call<MiPlaylistSongsResponse> getMiMusicPlaylistSongs(

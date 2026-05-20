@@ -339,7 +339,7 @@ public class RankingActivity extends AppCompatActivity {
     }
 
     private void collectPlaylistMiMusic() {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(this);
         if (apiService == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));
@@ -474,7 +474,7 @@ public class RankingActivity extends AppCompatActivity {
     }
 
     private void collectSingleSongMiMusic(MusicInfo song) {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(this);
         if (apiService == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));
