@@ -50,6 +50,7 @@
             android:textColor="#6B7280"
             android:textSize="14sp"
             android:gravity="center"
+            android:id="@+id/tvLeftDescription"
             android:layout_marginBottom="40dp" />
 
         <!-- Mode Toggle Button -->
@@ -74,7 +75,8 @@
             android:textSize="12sp"
             android:gravity="start"
             android:layout_marginTop="24dp"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginBottom="4dp"
+            android:id="@+id/tvHelpServer" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -82,7 +84,8 @@
             android:text="如何获取账号密码？\n在 lxserver 的[管理控制台]中配置用户"
             android:textColor="#6B7280"
             android:textSize="12sp"
-            android:gravity="start" />
+            android:gravity="start"
+            android:id="@+id/tvHelpAccount" />
 
     </LinearLayout>
 
@@ -286,7 +289,14 @@
                 android:layout_marginBottom="8dp" />
 
             <!-- Token -->
+            <LinearLayout
+                android:id="@+id/layoutTokenContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
             <TextView
+                android:id="@+id/tvTokenLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="用户 Token (选填)"
@@ -314,6 +324,8 @@
                 android:nextFocusUp="@+id/etPassword"
                 android:nextFocusLeft="@+id/btnToggleMode"
                 android:nextFocusRight="@+id/btnConnect" />
+
+            </LinearLayout>
 
             <!-- Connect Button -->
             <Button

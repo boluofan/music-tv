@@ -51,6 +51,10 @@ public class ConfigActivity extends AppCompatActivity {
     private View layoutQr;
     private Button btnToggleMode;
     private RadioGroup rgApiType;
+    private TextView tvLeftDescription;
+    private TextView tvHelpServer;
+    private TextView tvHelpAccount;
+    private View layoutToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +72,10 @@ public class ConfigActivity extends AppCompatActivity {
         layoutQr = findViewById(R.id.layoutQr);
         btnToggleMode = findViewById(R.id.btnToggleMode);
         rgApiType = findViewById(R.id.rgApiType);
+        tvLeftDescription = findViewById(R.id.tvLeftDescription);
+        tvHelpServer = findViewById(R.id.tvHelpServer);
+        tvHelpAccount = findViewById(R.id.tvHelpAccount);
+        layoutToken = findViewById(R.id.layoutTokenContainer);
 
         String savedApiType = LxRetrofitClient.getApiType(this);
         if (LxRetrofitClient.API_TYPE_MiMusic.equals(savedApiType)) {
@@ -116,6 +124,14 @@ public class ConfigActivity extends AppCompatActivity {
         } else {
             rgApiType.check(R.id.rbLxserver);
         }
+
+        // 初始化时根据 API 类型更新 UI
+        updateUiByApiType(rgApiType.getCheckedRadioButtonId() == R.id.rbMiMusic);
+
+        rgApiType.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean isMiMusic = checkedId == R.id.rbMiMusic;
+            updateUiByApiType(isMiMusic);
+        });
 
         btnToggleMode.setOnClickListener(v -> {
             isQrMode = !isQrMode;
@@ -417,6 +433,28 @@ public class ConfigActivity extends AppCompatActivity {
             imageView.setImageBitmap(bmp);
         } catch (WriterException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void updateUiByApiType(boolean isMiMusic) {
+        if (isMiMusic) {
+            // MiMusic 模式
+            tvLeftDescription.setText("连接 MiMusic 音源服务");
+            tvHelpServer.setText("如何获取服务器地址？\n请运行 mimusic 服务，在控制台查看地址");
+            tvHelpAccount.setText("如何获取账号密码？\n在 mimusic 的[管理控制台]中配置用户");
+            layoutToken.setVisibility(View.GONE);
+            etUrl.setHint("http://localhost:58091/api/v1");
+            etUsername.setHint("请输入用户名");
+            etPassword.setHint("Password");
+        } else {
+            // LXServer 模式
+            tvLeftDescription.setText("连接 lxserver 洛雪音乐服务");
+            tvHelpServer.setText("如何获取服务器地址？\n请运行 lxserver 服务，在控制台查看地址");
+            tvHelpAccount.setText("如何获取账号密码？\n在 lxserver 的[管理控制台]中配置用户");
+            layoutToken.setVisibility(View.VISIBLE);
+            etUrl.setHint("http://localhost:9527");
+            etUsername.setHint("请输入用户名");
+            etPassword.setHint("Password");
         }
     }
 
