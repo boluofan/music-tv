@@ -170,6 +170,66 @@
 
             </LinearLayout>
 
+            <!-- 关于 -->
+            <LinearLayout
+                android:id="@+id/layoutAbout"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/selector_item_bg"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginTop="8dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="关于"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFF" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:layout_marginStart="8dp"
+                    app:tint="#6B7280" />
+
+            </LinearLayout>
+
+            <!-- 版本号 -->
+            <LinearLayout
+                android:id="@+id/layoutVersion"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/selector_item_bg"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="版本号"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFF" />
+
+                <TextView
+                    android:id="@+id/tvVersion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textColor="#9CA3AF" />
+
+            </LinearLayout>
+
             <!-- 清除配置 -->
             <LinearLayout
                 android:id="@+id/layoutLogout"

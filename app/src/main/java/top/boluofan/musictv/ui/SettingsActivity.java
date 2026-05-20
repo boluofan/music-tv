@@ -21,6 +21,7 @@ import top.boluofan.musictv.MusicService;
 import top.boluofan.musictv.R;
 import top.boluofan.musictv.FloatingPlayerWindow;
 import top.boluofan.musictv.api.LxRetrofitClient;
+import top.boluofan.musictv.util.DialogHelper;
 
 public class SettingsActivity extends AppCompatActivity {
     private FloatingPlayerWindow floatingPlayerWindow;
@@ -47,6 +48,12 @@ public class SettingsActivity extends AppCompatActivity {
         
         String serverUrl = LxRetrofitClient.getServerUrl(this);
         String username = LxRetrofitClient.getUsername(this);
+
+        TextView tvVersion = findViewById(R.id.tvVersion);
+        tvVersion.setText(getVersionName());
+
+        LinearLayout layoutAbout = findViewById(R.id.layoutAbout);
+        layoutAbout.setOnClickListener(v -> showAboutDialog());
         
         LinearLayout layoutServerConfig = findViewById(R.id.layoutServerConfig);
         layoutServerConfig.setOnClickListener(v -> {
@@ -92,6 +99,18 @@ public class SettingsActivity extends AppCompatActivity {
     private void updateBackgroundPlayButton(ImageButton btn) {
         boolean isEnabled = LxRetrofitClient.getBackgroundPlay(this);
         btn.setBackgroundResource(isEnabled ? R.drawable.toggle_on_new : R.drawable.toggle_off_new);
+    }
+
+    private String getVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "未知";
+        }
+    }
+
+    private void showAboutDialog() {
+        DialogHelper.showAboutDialog(this);
     }
 
     private void clearConfigAndLogout() {

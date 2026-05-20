@@ -115,32 +115,63 @@ public class DialogHelper {
 
     public static androidx.appcompat.app.AlertDialog showQrCodeDialog(Context context, String title, String hint, String qrCodeUrl, String ipAddress) {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_scan_search, null);
-        
+
         TextView tvTitle = dialogView.findViewById(R.id.tvDialogTitle);
         TextView tvHint = dialogView.findViewById(R.id.tvDialogHint);
         ImageView ivQrCode = dialogView.findViewById(R.id.ivQrCode);
         TextView tvIpAddress = dialogView.findViewById(R.id.tvIpAddress);
-        
+
         tvTitle.setText(title);
         tvHint.setText(hint);
         tvIpAddress.setText(ipAddress);
-        
+
         android.graphics.Bitmap qrBitmap = generateQrCodeBitmap(qrCodeUrl, 512);
         if (qrBitmap != null) {
             ivQrCode.setImageBitmap(qrBitmap);
         }
-        
+
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(context);
         builder.setView(dialogView);
-        
+
         androidx.appcompat.app.AlertDialog dialog = builder.create();
-        
+
         dialog.setOnShowListener(d -> {
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog);
             }
         });
-        
+
+        return dialog;
+    }
+
+    public static androidx.appcompat.app.AlertDialog showAboutDialog(Context context) {
+        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_about, null);
+
+        TextView tvDialogContent = dialogView.findViewById(R.id.tvDialogContent);
+        tvDialogContent.setText("基于肉肉TV 开发的 Android TV 音乐播放器。\n\n支持 D-Pad 遥控器操作、专辑封面毛玻璃背景、实时歌词同步、歌单管理等功能。\n\n项目地址：\nhttps://github.com/boluofan/music-tv");
+
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(context);
+        builder.setView(dialogView);
+        builder.setPositiveButton("确定", null);
+
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog);
+            }
+            Button positiveButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE);
+            if (positiveButton != null) {
+                positiveButton.setTextSize(16);
+                positiveButton.setTextColor(Color.WHITE);
+                positiveButton.setBackgroundResource(R.drawable.bg_btn_primary);
+                positiveButton.setPadding(40, 20, 40, 20);
+                positiveButton.setFocusable(true);
+                positiveButton.requestFocus();
+            }
+        });
+
+        dialog.show();
         return dialog;
     }
 
