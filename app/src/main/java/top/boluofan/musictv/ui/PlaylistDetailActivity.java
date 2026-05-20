@@ -21,19 +21,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import okhttp3.ResponseBody;
 import top.boluofan.musictv.MusicService;
-import top.boluofan.musictv.PlayerActivity;
 import top.boluofan.musictv.R;
 import top.boluofan.musictv.FloatingPlayerWindow;
 import top.boluofan.musictv.api.LxApiService;
 import top.boluofan.musictv.api.LxRetrofitClient;
-import top.boluofan.musictv.api.model.MiPlaylist;
-import top.boluofan.musictv.api.model.MiPlaylistSongsResponse;
-import top.boluofan.musictv.api.model.MiSong;
 import top.boluofan.musictv.api.model.MusicInfo;
 import top.boluofan.musictv.api.model.Playlist;
 import top.boluofan.musictv.ui.adapter.LxMusicAdapter;
@@ -145,31 +144,39 @@ public class PlaylistDetailActivity extends AppCompatActivity {
             startActivity(intent);
             return;
         }
-        
+
         if (songs.isEmpty()) {
             Toast.makeText(this, "歌单为空，无法收藏", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this))) {
+            collectPlaylistMiMusic();
+        } else {
+            collectPlaylistLxMusic();
+        }
+    }
+
+    private void collectPlaylistLxMusic() {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
         LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
-        
+
         btnFavorite.setEnabled(false);
-        
+
         apiService.getUserList(username, password, token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
             @Override
             public void onResponse(Call<top.boluofan.musictv.api.model.ListData> call, Response<top.boluofan.musictv.api.model.ListData> response) {
                 btnFavorite.setEnabled(true);
-                
+
                 if (!response.isSuccessful() || response.body() == null) {
                     Toast.makeText(PlaylistDetailActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                
+
                 top.boluofan.musictv.api.model.ListData listData = response.body();
-                
+
                 top.boluofan.musictv.api.model.Playlist existingPlaylist = null;
                 if (listData.getUserList() != null) {
                     for (top.boluofan.musictv.api.model.Playlist p : listData.getUserList()) {
@@ -179,7 +186,7 @@ public class PlaylistDetailActivity extends AppCompatActivity {
                         }
                     }
                 }
-                
+
                 if (existingPlaylist != null) {
                     final top.boluofan.musictv.api.model.ListData finalListData = listData;
                     final top.boluofan.musictv.api.model.Playlist finalExistingPlaylist = existingPlaylist;
@@ -205,6 +212,102 @@ public class PlaylistDetailActivity extends AppCompatActivity {
                 Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void collectPlaylistMiMusic() {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));
+            return;
+        }
+
+        btnFavorite.setEnabled(false);
+
+        apiService.getMiMusicPlaylists(100, 0).enqueue(new Callback<top.boluofan.musictv.api.model.MiPlaylistListResponse>() {
+            @Override
+            public void onResponse(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Response<top.boluofan.musictv.api.model.MiPlaylistListResponse> response) {
+                btnFavorite.setEnabled(true);
+
+                if (!response.isSuccessful() || response.body() == null) {
+                    Toast.makeText(PlaylistDetailActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                top.boluofan.musictv.api.model.MiPlaylist existingPlaylist = null;
+                List<top.boluofan.musictv.api.model.MiPlaylist> playlists = response.body().getPlaylists();
+                if (playlists != null) {
+                    for (top.boluofan.musictv.api.model.MiPlaylist p : playlists) {
+                        if (playlistName.equals(p.getName())) {
+                            existingPlaylist = p;
+                            break;
+                        }
+                    }
+                }
+
+                if (existingPlaylist != null) {
+                    final top.boluofan.musictv.api.model.MiPlaylist finalExistingPlaylist = existingPlaylist;
+                    DialogHelper.showOverwriteConfirmDialog(PlaylistDetailActivity.this, playlistName, new DialogHelper.IDialogCallback() {
+                        @Override
+                        public void onConfirm() {
+                            importPlaylistToMiMusic(finalExistingPlaylist.getId(), true,"");
+                        }
+
+                        @Override
+                        public void onCancel() {
+                        }
+                    });
+                } else {
+                    importPlaylistToMiMusic(0, false, playlistName);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Throwable t) {
+                btnFavorite.setEnabled(true);
+                Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void importPlaylistToMiMusic(int existPlaylistId, boolean isOverwrite, String playlistName) {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) return;
+
+        Map<String, Object> body = buildImportBody(isOverwrite ? existPlaylistId : 0, playlistName, songs);
+
+        btnFavorite.setEnabled(false);
+        apiService.importSongsToPlaylist(body).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                btnFavorite.setEnabled(true);
+                if (response.isSuccessful()) {
+                    Toast.makeText(PlaylistDetailActivity.this, isOverwrite ? "覆盖成功" : "收藏成功", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(PlaylistDetailActivity.this, "收藏失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                btnFavorite.setEnabled(true);
+                Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private Map<String, Object> buildImportBody(int playlistId, String newPlaylistName,List<MusicInfo> songs) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("quality", LxRetrofitClient.getQuality(this));
+        body.put("playlist_id", playlistId);
+        body.put("new_playlist_name", newPlaylistName);
+
+        List<Map<String, Object>> songsList = new ArrayList<>();
+        for (MusicInfo song : songs) {
+            songsList.add(song.toMiImportSong());
+        }
+        body.put("songs", songsList);
+        return body;
     }
     
     private void doCollectPlaylist(top.boluofan.musictv.api.model.ListData listData, top.boluofan.musictv.api.model.Playlist existingPlaylist) {
@@ -264,6 +367,14 @@ public class PlaylistDetailActivity extends AppCompatActivity {
             return;
         }
 
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this))) {
+            collectSingleSongMiMusic(song);
+        } else {
+            collectSingleSongLxMusic(song);
+        }
+    }
+
+    private void collectSingleSongLxMusic(MusicInfo song) {
         String username = LxRetrofitClient.getUsername(this);
         String password = LxRetrofitClient.getPassword(this);
         String token = LxRetrofitClient.getToken(this);
@@ -297,6 +408,69 @@ public class PlaylistDetailActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<top.boluofan.musictv.api.model.ListData> call, Throwable t) {
+                Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void collectSingleSongMiMusic(MusicInfo song) {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));
+            return;
+        }
+
+        apiService.getMiMusicPlaylists(100, 0).enqueue(new Callback<top.boluofan.musictv.api.model.MiPlaylistListResponse>() {
+            @Override
+            public void onResponse(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Response<top.boluofan.musictv.api.model.MiPlaylistListResponse> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Toast.makeText(PlaylistDetailActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                List<top.boluofan.musictv.api.model.MiPlaylist> playlists = response.body().getPlaylists();
+                if (playlists == null || playlists.isEmpty()) {
+                    Toast.makeText(PlaylistDetailActivity.this, "暂无歌单，请先在歌单库创建歌单", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                String[] playlistNames = new String[playlists.size()];
+                for (int i = 0; i < playlists.size(); i++) {
+                    playlistNames[i] = playlists.get(i).getName();
+                }
+
+                final MusicInfo finalSong = song;
+                DialogHelper.showPlaylistPickerDialog(PlaylistDetailActivity.this, "选择歌单", playlistNames, (android.content.DialogInterface dialog, int which) -> {
+                    importSongToMiMusic(playlists.get(which).getId(), finalSong);
+                });
+            }
+
+            @Override
+            public void onFailure(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Throwable t) {
+                Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void importSongToMiMusic(int playlistId, MusicInfo song) {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) return;
+        List<MusicInfo> songs = new ArrayList<>();
+        songs.add(song);
+        Map<String, Object> body = buildImportBody(playlistId, "", songs);
+        apiService.importSongsToPlaylist(body).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(PlaylistDetailActivity.this, "已添加到收藏", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(PlaylistDetailActivity.this, "添加失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Toast.makeText(PlaylistDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });

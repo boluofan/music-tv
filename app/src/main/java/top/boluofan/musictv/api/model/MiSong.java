@@ -117,4 +117,6 @@ public class MiSong {
     public String getCoverPath() { return coverPath; }
     public String getLyric() { return lyric; }
     public String getCacheHash() { return cacheHash; }
+    public String getUpdatedAt() { return updatedAt; }
+    public String getAddedAt() { return addedAt; }
 }

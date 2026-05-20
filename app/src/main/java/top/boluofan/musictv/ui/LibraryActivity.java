@@ -8,14 +8,12 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.media3.common.util.UnstableApi;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -45,6 +43,7 @@ import android.content.ComponentName;
 import android.os.Handler;
 import android.os.Looper;
 
+@UnstableApi
 public class LibraryActivity extends AppCompatActivity {
     private static final String TAG = "LibraryActivity";
     
@@ -370,6 +369,16 @@ public class LibraryActivity extends AppCompatActivity {
                             List<MusicInfo> songs = new ArrayList<>();
                             List<MiSong> miSongs = response.body().getSongs();
                             if (miSongs != null) {
+                                // 按 updatedAt 降序排列，新收藏的在最上面
+                                java.util.Collections.sort(miSongs, (a, b) -> {
+                                    String aTime = a.getUpdatedAt();
+                                    String bTime = b.getUpdatedAt();
+                                    if (aTime == null && bTime == null) return 0;
+                                    if (aTime == null) return 1;
+                                    if (bTime == null) return -1;
+                                    return bTime.compareTo(aTime);
+                                });
+
                                 String accessToken = LxRetrofitClient.getMiAccessToken(LibraryActivity.this);
                                 for (MiSong miSong : miSongs) {
                                     MusicInfo musicInfo = miSong.toMusicInfo();
@@ -548,7 +557,7 @@ public class LibraryActivity extends AppCompatActivity {
     }
 
     private void deleteSongMiMusic(MusicInfo song, String songId) {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicAuthService(this);
         if (apiService == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
             return;

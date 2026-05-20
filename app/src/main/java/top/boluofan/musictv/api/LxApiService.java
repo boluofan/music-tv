@@ -181,4 +181,8 @@ public interface LxApiService {
             @Path("playlistId") int playlistId,
             @Path("songId") int songId
     );
+
+    // MiMusic API - 导入歌曲到歌单
+    @POST("songs/import")
+    Call<ResponseBody> importSongsToPlaylist(@Body Map<String, Object> body);
 }

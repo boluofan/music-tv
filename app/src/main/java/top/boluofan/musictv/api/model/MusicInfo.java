@@ -306,4 +306,31 @@ public class MusicInfo {
             this.size = size;
         }
     }
+
+    public Map<String, Object> toMiImportSong() {
+        Map<String, Object> song = new java.util.HashMap<>();
+        song.put("name", name != null ? name : "");
+        song.put("singer", singer != null ? singer : "");
+        song.put("album", albumName != null ? albumName : "");
+        song.put("source", source != null ? source : "");
+        song.put("musicId", songmid != null ? songmid : (id != null ? id : ""));
+        song.put("img", getPicUrl() != null ? getPicUrl() : "");
+        song.put("songmid", songmid != null ? songmid : (id != null ? id : ""));
+
+        List<QualityInfo> qualityList = getTypes();
+        if (qualityList != null) {
+            List<Map<String, String>> typesList = new java.util.ArrayList<>();
+            for (QualityInfo qi : qualityList) {
+                Map<String, String> typeItem = new java.util.HashMap<>();
+                typeItem.put("type", qi.getType());
+                typeItem.put("size", qi.getSize());
+                typesList.add(typeItem);
+            }
+            song.put("types", typesList);
+        } else {
+            song.put("types", new java.util.ArrayList<>());
+        }
+
+        return song;
+    }
 }
