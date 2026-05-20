@@ -347,12 +347,13 @@ public class ConfigActivity extends AppCompatActivity {
             btnConnect.setFocusable(true);
         });
         
+        String savedApiType = LxRetrofitClient.getApiType(this);
         String savedUrl = LxRetrofitClient.getServerUrl(this);
         String savedUsername = LxRetrofitClient.getUsername(this);
         String savedPassword = LxRetrofitClient.getPassword(this);
         String savedToken = LxRetrofitClient.getToken(this);
 
-        webServer = new LoginWebServer(this, SERVER_PORT, (url, username, password, token) -> {
+        webServer = new LoginWebServer(this, SERVER_PORT, (url, username, password, token, apiType) -> {
             mainHandler.post(() -> {
                 qrDialog.dismiss();
                 // 合并：如果推送的值为空，保留原有值
@@ -360,15 +361,25 @@ public class ConfigActivity extends AppCompatActivity {
                 String mergedUsername = (username != null && !username.isEmpty()) ? username : savedUsername;
                 String mergedPassword = (password != null && !password.isEmpty()) ? password : savedPassword;
                 String mergedToken = (token != null && !token.isEmpty()) ? token : savedToken;
+                String mergedApiType = (apiType != null && !apiType.isEmpty()) ? apiType : savedApiType;
 
                 etUrl.setText(mergedUrl);
                 etUsername.setText(mergedUsername);
                 etPassword.setText(mergedPassword);
                 etToken.setText(mergedToken);
+
+                // 根据收到的 apiType 更新界面
+                if ("tv".equals(mergedApiType)) {
+                    rgApiType.check(R.id.rbMiMusic);
+                } else {
+                    rgApiType.check(R.id.rbLxserver);
+                }
+                updateUiByApiType("tv".equals(mergedApiType));
+
                 Toast.makeText(this, "收到推送信息，正在登录...", Toast.LENGTH_SHORT).show();
                 btnConnect.performClick();
             });
-        }, savedUrl, savedUsername, savedPassword, savedToken);
+        }, savedUrl, savedUsername, savedPassword, savedToken, savedApiType);
 
         try {
             webServer.start();
@@ -399,16 +410,36 @@ public class ConfigActivity extends AppCompatActivity {
 
         generateQrCode(loginUrl, ivQr);
 
-        webServer = new LoginWebServer(this, SERVER_PORT, (url, username, password, token) -> {
+        String savedApiType = LxRetrofitClient.getApiType(this);
+        String savedUrl = LxRetrofitClient.getServerUrl(this);
+        String savedUsername = LxRetrofitClient.getUsername(this);
+        String savedPassword = LxRetrofitClient.getPassword(this);
+        String savedToken = LxRetrofitClient.getToken(this);
+
+        webServer = new LoginWebServer(this, SERVER_PORT, (url, username, password, token, apiType) -> {
             mainHandler.post(() -> {
-                etUrl.setText(url);
-                etUsername.setText(username);
-                etPassword.setText(password);
-                etToken.setText(token);
+                String mergedUrl = (url != null && !url.isEmpty()) ? url : savedUrl;
+                String mergedUsername = (username != null && !username.isEmpty()) ? username : savedUsername;
+                String mergedPassword = (password != null && !password.isEmpty()) ? password : savedPassword;
+                String mergedToken = (token != null && !token.isEmpty()) ? token : savedToken;
+                String mergedApiType = (apiType != null && !apiType.isEmpty()) ? apiType : savedApiType;
+
+                etUrl.setText(mergedUrl);
+                etUsername.setText(mergedUsername);
+                etPassword.setText(mergedPassword);
+                etToken.setText(mergedToken);
+
+                if ("tv".equals(mergedApiType)) {
+                    rgApiType.check(R.id.rbMiMusic);
+                } else {
+                    rgApiType.check(R.id.rbLxserver);
+                }
+                updateUiByApiType("tv".equals(mergedApiType));
+
                 Toast.makeText(this, "收到推送信息，正在登录...", Toast.LENGTH_SHORT).show();
                 btnConnect.performClick();
             });
-        });
+        }, savedUrl, savedUsername, savedPassword, savedToken, savedApiType);
 
         try {
             webServer.start();
