@@ -1053,24 +1053,21 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     private void importSongToMiMusic(int playlistId, MusicInfo song) {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiServiceNoTimeout(this);
         if (apiService == null) return;
         List<MusicInfo> songs = new ArrayList<>();
         songs.add(song);
         Map<String, Object> body = buildImportBody(playlistId, "", songs);
+        Toast.makeText(SearchActivity.this, "已添加到收藏", Toast.LENGTH_SHORT).show();
         apiService.importSongsToPlaylist(body).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    Toast.makeText(SearchActivity.this, "已添加到收藏", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(SearchActivity.this, "添加失败", Toast.LENGTH_SHORT).show();
-                }
+                // fire-and-forget, ignore response
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                // fire-and-forget, ignore error
             }
         });
     }

@@ -36,6 +36,7 @@ public class LxRetrofitClient {
 
     private static final Map<String, Retrofit> RETROFIT_CACHE = new HashMap<>();
     private static final Map<String, String> BASE_URL_CACHE = new HashMap<>();
+    private static OkHttpClient miMusicOkHttpClientNoTimeout;
 
     public static final String API_TYPE_LXserver = "music";
     public static final String API_TYPE_MiMusic = "tv";
@@ -164,6 +165,32 @@ public class LxRetrofitClient {
     public static LxApiService getMiMusicApiService(Context context) {
         Retrofit client = getMiMusicApiClient(context);
         return client != null ? client.create(LxApiService.class) : null;
+    }
+
+    public static LxApiService getMiMusicApiServiceNoTimeout(Context context) {
+        if (!API_TYPE_MiMusic.equals(getApiType(context))) {
+            return null;
+        }
+        if (miMusicOkHttpClientNoTimeout == null) {
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            miMusicOkHttpClientNoTimeout = new OkHttpClient.Builder()
+                    .connectTimeout(0, TimeUnit.MILLISECONDS)
+                    .readTimeout(0, TimeUnit.MILLISECONDS)
+                    .writeTimeout(0, TimeUnit.MILLISECONDS)
+                    .addInterceptor(new AuthInterceptor(context))
+                    .addInterceptor(logging)
+                    .build();
+        }
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String baseUrl = normalizeBaseUrl(prefs.getString(KEY_SERVER_URL, ""), "http://localhost:58091/api/v1");
+        String fullUrl = baseUrl + PATH_PREFIX_PLUGIN + PATH_PREFIX_TV;
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(fullUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(miMusicOkHttpClientNoTimeout)
+                .build();
+        return retrofit.create(LxApiService.class);
     }
 
     public static String getUsername(Context context) {

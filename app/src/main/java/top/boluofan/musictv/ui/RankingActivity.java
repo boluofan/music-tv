@@ -399,27 +399,21 @@ public class RankingActivity extends AppCompatActivity {
     }
 
     private void importPlaylistToMiMusic(int existPlaylistId, boolean isOverwrite, String playlistName) {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiServiceNoTimeout(this);
         if (apiService == null) return;
 
         Map<String, Object> body = buildImportBody(isOverwrite ? existPlaylistId : 0, playlistName, songs);
 
-        btnFavorite.setEnabled(false);
+        Toast.makeText(RankingActivity.this, isOverwrite ? "覆盖成功" : "收藏成功", Toast.LENGTH_SHORT).show();
         apiService.importSongsToPlaylist(body).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                btnFavorite.setEnabled(true);
-                if (response.isSuccessful()) {
-                    Toast.makeText(RankingActivity.this, isOverwrite ? "覆盖成功" : "收藏成功", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(RankingActivity.this, "收藏失败", Toast.LENGTH_SHORT).show();
-                }
+                // fire-and-forget, ignore response
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                btnFavorite.setEnabled(true);
-                Toast.makeText(RankingActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                // fire-and-forget, ignore error
             }
         });
     }
@@ -520,24 +514,21 @@ public class RankingActivity extends AppCompatActivity {
     }
 
     private void importSongToMiMusic(int playlistId, MusicInfo song) {
-        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiServiceNoTimeout(this);
         if (apiService == null) return;
         List<MusicInfo> songs = new ArrayList<>();
         songs.add(song);
         Map<String, Object> body = buildImportBody(playlistId, "", songs);
+        Toast.makeText(RankingActivity.this, "已添加到收藏", Toast.LENGTH_SHORT).show();
         apiService.importSongsToPlaylist(body).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    Toast.makeText(RankingActivity.this, "已添加到收藏", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(RankingActivity.this, "添加失败", Toast.LENGTH_SHORT).show();
-                }
+                // fire-and-forget, ignore response
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Toast.makeText(RankingActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                // fire-and-forget, ignore error
             }
         });
     }
