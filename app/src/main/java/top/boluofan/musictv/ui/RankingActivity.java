@@ -248,8 +248,9 @@ public class RankingActivity extends AppCompatActivity {
                 }
                 
                 top.boluofan.musictv.api.model.ListData listData = response.body();
-                
-                String boardName = currentBoardId.isEmpty() ? SOURCE_NAMES[currentSourceIndex] + "排行榜" : boards.get(currentBoardIndex).name;
+
+                String preName = SOURCE_NAMES[currentSourceIndex] + "-";
+                String boardName = currentBoardId.isEmpty() ? preName + "排行榜" : preName + boards.get(currentBoardIndex).name;
                 
                 top.boluofan.musictv.api.model.Playlist existingPlaylist = null;
                 if (listData.getUserList() != null) {
@@ -347,8 +348,8 @@ public class RankingActivity extends AppCompatActivity {
 
         btnFavorite.setEnabled(false);
 
-        String boardName = currentBoardId.isEmpty() ? SOURCE_NAMES[currentSourceIndex] + "排行榜" : boards.get(currentBoardIndex).name;
-        final String finalBoardName = boardName;
+        String preName = SOURCE_NAMES[currentSourceIndex] + "-";
+        final String finalBoardName = currentBoardId.isEmpty() ? preName + "排行榜" : preName + boards.get(currentBoardIndex).name;
 
         apiService.getMiMusicPlaylists(100, 0).enqueue(new Callback<top.boluofan.musictv.api.model.MiPlaylistListResponse>() {
             @Override
