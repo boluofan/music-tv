@@ -40,13 +40,16 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import top.boluofan.musictv.MusicService;
+import okhttp3.ResponseBody;
 import top.boluofan.musictv.R;
 import top.boluofan.musictv.SearchWebServer;
 import top.boluofan.musictv.FloatingPlayerWindow;
@@ -242,17 +245,17 @@ public class SearchActivity extends AppCompatActivity {
             collectSingleSong(song);
         });
     }
-    
+
     private void selectSource(int position) {
         if (position < 0 || position >= SOURCES.length) return;
-        
+
         currentSourceIndex = position;
         currentSource = SOURCES[position];
-        
+
         if (rvSourceList.getAdapter() != null) {
             rvSourceList.getAdapter().notifyDataSetChanged();
         }
-        
+
         rvSourceList.post(() -> {
             if (rvSourceList.getChildCount() > position) {
                 View itemView = rvSourceList.getChildAt(position);
@@ -261,14 +264,152 @@ public class SearchActivity extends AppCompatActivity {
                 }
             }
         });
-        
+
         if (!lastKeyword.isEmpty()) {
             search(lastKeyword);
         }
-        
+
         loadHotSearch();
     }
-    
+
+    private void collectSingleSong(MusicInfo song) {
+        if (!LxRetrofitClient.isLoggedIn(this)) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, top.boluofan.musictv.ConfigActivity.class);
+            intent.putExtra("server_url", LxRetrofitClient.getServerUrl(this));
+            startActivity(intent);
+            return;
+        }
+
+        if (LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this))) {
+            collectSingleSongMiMusic(song);
+        } else {
+            collectSingleSongLxMusic(song);
+        }
+    }
+
+    private void collectSingleSongLxMusic(MusicInfo song) {
+        String username = LxRetrofitClient.getUsername(this);
+        String password = LxRetrofitClient.getPassword(this);
+        String token = LxRetrofitClient.getToken(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
+
+        apiService.getUserList(username, password, token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
+            @Override
+            public void onResponse(Call<top.boluofan.musictv.api.model.ListData> call, Response<top.boluofan.musictv.api.model.ListData> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Toast.makeText(SearchActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                top.boluofan.musictv.api.model.ListData listData = response.body();
+                List<top.boluofan.musictv.api.model.Playlist> userPlaylists = listData.getUserList();
+                if (userPlaylists == null || userPlaylists.isEmpty()) {
+                    Toast.makeText(SearchActivity.this, "暂无歌单，请先在歌单库创建歌单", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                String[] playlistNames = new String[userPlaylists.size()];
+                for (int i = 0; i < userPlaylists.size(); i++) {
+                    playlistNames[i] = userPlaylists.get(i).getName();
+                }
+
+                final MusicInfo finalSong = song;
+                DialogHelper.showPlaylistPickerDialog(SearchActivity.this, "选择歌单", playlistNames, (android.content.DialogInterface dialog, int which) -> {
+                    fetchAndAddSongToPlaylist(userPlaylists.get(which).getName(), finalSong);
+                });
+            }
+
+            @Override
+            public void onFailure(Call<top.boluofan.musictv.api.model.ListData> call, Throwable t) {
+                Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchAndAddSongToPlaylist(String playlistName, MusicInfo song) {
+        String username = LxRetrofitClient.getUsername(this);
+        String password = LxRetrofitClient.getPassword(this);
+        String token = LxRetrofitClient.getToken(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
+
+        apiService.getUserList(username, password, token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
+            @Override
+            public void onResponse(Call<top.boluofan.musictv.api.model.ListData> call, Response<top.boluofan.musictv.api.model.ListData> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Toast.makeText(SearchActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                top.boluofan.musictv.api.model.ListData listData = response.body();
+                List<top.boluofan.musictv.api.model.Playlist> userPlaylists = listData.getUserList();
+                if (userPlaylists == null) {
+                    Toast.makeText(SearchActivity.this, "歌单不存在", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                top.boluofan.musictv.api.model.Playlist targetPlaylist = null;
+                for (top.boluofan.musictv.api.model.Playlist p : userPlaylists) {
+                    if (playlistName.equals(p.getName())) {
+                        targetPlaylist = p;
+                        break;
+                    }
+                }
+
+                if (targetPlaylist == null) {
+                    Toast.makeText(SearchActivity.this, "歌单不存在", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                addSongToPlaylist(listData, targetPlaylist, song);
+            }
+
+            @Override
+            public void onFailure(Call<top.boluofan.musictv.api.model.ListData> call, Throwable t) {
+                Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void addSongToPlaylist(top.boluofan.musictv.api.model.ListData listData, top.boluofan.musictv.api.model.Playlist playlist, MusicInfo song) {
+        String username = LxRetrofitClient.getUsername(this);
+        String password = LxRetrofitClient.getPassword(this);
+        String token = LxRetrofitClient.getToken(this);
+        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
+
+        List<MusicInfo> songList = playlist.getSongs();
+        if (songList == null) {
+            songList = new ArrayList<>();
+        }
+
+        for (MusicInfo m : songList) {
+            if (m.getName().equals(song.getName()) && m.getSource().equals(song.getSource())) {
+                Toast.makeText(this, "歌曲已存在于此歌单", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
+        songList.add(0, song);
+        playlist.setSongs(songList);
+        playlist.setSongCount(songList.size());
+
+        apiService.updateUserList(username, password, token, listData).enqueue(new Callback<okhttp3.ResponseBody>() {
+            @Override
+            public void onResponse(Call<okhttp3.ResponseBody> call, Response<okhttp3.ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(SearchActivity.this, "已添加到「" + playlist.getName() + "」", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(SearchActivity.this, "添加失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<okhttp3.ResponseBody> call, Throwable t) {
+                Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void loadHotSearch() {
         String source = currentSource;
         if ("all".equals(source)) {
@@ -871,133 +1012,80 @@ public class SearchActivity extends AppCompatActivity {
         }
     }
 
-    private void collectSingleSong(MusicInfo song) {
-        if (!LxRetrofitClient.isLoggedIn(this)) {
+    private void collectSingleSongMiMusic(MusicInfo song) {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(this, top.boluofan.musictv.ConfigActivity.class);
-            intent.putExtra("server_url", LxRetrofitClient.getServerUrl(this));
-            startActivity(intent);
+            startActivity(new Intent(this, top.boluofan.musictv.ConfigActivity.class));
             return;
         }
 
-        String username = LxRetrofitClient.getUsername(this);
-        String password = LxRetrofitClient.getPassword(this);
-        String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
-
-        apiService.getUserList(username, password, token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
+        apiService.getMiMusicPlaylists(100, 0).enqueue(new Callback<top.boluofan.musictv.api.model.MiPlaylistListResponse>() {
             @Override
-            public void onResponse(Call<top.boluofan.musictv.api.model.ListData> call, Response<top.boluofan.musictv.api.model.ListData> response) {
+            public void onResponse(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Response<top.boluofan.musictv.api.model.MiPlaylistListResponse> response) {
                 if (!response.isSuccessful() || response.body() == null) {
                     Toast.makeText(SearchActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                top.boluofan.musictv.api.model.ListData listData = response.body();
-                List<top.boluofan.musictv.api.model.Playlist> userPlaylists = listData.getUserList();
-                if (userPlaylists == null || userPlaylists.isEmpty()) {
+                List<top.boluofan.musictv.api.model.MiPlaylist> playlists = response.body().getPlaylists();
+                if (playlists == null || playlists.isEmpty()) {
                     Toast.makeText(SearchActivity.this, "暂无歌单，请先在歌单库创建歌单", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                String[] playlistNames = new String[userPlaylists.size()];
-                for (int i = 0; i < userPlaylists.size(); i++) {
-                    playlistNames[i] = userPlaylists.get(i).getName();
+                String[] playlistNames = new String[playlists.size()];
+                for (int i = 0; i < playlists.size(); i++) {
+                    playlistNames[i] = playlists.get(i).getName();
                 }
 
                 final MusicInfo finalSong = song;
                 DialogHelper.showPlaylistPickerDialog(SearchActivity.this, "选择歌单", playlistNames, (android.content.DialogInterface dialog, int which) -> {
-                    fetchAndAddSongToPlaylist(userPlaylists.get(which).getName(), finalSong);
+                    importSongToMiMusic(playlists.get(which).getId(), finalSong);
                 });
             }
 
             @Override
-            public void onFailure(Call<top.boluofan.musictv.api.model.ListData> call, Throwable t) {
+            public void onFailure(Call<top.boluofan.musictv.api.model.MiPlaylistListResponse> call, Throwable t) {
                 Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void addSongToPlaylist(top.boluofan.musictv.api.model.ListData listData, top.boluofan.musictv.api.model.Playlist playlist, MusicInfo song) {
-        String username = LxRetrofitClient.getUsername(this);
-        String password = LxRetrofitClient.getPassword(this);
-        String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
-
-        List<MusicInfo> songList = playlist.getSongs();
-        if (songList == null) {
-            songList = new ArrayList<>();
-        }
-
-        for (MusicInfo m : songList) {
-            if (m.getName().equals(song.getName()) && m.getSource().equals(song.getSource())) {
-                Toast.makeText(this, "歌曲已存在于此歌单", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        }
-
-        songList.add(0, song);
-        playlist.setSongs(songList);
-        playlist.setSongCount(songList.size());
-
-        apiService.updateUserList(username, password, token, listData).enqueue(new Callback<okhttp3.ResponseBody>() {
+    private void importSongToMiMusic(int playlistId, MusicInfo song) {
+        LxApiService apiService = LxRetrofitClient.getMiMusicApiService(this);
+        if (apiService == null) return;
+        List<MusicInfo> songs = new ArrayList<>();
+        songs.add(song);
+        Map<String, Object> body = buildImportBody(playlistId, "", songs);
+        apiService.importSongsToPlaylist(body).enqueue(new Callback<ResponseBody>() {
             @Override
-            public void onResponse(Call<okhttp3.ResponseBody> call, Response<okhttp3.ResponseBody> response) {
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
-                    Toast.makeText(SearchActivity.this, "已添加到「" + playlist.getName() + "」", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SearchActivity.this, "已添加到收藏", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(SearchActivity.this, "添加失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(Call<okhttp3.ResponseBody> call, Throwable t) {
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void fetchAndAddSongToPlaylist(String playlistName, MusicInfo song) {
-        String username = LxRetrofitClient.getUsername(this);
-        String password = LxRetrofitClient.getPassword(this);
-        String token = LxRetrofitClient.getToken(this);
-        LxApiService apiService = LxRetrofitClient.getLxAuthService(this);
+    private Map<String, Object> buildImportBody(int playlistId, String newPlaylistName, List<MusicInfo> songs) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("quality", LxRetrofitClient.getQuality(this));
+        body.put("playlist_id", playlistId);
+        body.put("new_playlist_name", newPlaylistName);
 
-        apiService.getUserList(username, password, token).enqueue(new Callback<top.boluofan.musictv.api.model.ListData>() {
-            @Override
-            public void onResponse(Call<top.boluofan.musictv.api.model.ListData> call, Response<top.boluofan.musictv.api.model.ListData> response) {
-                if (!response.isSuccessful() || response.body() == null) {
-                    Toast.makeText(SearchActivity.this, "获取歌单失败", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                top.boluofan.musictv.api.model.ListData listData = response.body();
-                List<top.boluofan.musictv.api.model.Playlist> userPlaylists = listData.getUserList();
-                if (userPlaylists == null) {
-                    Toast.makeText(SearchActivity.this, "歌单不存在", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                top.boluofan.musictv.api.model.Playlist targetPlaylist = null;
-                for (top.boluofan.musictv.api.model.Playlist p : userPlaylists) {
-                    if (playlistName.equals(p.getName())) {
-                        targetPlaylist = p;
-                        break;
-                    }
-                }
-
-                if (targetPlaylist == null) {
-                    Toast.makeText(SearchActivity.this, "歌单不存在", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                addSongToPlaylist(listData, targetPlaylist, song);
-            }
-
-            @Override
-            public void onFailure(Call<top.boluofan.musictv.api.model.ListData> call, Throwable t) {
-                Toast.makeText(SearchActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        List<Map<String, Object>> songsList = new ArrayList<>();
+        for (MusicInfo song : songs) {
+            songsList.add(song.toMiImportSong());
+        }
+        body.put("songs", songsList);
+        return body;
     }
 }
