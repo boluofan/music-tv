@@ -224,7 +224,7 @@ public class LibraryFragment extends Fragment {
             player.setMediaItems(mediaItems, position, 0);
             player.prepare();
             player.play();
-            songAdapter.setPlayingIndex(position);
+            songAdapter.setPlayingSongId(currentPlaylist.getSongs().get(position).getSongmid());
         }
     }
     

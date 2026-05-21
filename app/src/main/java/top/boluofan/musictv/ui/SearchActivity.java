@@ -837,12 +837,9 @@ public class SearchActivity extends AppCompatActivity {
         player.setMediaItem(mediaItem);
         player.prepare();
         player.play();
-        
-        int index = allResults.indexOf(song);
-        if (index >= 0) {
-            songAdapter.setPlayingIndex(index);
-        }
-        
+
+        songAdapter.setPlayingSongId(song.getSongmid());
+
         Toast.makeText(this, "正在播放: " + song.getName(), Toast.LENGTH_SHORT).show();
     }
 

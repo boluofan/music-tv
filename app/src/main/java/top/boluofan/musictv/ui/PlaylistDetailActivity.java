@@ -698,11 +698,12 @@ public class PlaylistDetailActivity extends AppCompatActivity {
         }
         
         int startIndex = shuffle ? (int) (Math.random() * songs.size()) : 0;
-        
+
         player.setMediaItems(mediaItems, startIndex, 0);
         player.prepare();
         player.play();
-        
+        songAdapter.setPlayingSongId(songs.get(startIndex).getSongmid());
+
         Toast.makeText(this, shuffle ? "随机播放" : "播放全部", Toast.LENGTH_SHORT).show();
     }
     
@@ -717,7 +718,7 @@ public class PlaylistDetailActivity extends AppCompatActivity {
         player.setMediaItems(mediaItems, position, 0);
         player.prepare();
         player.play();
-        songAdapter.setPlayingIndex(position);
+        songAdapter.setPlayingSongId(songs.get(position).getSongmid());
     }
     
     private MediaItem createMediaItem(MusicInfo song) {

@@ -440,7 +440,7 @@ public class LibraryActivity extends AppCompatActivity {
         player.prepare();
         player.play();
 
-        songAdapter.setPlayingIndex(index);
+        songAdapter.setPlayingSongId(currentPlaylist.getSongs().get(index).getSongmid());
     }
 
     private void playAll(boolean shuffle) {
@@ -472,6 +472,7 @@ public class LibraryActivity extends AppCompatActivity {
         player.setMediaItems(mediaItems, startIndex, 0);
         player.prepare();
         player.play();
+        songAdapter.setPlayingSongId(currentPlaylist.getSongs().get(startIndex).getSongmid());
 
         Toast.makeText(this, shuffle ? "随机播放" : "播放全部", Toast.LENGTH_SHORT).show();
     }

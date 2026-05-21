@@ -23,7 +23,7 @@ public class LxMusicAdapter extends RecyclerView.Adapter<LxMusicAdapter.ViewHold
     private OnFullscreenClickListener fullscreenListener;
     private OnDeleteClickListener deleteListener;
     private OnFavClickListener favListener;
-    private int playingIndex = -1;
+    private String playingSongId = null;
     private boolean isPlaying = false;
     private boolean showDeleteButton = false;
     private boolean showFavButton = true;
@@ -81,22 +81,20 @@ public class LxMusicAdapter extends RecyclerView.Adapter<LxMusicAdapter.ViewHold
         notifyDataSetChanged();
     }
 
-    public void setPlayingIndex(int index) {
-        int oldIndex = playingIndex;
-        playingIndex = index;
-        if (oldIndex >= 0) notifyItemChanged(oldIndex);
-        if (index >= 0) notifyItemChanged(index);
+    public void setPlayingSongId(String songId) {
+        this.playingSongId = songId;
+        notifyDataSetChanged();
     }
 
     public void setPlayerPlaying(boolean playing) {
         if (isPlaying != playing) {
             isPlaying = playing;
-            if (playingIndex >= 0) notifyItemChanged(playingIndex);
+            notifyDataSetChanged();
         }
     }
 
-    public int getPlayingIndex() {
-        return playingIndex;
+    public String getPlayingSongId() {
+        return playingSongId;
     }
 
     @NonNull
@@ -110,7 +108,8 @@ public class LxMusicAdapter extends RecyclerView.Adapter<LxMusicAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         MusicInfo song = songs.get(position);
-        holder.bind(song, position == playingIndex, isPlaying);
+        boolean isCurrentSong = playingSongId != null && playingSongId.equals(song.getSongmid());
+        holder.bind(song, isCurrentSong, isPlaying);
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onItemClick(song, holder.getAdapterPosition());
