@@ -70,7 +70,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="如何获取服务器地址？\n请运行 lxserver 服务，在控制台查看地址"
+            android:text=""
             android:textColor="#6B7280"
             android:textSize="12sp"
             android:gravity="start"
@@ -81,7 +81,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="如何获取账号密码？\n在 lxserver 的[管理控制台]中配置用户"
+            android:text=""
             android:textColor="#6B7280"
             android:textSize="12sp"
             android:gravity="start"

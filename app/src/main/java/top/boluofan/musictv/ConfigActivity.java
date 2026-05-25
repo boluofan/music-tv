@@ -471,21 +471,29 @@ public class ConfigActivity extends AppCompatActivity {
         if (isMiMusic) {
             // MiMusic 模式
             tvLeftDescription.setText("连接 MiMusic 音源服务");
-            tvHelpServer.setText("如何获取服务器地址？\n请运行 mimusic 服务，在控制台查看地址");
-            tvHelpAccount.setText("如何获取账号密码？\n在 mimusic 的[管理控制台]中配置用户");
+            tvHelpServer.setText("如何配置？\n ① 运行 mimusic 服务 \n ② 安装洛雪音源、洛雪音源API 两个插件并启用 \n ③ 导入相关音源，填写: mimusic地址+/api/v1");
+            tvHelpAccount.setText("");
             layoutToken.setVisibility(View.GONE);
             etUrl.setHint("http://localhost:58091/api/v1");
             etUsername.setHint("请输入用户名");
             etPassword.setHint("Password");
+            // 断开指向 token 输入框的焦点链，避免 D-pad 导航到不可见的控件
+            etPassword.setNextFocusDownId(R.id.btnConnect);
+            btnConnect.setNextFocusUpId(R.id.etPassword);
+            etToken.setNextFocusUpId(View.NO_ID);
         } else {
             // LXServer 模式
             tvLeftDescription.setText("连接 lxserver 洛雪音乐服务");
-            tvHelpServer.setText("如何获取服务器地址？\n请运行 lxserver 服务，在控制台查看地址");
+            tvHelpServer.setText("如何配置？\n请运行 lxserver 服务，在控制台查看地址");
             tvHelpAccount.setText("如何获取账号密码？\n在 lxserver 的[管理控制台]中配置用户");
             layoutToken.setVisibility(View.VISIBLE);
             etUrl.setHint("http://localhost:9527");
             etUsername.setHint("请输入用户名");
             etPassword.setHint("Password");
+            // 恢复指向 token 输入框的焦点链
+            etPassword.setNextFocusDownId(R.id.etToken);
+            btnConnect.setNextFocusUpId(R.id.etToken);
+            etToken.setNextFocusUpId(R.id.etPassword);
         }
     }
 
