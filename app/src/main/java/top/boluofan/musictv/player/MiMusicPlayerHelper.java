@@ -386,6 +386,67 @@ public class MiMusicPlayerHelper {
     }
 
     /**
+     * 构建歌词 URL（公开方法）
+     * 根据 lyric 内容判断：
+     * - 内嵌歌词（非 URL）：返回空字符串，调用方应直接使用 lyric 文本
+     * - 网络歌词 URL：返回完整可请求的 URL
+     *
+     * @param context Context
+     * @param lyric lyric 字段值
+     * @param accessToken 访问令牌，可为 null
+     * @return 歌词完整 URL，或空字符串（内嵌歌词）
+     */
+    public static String buildLyricUrl(Context context, String lyric, String accessToken) {
+        return buildNetworkLyricUrl(context, lyric, accessToken);
+    }
+
+    /**
+     * 构建网络歌词 URL
+     * 相对路径需要拼接 baseUrl 并附加 access_token
+     * 内嵌歌词（非 URL 格式）返回空字符串
+     *
+     * @param context Context
+     * @param lyric lyric 字段值，可能是 URL 或内嵌歌词文本
+     * @param accessToken 访问令牌
+     * @return 歌词完整 URL，如果是内嵌歌词则返回空字符串
+     */
+    private static String buildNetworkLyricUrl(Context context, String lyric, String accessToken) {
+        if (lyric == null || lyric.isEmpty()) {
+            return "";
+        }
+
+        // 如果不是以 / 或 http(s) 开头，说明是内嵌歌词文本
+        if (!lyric.startsWith("/") && !lyric.startsWith("http://") && !lyric.startsWith("https://")) {
+            Log.d(TAG, "Embedded lyric text detected");
+            return "";
+        }
+
+        String result;
+        Log.d(TAG, "Net lyric bef URL: " + lyric);
+        if (lyric.startsWith("/")) {
+            // 相对路径：拼接 baseUrl
+            String baseUrl = LxRetrofitClient.getPureServerUrl(context);
+            String token = accessToken;
+            if (token == null || token.isEmpty()) {
+                token = LxRetrofitClient.getMiAccessToken(context);
+            }
+            if (token == null) {
+                token = "";
+            }
+
+            String separator = lyric.contains("?") ? "&" : "?";
+            result = baseUrl + lyric + separator + "access_token=" + token;
+            Log.d(TAG, "Server-relative lyric URL with token: " + result);
+        } else {
+            // 绝对路径：使用代理
+            result = buildProxyUrl(context, lyric, accessToken);
+            Log.d(TAG, "Network lyric URL (absolute): " + result);
+        }
+
+        return result;
+    }
+
+    /**
      * 获取代理地址
      */
     private static String buildProxyUrl(Context context, String externalUrl, String accessToken) {
