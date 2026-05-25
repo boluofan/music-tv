@@ -1270,9 +1270,8 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     /**
-     * 获取 MiMusic 远程歌词
-     * 根据 lyric_source 判断：
-     * - lyric_source == "url"：lyrics 字段是歌词 URL，需要请求获取
+     * 获取 MiMusic 歌词
+     * 新架构(2026): lyricUrl 永远是 /api/v1/songs/{id}/lyric 端点或空字符串
      */
     private void fetchMiMusicLyric(String lyricUrl) {
         Log.d(TAG, "Fetching MiMusic lyric from URL: " + lyricUrl);
