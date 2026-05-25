@@ -282,14 +282,35 @@ public class LxRetrofitClient {
 
     public static void saveConfig(Context context, String serverUrl, String username, String password, String token, String apiType) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String oldApiType = prefs.getString(KEY_API_TYPE, API_TYPE_LXserver);
+
         SharedPreferences.Editor editor = prefs.edit()
                 .putString(KEY_SERVER_URL, serverUrl)
                 .putString(KEY_USERNAME, username)
                 .putString(KEY_PASSWORD, password)
                 .putString(KEY_TOKEN, token);
+
+        // 强制更新 apiType，确保全局标识同步
         if (apiType != null) {
             editor.putString(KEY_API_TYPE, apiType);
+        } else {
+            // apiType 为 null 时，默认使用 LXServer
+            apiType = API_TYPE_LXserver;
+            editor.putString(KEY_API_TYPE, apiType);
         }
+
+        // 切换 API 类型时，清除另一个类型的 token，避免混用
+        if (!apiType.equals(oldApiType)) {
+            if (API_TYPE_MiMusic.equals(oldApiType)) {
+                // 从 MiMusic 切换走，清除 MiMusic token
+                editor.remove(KEY_MI_ACCESS_TOKEN);
+                editor.remove(KEY_MI_REFRESH_TOKEN);
+            } else {
+                // 从 LXServer 切换走，清除 LXServer token
+                editor.remove(KEY_TOKEN);
+            }
+        }
+
         editor.apply();
         resetClient();
     }

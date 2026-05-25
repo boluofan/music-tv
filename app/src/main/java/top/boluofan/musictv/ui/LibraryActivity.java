@@ -420,8 +420,15 @@ public class LibraryActivity extends AppCompatActivity {
         if (currentPlaylist == null || currentPlaylist.getSongs() == null || player == null) return;
         if (index < 0 || index >= currentPlaylist.getSongs().size()) return;
 
-        // 检测是否是 MiMusic 模式
+        // 检测当前接口模式
         boolean isMiMusicMode = LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this));
+
+        // 检查数据兼容性：如果当前是 LXServer 模式但歌单是 MiMusic 格式，提示刷新
+        if (!isMiMusicMode && currentPlaylist.isMiMusicSource()) {
+            Toast.makeText(this, "歌单数据来自 MiMusic 模式，请重新获取歌单", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         String accessToken = isMiMusicMode ? LxRetrofitClient.getMiAccessToken(this) : null;
 
         List<MediaItem> mediaItems = new ArrayList<>();
@@ -451,8 +458,15 @@ public class LibraryActivity extends AppCompatActivity {
 
         if (player == null) return;
 
-        // 检测是否是 MiMusic 模式
+        // 检测当前接口模式
         boolean isMiMusicMode = LxRetrofitClient.API_TYPE_MiMusic.equals(LxRetrofitClient.getApiType(this));
+
+        // 检查数据兼容性：如果当前是 LXServer 模式但歌单是 MiMusic 格式，提示刷新
+        if (!isMiMusicMode && currentPlaylist.isMiMusicSource()) {
+            Toast.makeText(this, "歌单数据来自 MiMusic 模式，请重新获取歌单", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         String accessToken = isMiMusicMode ? LxRetrofitClient.getMiAccessToken(this) : null;
 
         List<MediaItem> mediaItems = new ArrayList<>();

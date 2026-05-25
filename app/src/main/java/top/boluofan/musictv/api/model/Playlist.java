@@ -269,4 +269,19 @@ public class Playlist {
         }
         return null;
     }
+
+    /**
+     * 检查歌单是否来自 MiMusic 接口（通过歌曲 source 判断）
+     */
+    public boolean isMiMusicSource() {
+        if (songs == null || songs.isEmpty()) {
+            return false;
+        }
+        for (MusicInfo song : songs) {
+            if (song.getSource() != null && "mimusic".equals(song.getSource())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
