@@ -688,10 +688,10 @@ public class PlayerActivity extends AppCompatActivity {
             if (currentSongMid == null) currentSongMid = "";
         }
 
-        // 检查是否是 MiMusic 远程歌词 URL（lyric_source == "url"）
-        String lyricSource = null;
+        // 获取 MiMusic 歌词 URL
+        String lyricUrl = null;
         if (mediaItem.mediaMetadata.extras != null) {
-            lyricSource = mediaItem.mediaMetadata.extras.getString("lyric_source");
+            lyricUrl = mediaItem.mediaMetadata.extras.getString("lyric_url");
         }
         
         SharedPreferences prefs = getSharedPreferences("XiaoMusicPrefs", 0);
@@ -715,20 +715,16 @@ public class PlayerActivity extends AppCompatActivity {
 
         // 1. 处理歌词状态
         boolean isCurrentlyScraping = mediaItem.mediaId.equals(currentScrapingId);
-        if (lyrics != null && !lyrics.isEmpty()) {
-            // 判断是否是远程歌词 URL（lyric_source == "url" 且 lyrics 是 URL 格式）
-            boolean isLyricUrl = (lyrics.startsWith("/") || lyrics.startsWith("http://") || lyrics.startsWith("https://"));
-            if (isLyricUrl) {
-                // 远程歌词 URL，需要请求获取歌词内容
-                fetchMiMusicLyric(lyrics);
-            } else {
-                // 内嵌歌词，直接使用
-                String lyricArtist = extractArtistFromLyrics(lyrics);
-                if (lyricArtist != null && !lyricArtist.isEmpty()) {
-                    tvBigArtist.setText(lyricArtist);
-                }
-                parseLyrics(lyrics);
+        if (lyricUrl != null && !lyricUrl.isEmpty()) {
+            // 有 lyricUrl，从后端端点获取歌词
+            fetchMiMusicLyric(lyricUrl);
+        } else if (lyrics != null && !lyrics.isEmpty()) {
+            // 内嵌歌词，直接使用
+            String lyricArtist = extractArtistFromLyrics(lyrics);
+            if (lyricArtist != null && !lyricArtist.isEmpty()) {
+                tvBigArtist.setText(lyricArtist);
             }
+            parseLyrics(lyrics);
         } else if (!isCurrentlyScraping) {
             showNoLyrics("加载歌词...");
         }
