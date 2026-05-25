@@ -697,7 +697,12 @@ public class LibraryActivity extends AppCompatActivity {
             floatingPlayerWindow.release();
             floatingPlayerWindow = null;
         }
-        LxRetrofitClient.clearUserInfo(this);
+        // MiMusic 模式下清除所有配置（等价于设置界面的清除缓存），lxserver 模式下只清除用户信息
+        if (LxRetrofitClient.isMiMusicApi(this)) {
+            LxRetrofitClient.clearConfig(this);
+        } else {
+            LxRetrofitClient.clearUserInfo(this);
+        }
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

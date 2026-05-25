@@ -41,7 +41,7 @@ public class LxRetrofitClient {
     public static final String API_TYPE_LXserver = "music";
     public static final String API_TYPE_MiMusic = "tv";
     private static final String PATH_PREFIX_TV = "lxmusic-api/";
-    private static final String PATH_PREFIX_PLUGIN = "plugin/";
+    private static final String PATH_PREFIX_PLUGIN = "jsplugin/";
     private static final String PATH_LX_MUSIC = "api/music/";
     private static final String PATH_LX_USER = "api/user/";
 
