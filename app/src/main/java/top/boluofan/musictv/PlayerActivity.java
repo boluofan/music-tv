@@ -1,6 +1,7 @@
 package top.boluofan.musictv;
 
 import android.animation.ObjectAnimator;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,37 +9,35 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.JsonObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
-
-import java.util.Collections;
 import java.util.List;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.ResponseBody;
-import android.content.SharedPreferences;
-import com.google.gson.JsonObject;
 import top.boluofan.musictv.player.MiMusicPlayerHelper;
 
 public class PlayerActivity extends AppCompatActivity {
@@ -688,10 +687,10 @@ public class PlayerActivity extends AppCompatActivity {
             if (currentSongMid == null) currentSongMid = "";
         }
 
-        // 检查是否是 MiMusic 远程歌词 URL（lyric_source == "url"）
-        String lyricSource = null;
+        // 获取 MiMusic 歌词 URL
+        String lyricUrl = null;
         if (mediaItem.mediaMetadata.extras != null) {
-            lyricSource = mediaItem.mediaMetadata.extras.getString("lyric_source");
+            lyricUrl = mediaItem.mediaMetadata.extras.getString("lyric_url");
         }
         
         SharedPreferences prefs = getSharedPreferences("XiaoMusicPrefs", 0);
@@ -715,20 +714,16 @@ public class PlayerActivity extends AppCompatActivity {
 
         // 1. 处理歌词状态
         boolean isCurrentlyScraping = mediaItem.mediaId.equals(currentScrapingId);
-        if (lyrics != null && !lyrics.isEmpty()) {
-            // 判断是否是远程歌词 URL（lyric_source == "url" 且 lyrics 是 URL 格式）
-            boolean isLyricUrl = (lyrics.startsWith("/") || lyrics.startsWith("http://") || lyrics.startsWith("https://"));
-            if (isLyricUrl) {
-                // 远程歌词 URL，需要请求获取歌词内容
-                fetchMiMusicLyric(lyrics);
-            } else {
-                // 内嵌歌词，直接使用
-                String lyricArtist = extractArtistFromLyrics(lyrics);
-                if (lyricArtist != null && !lyricArtist.isEmpty()) {
-                    tvBigArtist.setText(lyricArtist);
-                }
-                parseLyrics(lyrics);
+        if (lyricUrl != null && !lyricUrl.isEmpty()) {
+            // 有 lyricUrl，从后端端点获取歌词
+            fetchMiMusicLyric(lyricUrl);
+        } else if (lyrics != null && !lyrics.isEmpty()) {
+            // 内嵌歌词，直接使用
+            String lyricArtist = extractArtistFromLyrics(lyrics);
+            if (lyricArtist != null && !lyricArtist.isEmpty()) {
+                tvBigArtist.setText(lyricArtist);
             }
+            parseLyrics(lyrics);
         } else if (!isCurrentlyScraping) {
             showNoLyrics("加载歌词...");
         }
@@ -1274,10 +1269,10 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     /**
-     * 获取 MiMusic 远程歌词
-     * 根据 lyric_source 判断：
-     * - lyric_source == "url"：lyrics 字段是歌词 URL，需要请求获取
+     * 获取 MiMusic 歌词
+     * 新架构(2026): lyricUrl 永远是 /api/v1/songs/{id}/lyric 端点或空字符串
      */
+    @OptIn(markerClass = UnstableApi.class)
     private void fetchMiMusicLyric(String lyricUrl) {
         Log.d(TAG, "Fetching MiMusic lyric from URL: " + lyricUrl);
         showNoLyrics("加载歌词...");
@@ -1321,16 +1316,12 @@ public class PlayerActivity extends AppCompatActivity {
                 String responseBody = response.body() != null ? response.body().string() : "";
                 Log.d(TAG, "Got lyric response, length: " + responseBody.length());
 
-                // 解析 JSON: {"code":0,"data":{"lyric":"..."}}
+                // 解析 JSON: 后端直接返回 LyricPayload {"lyric":"...","tlyric":"...","rlyric":"...","lxlyric":"..."}
                 String lyricContent = null;
                 try {
                     com.google.gson.JsonObject json = new com.google.gson.JsonParser().parse(responseBody).getAsJsonObject();
-                    int code = json.get("code").getAsInt();
-                    if (code == 0 && json.has("data")) {
-                        com.google.gson.JsonObject data = json.getAsJsonObject("data");
-                        if (data.has("lyric") && !data.get("lyric").isJsonNull()) {
-                            lyricContent = data.get("lyric").getAsString();
-                        }
+                    if (json.has("lyric") && !json.get("lyric").isJsonNull()) {
+                        lyricContent = json.get("lyric").getAsString();
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to parse lyric JSON: " + e.getMessage());

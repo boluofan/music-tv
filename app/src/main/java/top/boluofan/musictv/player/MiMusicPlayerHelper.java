@@ -3,76 +3,26 @@ package top.boluofan.musictv.player;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.util.UnstableApi;
 import top.boluofan.musictv.MusicService;
 import top.boluofan.musictv.api.LxRetrofitClient;
-import top.boluofan.musictv.api.model.MiSong;
 import top.boluofan.musictv.api.model.MusicInfo;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 
 /**
  * MiMusic 歌曲播放助手
  * 用于处理 MiMusic 用户歌单中歌曲的播放
  *
- * 播放逻辑：
- * - 本地歌曲（type == "local" && filePath != null）：使用服务器 /music/{base62编码路径}{扩展名}?access_token=xxx
- * - 网络歌曲/电台（url != null && url.isNotEmpty）：直接使用 url，相对路径则拼接 baseUrl
+ * 新架构(2026):
+ * - 所有歌曲:后端 MarshalJSON 统一 song.url 为 /api/v1/songs/{id}/play
+ * - 本地歌曲封面: /api/v1/songs/{id}/cover
+ * - 网络歌曲封面:保留原始 CoverURL (外部 CDN)
  */
 @UnstableApi
 public class MiMusicPlayerHelper {
     private static final String TAG = "MiMusicPlayerHelper";
-
-    /**
-     * 为 MiSong 创建 MediaItem
-     *
-     * @param context Context
-     * @param miSong MiSong 实例
-     * @param accessToken 访问令牌，可为 null
-     * @return MediaItem
-     */
-    public static MediaItem createMediaItem(Context context, MiSong miSong, String accessToken) {
-        String songUrl = buildSongUrl(context, miSong, accessToken);
-
-        Bundle extras = new Bundle();
-        extras.putString("song_id", String.valueOf(miSong.getId()));
-        extras.putString("source", miSong.getType() != null ? miSong.getType() : "mimusic");
-        extras.putString("songmid", miSong.getCacheHash() != null ? miSong.getCacheHash() : String.valueOf(miSong.getId()));
-        extras.putString("pic_url", miSong.getCoverUrl() != null ? miSong.getCoverUrl() : (miSong.getCoverPath() != null ? miSong.getCoverPath() : ""));
-        extras.putString("original_name", miSong.getTitle() != null ? miSong.getTitle() : "");
-        extras.putString("mi_song_type", miSong.getType() != null ? miSong.getType() : "");
-        extras.putString("file_path", miSong.getFilePath() != null ? miSong.getFilePath() : "");
-
-        Uri artworkUri = null;
-        String coverUrl = miSong.getCoverUrl();
-        String coverPath = miSong.getCoverPath();
-        if (coverUrl != null && !coverUrl.isEmpty()) {
-            artworkUri = Uri.parse(coverUrl);
-        } else if (coverPath != null && !coverPath.isEmpty()) {
-            // 本地歌曲封面：/cover/{base62编码的路径}{扩展名}?access_token=xxx
-            artworkUri = Uri.parse(buildCoverUrl(context, coverPath, accessToken));
-        }
-
-        MediaMetadata.Builder metadataBuilder = new MediaMetadata.Builder()
-                .setTitle(miSong.getTitle() != null ? miSong.getTitle() : "")
-                .setArtist(miSong.getArtist() != null ? miSong.getArtist() : "")
-                .setAlbumTitle(miSong.getAlbum() != null ? miSong.getAlbum() : "")
-                .setExtras(extras);
-
-        if (artworkUri != null && !artworkUri.toString().isEmpty()) {
-            metadataBuilder.setArtworkUri(artworkUri);
-        }
-
-        return new MediaItem.Builder()
-                .setMediaId(miSong.getCacheHash() != null ? miSong.getCacheHash() : String.valueOf(miSong.getId()))
-                .setUri(songUrl)
-                .setMediaMetadata(metadataBuilder.build())
-                .build();
-    }
 
     /**
      * 为 MusicInfo（从 MiSong 转换而来）创建 MediaItem
@@ -108,7 +58,7 @@ public class MiMusicPlayerHelper {
                     musicInfo.getSongmid(),
                     musicInfo.getName()
             );
-            return createMediaItemFromResolveUri(musicInfo, resolveUri);
+            return createMediaItemFromResolveUri(context, musicInfo, resolveUri, accessToken);
         }
 
         // 非 MiMusic 歌曲，使用传统方式
@@ -117,21 +67,24 @@ public class MiMusicPlayerHelper {
                 musicInfo.getSongmid(),
                 musicInfo.getName()
         );
-        return createMediaItemFromResolveUri(musicInfo, resolveUri);
+        return createMediaItemFromResolveUri(context, musicInfo, resolveUri, accessToken);
     }
 
     /**
      * 从解析后的 URI 创建 MediaItem
      */
-    private static MediaItem createMediaItemFromResolveUri(MusicInfo musicInfo, Uri resolveUri) {
+    private static MediaItem createMediaItemFromResolveUri(Context context, MusicInfo musicInfo, Uri resolveUri, String accessToken) {
+        // 新架构(2026): coverUrl 可能是相对路径，需要通过 buildCoverUrl 处理
+        String coverUrl = buildCoverUrl(context, musicInfo.getPicUrl(), accessToken);
+
         Bundle extras = new Bundle();
         extras.putString("song_id", musicInfo.getId());
         extras.putString("source", musicInfo.getSource());
         extras.putString("songmid", musicInfo.getSongmid());
-        extras.putString("pic_url", musicInfo.getPicUrl());
+        extras.putString("pic_url", coverUrl);
         extras.putString("original_name", musicInfo.getName());
 
-        Uri artworkUri = musicInfo.getPicUrl() != null ? Uri.parse(musicInfo.getPicUrl()) : null;
+        Uri artworkUri = Uri.parse(coverUrl);
 
         MediaMetadata.Builder metadataBuilder = new MediaMetadata.Builder()
                 .setTitle(musicInfo.getName())
@@ -156,44 +109,28 @@ public class MiMusicPlayerHelper {
     private static MediaItem createMediaItemFromParts(Context context, MusicInfo musicInfo,
             String miSongType, String filePath, String url, String accessToken) {
 
-        String songUrl;
+        String songUrl = buildSongUrl(context, url, accessToken);
 
-        // 本地歌曲
-        if ("local".equals(miSongType) && filePath != null && !filePath.isEmpty()) {
-            songUrl = buildLocalSongUrl(context, filePath, accessToken);
-        }
-        // 网络歌曲/电台
-        else if (url != null && !url.isEmpty()) {
-            songUrl = buildNetworkSongUrl(context, url, accessToken);
-        }
-        // 没有有效源，使用 resolve URI
-        else {
-            Log.w(TAG, "MiSong has no valid source, falling back to resolve URI");
-            Uri resolveUri = MusicService.buildResolveUri(
-                    musicInfo.getSource() != null ? musicInfo.getSource() : "mimusic",
-                    musicInfo.getSongmid(),
-                    musicInfo.getName()
-            );
-            return createMediaItemFromResolveUri(musicInfo, resolveUri);
-        }
+        // 新架构(2026): coverUrl 可能是相对路径，需要通过 buildCoverUrl 处理
+        String coverUrl = buildCoverUrl(context, musicInfo.getPicUrl(), accessToken);
 
         Bundle extras = new Bundle();
         extras.putString("song_id", musicInfo.getId());
         extras.putString("source", musicInfo.getSource());
         extras.putString("songmid", musicInfo.getSongmid());
-        extras.putString("pic_url", musicInfo.getPicUrl());
+        extras.putString("pic_url", coverUrl);
         extras.putString("original_name", musicInfo.getName());
         extras.putString("mi_song_type", miSongType != null ? miSongType : "");
         extras.putString("file_path", filePath != null ? filePath : "");
-        // 如果有内嵌歌词，也存入 extras，供 PlayerActivity 直接使用
+        // 如果有歌词 URL，也存入 extras，供 PlayerActivity 直接使用
         if (musicInfo.getMeta() != null && musicInfo.getMeta().getExtras() != null) {
-            String lyric = musicInfo.getMeta().getExtras().getString("lyric");
-            if (lyric != null && !lyric.isEmpty()) {
-                extras.putString("lyrics", lyric);
+            String lyricUrl = musicInfo.getMeta().getExtras().getString("lyric_url");
+            if (lyricUrl != null && !lyricUrl.isEmpty()) {
+                extras.putString("lyric_url", lyricUrl);
             }
         }
 
-        Uri artworkUri = musicInfo.getPicUrl() != null ? Uri.parse(musicInfo.getPicUrl()) : null;
+        Uri artworkUri = Uri.parse(coverUrl);
 
         MediaMetadata.Builder metadataBuilder = new MediaMetadata.Builder()
                 .setTitle(musicInfo.getName())
@@ -257,110 +194,48 @@ public class MiMusicPlayerHelper {
     }
 
     /**
-     * 构建歌曲播放 URL
+     * 构建封面 URL（统一处理相对路径和外部 URL）
+     * 新架构(2026):后端已统一 coverUrl 字段
      *
      * @param context Context
-     * @param miSong MiSong 实例
+     * @param coverUrl 封面 URL（相对路径或外部 URL）
      * @param accessToken 访问令牌
-     * @return 播放 URL
+     * @return 完整的封面 URL
      */
-    private static String buildSongUrl(Context context, MiSong miSong, String accessToken) {
-        String type = miSong.getType();
-
-        Log.d(TAG, "歌曲类型----------: " + type);
-        // 本地歌曲
-        if ("local".equals(type) && miSong.getFilePath() != null && !miSong.getFilePath().isEmpty()) {
-            return buildLocalSongUrl(context, miSong.getFilePath(), accessToken);
-        }
-
-        // 网络歌曲/电台
-        if (miSong.getUrl() != null && !miSong.getUrl().isEmpty()) {
-            return buildNetworkSongUrl(context, miSong.getUrl(), accessToken);
-        }
-
-        // 没有有效源，抛出异常
-        Log.e(TAG, "MiSong has no valid source: type=" + type + ", filePath=" + miSong.getFilePath() + ", url=" + miSong.getUrl());
-        throw new IllegalArgumentException("无法播放：歌曲没有有效的播放源");
-    }
-
-    /**
-     * 构建本地歌曲 URL
-     * 格式: /music/{base62编码的路径}{扩展名}?access_token=xxx
-     */
-    private static String buildLocalSongUrl(Context context, String filePath, String accessToken) {
-        String baseUrl = LxRetrofitClient.getPureServerUrl(context);
-
-        // 获取路径和扩展名
-        String pathWithoutExt = getPathWithoutExtension(filePath);
-        String ext = getExtension(filePath);
-
-        // Base62 编码
-        String encodedPath = base62Encode(pathWithoutExt);
-
-        // 获取 token
-        String token = accessToken;
-        if (token == null || token.isEmpty()) {
-            token = LxRetrofitClient.getMiAccessToken(context);
-        }
-        if (token == null) {
-            token = "";
-        }
-
-        String result = baseUrl + "/music/" + encodedPath + ext + "?access_token=" + token;
-        Log.d(TAG, "Local song URL: " + result);
-        return result;
-    }
-
-    /**
-     * 构建本地歌曲封面 URL（公开方法，供外部调用）
-     * 格式: /cover/{base62编码的路径}{扩展名}?access_token=xxx
-     *
-     * @param context Context
-     * @param coverPath 封面路径，如 "/app/data/covers/26/af/xxx.jpg"
-     * @param accessToken 访问令牌
-     * @return 封面完整 URL
-     */
-    public static String buildCoverUrl(Context context, String coverPath, String accessToken) {
-        if (coverPath == null || coverPath.isEmpty()) {
+    public static String buildCoverUrl(Context context, String coverUrl, String accessToken) {
+        if (coverUrl == null || coverUrl.isEmpty()) {
             return "";
         }
-        return buildCoverUrlInternal(context, coverPath, accessToken);
+        if (coverUrl.startsWith("/")) {
+            // 相对路径：拼接 baseUrl 并附加 access_token
+            String baseUrl = LxRetrofitClient.getPureServerUrl(context);
+            String token = accessToken;
+            if (token == null || token.isEmpty()) {
+                token = LxRetrofitClient.getMiAccessToken(context);
+            }
+            if (token == null) {
+                token = "";
+            }
+            String separator = coverUrl.contains("?") ? "&" : "?";
+            return baseUrl + coverUrl + separator + "access_token=" + token;
+        } else {
+            // 外部 URL：直接返回
+            return coverUrl;
+        }
     }
 
     /**
-     * 构建本地歌曲封面 URL
-     * 格式: /cover/{base62编码的路径}{扩展名}?access_token=xxx
+     * 构建歌曲 URL（处理相对路径和外部 URL）
+     * 
+     * 新架构(2026):所有歌曲 URL 都是 /api/v1/songs/{id}/play 相对路径
+     * - 相对路径:拼接 baseUrl 并附加 access_token
+     * - 外部 URL:走代理解决 CORS
      */
-    private static String buildCoverUrlInternal(Context context, String coverPath, String accessToken) {
-        String baseUrl = LxRetrofitClient.getPureServerUrl(context);
-
-        // 获取路径和扩展名
-        String pathWithoutExt = getPathWithoutExtension(coverPath);
-        String ext = getExtension(coverPath);
-
-        // Base62 编码
-        String encodedPath = base62Encode(pathWithoutExt);
-
-        // 获取 token
-        String token = accessToken;
-        if (token == null || token.isEmpty()) {
-            token = LxRetrofitClient.getMiAccessToken(context);
-        }
-        if (token == null) {
-            token = "";
-        }
-
-        String result = baseUrl + "/cover/" + encodedPath + ext + "?access_token=" + token;
-        Log.d(TAG, "Cover URL: " + result);
-        return result;
-    }
-
-    /**
-     * 构建网络歌曲 URL
-     * 相对路径需要拼接 baseUrl 并附加 access_token
-     */
-    private static String buildNetworkSongUrl(Context context, String url, String accessToken) {
+    private static String buildSongUrl(Context context, String url, String accessToken) {
         String result;
+        if (url == null || url.isEmpty()) {
+            throw new IllegalArgumentException("无法播放：歌曲没有有效的播放源");
+        }
         Log.d(TAG, "Net song bef URL: " + url);
         if (url.startsWith("/")) {
             // 获取纯净的服务器，需要拼接 baseUrl
@@ -387,61 +262,48 @@ public class MiMusicPlayerHelper {
 
     /**
      * 构建歌词 URL（公开方法）
-     * 根据 lyric 内容判断：
-     * - 内嵌歌词（非 URL）：返回空字符串，调用方应直接使用 lyric 文本
-     * - 网络歌词 URL：返回完整可请求的 URL
+     * 新架构(2026): lyricUrl 永远是 /api/v1/songs/{id}/lyric 相对路径或空字符串
      *
      * @param context Context
-     * @param lyric lyric 字段值
+     * @param lyricUrl lyric_url 字段值（相对路径或空）
      * @param accessToken 访问令牌，可为 null
-     * @return 歌词完整 URL，或空字符串（内嵌歌词）
+     * @return 歌词完整 URL，或空字符串（无歌词）
      */
-    public static String buildLyricUrl(Context context, String lyric, String accessToken) {
-        return buildNetworkLyricUrl(context, lyric, accessToken);
+    public static String buildLyricUrl(Context context, String lyricUrl, String accessToken) {
+        return buildNetworkLyricUrl(context, lyricUrl, accessToken);
     }
 
     /**
      * 构建网络歌词 URL
-     * 相对路径需要拼接 baseUrl 并附加 access_token
-     * 内嵌歌词（非 URL 格式）返回空字符串
+     * 新架构(2026): lyricUrl 是 /api/v1/songs/{id}/lyric 相对路径，需要拼接 baseUrl 并附加 access_token
      *
      * @param context Context
-     * @param lyric lyric 字段值，可能是 URL 或内嵌歌词文本
+     * @param lyricUrl lyric_url 字段值
      * @param accessToken 访问令牌
-     * @return 歌词完整 URL，如果是内嵌歌词则返回空字符串
+     * @return 歌词完整 URL，如果是空则返回空字符串
      */
-    private static String buildNetworkLyricUrl(Context context, String lyric, String accessToken) {
-        if (lyric == null || lyric.isEmpty()) {
+    private static String buildNetworkLyricUrl(Context context, String lyricUrl, String accessToken) {
+        if (lyricUrl == null || lyricUrl.isEmpty()) {
             return "";
         }
 
-        // 如果不是以 / 或 http(s) 开头，说明是内嵌歌词文本
-        if (!lyric.startsWith("/") && !lyric.startsWith("http://") && !lyric.startsWith("https://")) {
-            Log.d(TAG, "Embedded lyric text detected");
-            return "";
-        }
-
+        // 新架构: lyricUrl 永远是相对路径 /api/v1/songs/{id}/lyric
         String result;
-        Log.d(TAG, "Net lyric bef URL: " + lyric);
-        if (lyric.startsWith("/")) {
-            // 相对路径：拼接 baseUrl
-            String baseUrl = LxRetrofitClient.getPureServerUrl(context);
-            String token = accessToken;
-            if (token == null || token.isEmpty()) {
-                token = LxRetrofitClient.getMiAccessToken(context);
-            }
-            if (token == null) {
-                token = "";
-            }
-
-            String separator = lyric.contains("?") ? "&" : "?";
-            result = baseUrl + lyric + separator + "access_token=" + token;
-            Log.d(TAG, "Server-relative lyric URL with token: " + result);
-        } else {
-            // 绝对路径：使用代理
-            result = buildProxyUrl(context, lyric, accessToken);
-            Log.d(TAG, "Network lyric URL (absolute): " + result);
+        Log.d(TAG, "Lyric URL: " + lyricUrl);
+        
+        // 相对路径：拼接 baseUrl
+        String baseUrl = LxRetrofitClient.getPureServerUrl(context);
+        String token = accessToken;
+        if (token == null || token.isEmpty()) {
+            token = LxRetrofitClient.getMiAccessToken(context);
         }
+        if (token == null) {
+            token = "";
+        }
+
+        String separator = lyricUrl.contains("?") ? "&" : "?";
+        result = baseUrl + lyricUrl + separator + "access_token=" + token;
+        Log.d(TAG, "Lyric URL with token: " + result);
 
         return result;
     }
@@ -469,92 +331,5 @@ public class MiMusicPlayerHelper {
 
         String encodedUrl = Uri.encode(externalUrl);
         return baseUrl + "/proxy?url=" + encodedUrl + "&access_token=" + token;
-    }
-
-    /**
-     * 获取不带扩展名的路径
-     */
-    private static String getPathWithoutExtension(String filePath) {
-        if (filePath == null) return "";
-        int lastDot = filePath.lastIndexOf('.');
-        int lastSlashForward = filePath.lastIndexOf('/');
-        int lastSlashBack = filePath.lastIndexOf('\\');
-        int lastSlash = lastSlashForward > lastSlashBack ? lastSlashForward : lastSlashBack;
-        // 确保点号在最后一个路径分隔符之后（是扩展名而非目录名中的点）
-        if (lastDot > lastSlash && lastDot > 0) {
-            return filePath.substring(0, lastDot);
-        }
-        return filePath;
-    }
-
-    /**
-     * 获取扩展名（包含点）
-     */
-    private static String getExtension(String filePath) {
-        if (filePath == null) return "";
-        int lastDot = filePath.lastIndexOf('.');
-        int lastSlashForward = filePath.lastIndexOf('/');
-        int lastSlashBack = filePath.lastIndexOf('\\');
-        int lastSlash = lastSlashForward > lastSlashBack ? lastSlashForward : lastSlashBack;
-        if (lastDot > lastSlash && lastDot > 0) {
-            return filePath.substring(lastDot);
-        }
-        return "";
-    }
-
-    /**
-     * Base62 编码
-     * 将路径字节数组用 Base64 编码的可打印字符（0-9, A-Z, a-z）表示
-     */
-    private static String base62Encode(String input) {
-        if (input == null || input.isEmpty()) return "0";
-
-        // 将字符串转为 UTF-8 字节数组
-        byte[] bytes = input.getBytes(StandardCharsets.UTF_8);
-
-        // 转为大整数
-        BigInteger num = BigInteger.ZERO;
-        for (byte b : bytes) {
-            // 将 byte 转为无符号整数 (0-255)
-            int unsignedByte = b >= 0 ? b : b + 256;
-            num = num.multiply(BigInteger.valueOf(256)).add(BigInteger.valueOf(unsignedByte));
-        }
-
-        // Base62 字符集
-        String base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-        // 转为 Base62
-        if (num.equals(BigInteger.ZERO)) return String.valueOf(base62Chars.charAt(0));
-
-        String result = "";
-        BigInteger divisor = BigInteger.valueOf(62);
-        while (num.compareTo(BigInteger.ZERO) > 0) {
-            int remainder = num.mod(divisor).intValue();
-            result = base62Chars.charAt(remainder) + result;
-            num = num.divide(divisor);
-        }
-        return result;
-    }
-
-    /**
-     * 检查是否是 MiMusic 本地歌曲
-     */
-    public static boolean isMiMusicLocalSong(MiSong miSong) {
-        return miSong != null && "local".equals(miSong.getType()) &&
-                miSong.getFilePath() != null && !miSong.getFilePath().isEmpty();
-    }
-
-    /**
-     * 检查是否有有效的播放 URL
-     */
-    public static boolean hasValidSource(MiSong miSong) {
-        if (miSong == null) return false;
-        if ("local".equals(miSong.getType()) && miSong.getFilePath() != null && !miSong.getFilePath().isEmpty()) {
-            return true;
-        }
-        if (miSong.getUrl() != null && !miSong.getUrl().isEmpty()) {
-            return true;
-        }
-        return false;
     }
 }

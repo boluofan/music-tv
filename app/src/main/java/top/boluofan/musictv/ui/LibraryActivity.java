@@ -382,9 +382,9 @@ public class LibraryActivity extends AppCompatActivity {
                                 String accessToken = LxRetrofitClient.getMiAccessToken(LibraryActivity.this);
                                 for (MiSong miSong : miSongs) {
                                     MusicInfo musicInfo = miSong.toMusicInfo();
-                                    // 本地歌曲：更新封面地址为带 token 的完整 URL
-                                    if ("local".equals(miSong.getType()) && miSong.getCoverPath() != null && !miSong.getCoverPath().isEmpty()) {
-                                        String coverUrl = MiMusicPlayerHelper.buildCoverUrl(LibraryActivity.this, miSong.getCoverPath(), accessToken);
+                                    // 新架构(2026): 后端已统一 coverUrl 字段，直接使用
+                                    if (miSong.getCoverUrl() != null && !miSong.getCoverUrl().isEmpty()) {
+                                        String coverUrl = MiMusicPlayerHelper.buildCoverUrl(LibraryActivity.this, miSong.getCoverUrl(), accessToken);
                                         musicInfo.setPicUrl(coverUrl);
                                     }
                                     songs.add(musicInfo);
