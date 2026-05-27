@@ -1316,16 +1316,12 @@ public class PlayerActivity extends AppCompatActivity {
                 String responseBody = response.body() != null ? response.body().string() : "";
                 Log.d(TAG, "Got lyric response, length: " + responseBody.length());
 
-                // 解析 JSON: {"code":0,"data":{"lyric":"..."}}
+                // 解析 JSON: 后端直接返回 LyricPayload {"lyric":"...","tlyric":"...","rlyric":"...","lxlyric":"..."}
                 String lyricContent = null;
                 try {
                     com.google.gson.JsonObject json = new com.google.gson.JsonParser().parse(responseBody).getAsJsonObject();
-                    int code = json.get("code").getAsInt();
-                    if (code == 0 && json.has("data")) {
-                        com.google.gson.JsonObject data = json.getAsJsonObject("data");
-                        if (data.has("lyric") && !data.get("lyric").isJsonNull()) {
-                            lyricContent = data.get("lyric").getAsString();
-                        }
+                    if (json.has("lyric") && !json.get("lyric").isJsonNull()) {
+                        lyricContent = json.get("lyric").getAsString();
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to parse lyric JSON: " + e.getMessage());
