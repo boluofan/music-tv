@@ -46,6 +46,7 @@ public class MiMusicPlayerHelper {
         extras.putString("original_name", miSong.getTitle() != null ? miSong.getTitle() : "");
         extras.putString("mi_song_type", miSong.getType() != null ? miSong.getType() : "");
         extras.putString("file_path", miSong.getFilePath() != null ? miSong.getFilePath() : "");
+        extras.putString("lyric_url", miSong.getLyricUrl() != null ? miSong.getLyricUrl() : "");
 
         Uri artworkUri = null;
         String coverUrl = miSong.getCoverUrl();
@@ -185,11 +186,10 @@ public class MiMusicPlayerHelper {
         extras.putString("original_name", musicInfo.getName());
         extras.putString("mi_song_type", miSongType != null ? miSongType : "");
         extras.putString("file_path", filePath != null ? filePath : "");
-        // 如果有内嵌歌词，也存入 extras，供 PlayerActivity 直接使用
         if (musicInfo.getMeta() != null && musicInfo.getMeta().getExtras() != null) {
-            String lyric = musicInfo.getMeta().getExtras().getString("lyric");
-            if (lyric != null && !lyric.isEmpty()) {
-                extras.putString("lyrics", lyric);
+            String lyricUrl = musicInfo.getMeta().getExtras().getString("lyric_url");
+            if (lyricUrl != null && !lyricUrl.isEmpty()) {
+                extras.putString("lyric_url", lyricUrl);
             }
         }
 

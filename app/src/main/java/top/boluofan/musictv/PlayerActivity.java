@@ -678,20 +678,16 @@ public class PlayerActivity extends AppCompatActivity {
         String title = titleSeq != null ? titleSeq.toString() : null;
         String originalName = null;
         String lyrics = null;
+        String lyricUrl = null;
 
         if (mediaItem.mediaMetadata.extras != null) {
             originalName = mediaItem.mediaMetadata.extras.getString("original_name");
             lyrics = mediaItem.mediaMetadata.extras.getString("lyrics");
+            lyricUrl = mediaItem.mediaMetadata.extras.getString("lyric_url");
             currentSongSource = mediaItem.mediaMetadata.extras.getString("source");
             currentSongMid = mediaItem.mediaMetadata.extras.getString("songmid");
             if (currentSongSource == null) currentSongSource = "mg";
             if (currentSongMid == null) currentSongMid = "";
-        }
-
-        // 检查是否是 MiMusic 远程歌词 URL（lyric_source == "url"）
-        String lyricSource = null;
-        if (mediaItem.mediaMetadata.extras != null) {
-            lyricSource = mediaItem.mediaMetadata.extras.getString("lyric_source");
         }
         
         SharedPreferences prefs = getSharedPreferences("XiaoMusicPrefs", 0);
@@ -715,20 +711,14 @@ public class PlayerActivity extends AppCompatActivity {
 
         // 1. 处理歌词状态
         boolean isCurrentlyScraping = mediaItem.mediaId.equals(currentScrapingId);
-        if (lyrics != null && !lyrics.isEmpty()) {
-            // 判断是否是远程歌词 URL（lyric_source == "url" 且 lyrics 是 URL 格式）
-            boolean isLyricUrl = (lyrics.startsWith("/") || lyrics.startsWith("http://") || lyrics.startsWith("https://"));
-            if (isLyricUrl) {
-                // 远程歌词 URL，需要请求获取歌词内容
-                fetchMiMusicLyric(lyrics);
-            } else {
-                // 内嵌歌词，直接使用
-                String lyricArtist = extractArtistFromLyrics(lyrics);
-                if (lyricArtist != null && !lyricArtist.isEmpty()) {
-                    tvBigArtist.setText(lyricArtist);
-                }
-                parseLyrics(lyrics);
+        if (lyricUrl != null && !lyricUrl.isEmpty()) {
+            fetchMiMusicLyric(lyricUrl);
+        } else if (lyrics != null && !lyrics.isEmpty()) {
+            String lyricArtist = extractArtistFromLyrics(lyrics);
+            if (lyricArtist != null && !lyricArtist.isEmpty()) {
+                tvBigArtist.setText(lyricArtist);
             }
+            parseLyrics(lyrics);
         } else if (!isCurrentlyScraping) {
             showNoLyrics("加载歌词...");
         }
@@ -764,15 +754,13 @@ public class PlayerActivity extends AppCompatActivity {
             }
         }
 
-        // 3. 触发抓取补全逻辑：只要缺歌词，就去尝试获取
-        // 封面如果已存在，则不刮削
-        if (lyrics == null || lyrics.isEmpty()) {
-            // 只有当歌曲 ID 变化时（或者之前没记录到 ID）才重新触发
+        // 3. 触发抓取补全逻辑：只要缺歌词且没有 lyric_url，就去尝试获取
+        boolean hasLyricSource = (lyricUrl != null && !lyricUrl.isEmpty()) || (lyrics != null && !lyrics.isEmpty());
+        if (!hasLyricSource) {
             if (!isCurrentlyScraping) {
                 fetchMusicInfoForScraping(queryName, false);
             }
         } else {
-            // 如果歌词已获取到，重置状态
             currentScrapingId = "";
         }
     }
@@ -1274,9 +1262,8 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     /**
-     * 获取 MiMusic 远程歌词
-     * 根据 lyric_source 判断：
-     * - lyric_source == "url"：lyrics 字段是歌词 URL，需要请求获取
+     * 获取 MiMusic 歌词
+     * 通过 lyric_url 端点获取 LyricPayload JSON
      */
     private void fetchMiMusicLyric(String lyricUrl) {
         Log.d(TAG, "Fetching MiMusic lyric from URL: " + lyricUrl);
@@ -1321,16 +1308,15 @@ public class PlayerActivity extends AppCompatActivity {
                 String responseBody = response.body() != null ? response.body().string() : "";
                 Log.d(TAG, "Got lyric response, length: " + responseBody.length());
 
-                // 解析 JSON: {"code":0,"data":{"lyric":"..."}}
+                // 解析 LyricPayload JSON: {"lyric":"...","tlyric":"...","rlyric":"...","lxlyric":"..."}
                 String lyricContent = null;
                 try {
                     com.google.gson.JsonObject json = new com.google.gson.JsonParser().parse(responseBody).getAsJsonObject();
-                    int code = json.get("code").getAsInt();
-                    if (code == 0 && json.has("data")) {
-                        com.google.gson.JsonObject data = json.getAsJsonObject("data");
-                        if (data.has("lyric") && !data.get("lyric").isJsonNull()) {
-                            lyricContent = data.get("lyric").getAsString();
-                        }
+                    if (json.has("lyric") && !json.get("lyric").isJsonNull()) {
+                        lyricContent = json.get("lyric").getAsString();
+                    }
+                    if ((lyricContent == null || lyricContent.isEmpty()) && json.has("tlyric") && !json.get("tlyric").isJsonNull()) {
+                        lyricContent = json.get("tlyric").getAsString();
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to parse lyric JSON: " + e.getMessage());
