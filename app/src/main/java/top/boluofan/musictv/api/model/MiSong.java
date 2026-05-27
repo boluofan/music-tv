@@ -38,8 +38,11 @@ public class MiSong {
     @SerializedName("cover_url")
     private String coverUrl;
 
-    @SerializedName("lyric_url")
-    private String lyricUrl;
+    @SerializedName("lyric")
+    private String lyric;
+
+    @SerializedName("lyric_source")
+    private String lyricSource;
 
     @SerializedName("file_size")
     private Long fileSize;
@@ -94,7 +97,8 @@ public class MiSong {
         extras.putString("file_path", filePath != null ? filePath : "");
         extras.putString("url", url != null ? url : "");
         extras.putString("cache_hash", cacheHash != null ? cacheHash : "");
-        extras.putString("lyric_url", lyricUrl != null ? lyricUrl : "");
+        extras.putString("lyric", lyric != null ? lyric : "");
+        extras.putString("lyric_source", lyricSource != null ? lyricSource : "");
         meta.setExtras(extras);
         info.setMeta(meta);
 
@@ -111,7 +115,7 @@ public class MiSong {
     public String getUrl() { return url; }
     public String getCoverUrl() { return coverUrl; }
     public String getCoverPath() { return coverPath; }
-    public String getLyricUrl() { return lyricUrl; }
+    public String getLyric() { return lyric; }
     public String getCacheHash() { return cacheHash; }
     public String getUpdatedAt() { return updatedAt; }
     public String getAddedAt() { return addedAt; }
