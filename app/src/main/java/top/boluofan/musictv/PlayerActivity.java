@@ -1,6 +1,7 @@
 package top.boluofan.musictv;
 
 import android.animation.ObjectAnimator;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,37 +9,35 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.JsonObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
-
-import java.util.Collections;
 import java.util.List;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.ResponseBody;
-import android.content.SharedPreferences;
-import com.google.gson.JsonObject;
 import top.boluofan.musictv.player.MiMusicPlayerHelper;
 
 public class PlayerActivity extends AppCompatActivity {
@@ -1273,6 +1272,7 @@ public class PlayerActivity extends AppCompatActivity {
      * 获取 MiMusic 歌词
      * 新架构(2026): lyricUrl 永远是 /api/v1/songs/{id}/lyric 端点或空字符串
      */
+    @OptIn(markerClass = UnstableApi.class)
     private void fetchMiMusicLyric(String lyricUrl) {
         Log.d(TAG, "Fetching MiMusic lyric from URL: " + lyricUrl);
         showNoLyrics("加载歌词...");
