@@ -208,6 +208,11 @@ public class LxRetrofitClient {
         return prefs.getString(KEY_TOKEN, "");
     }
 
+    public static void saveToken(Context context, String token) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_TOKEN, token == null ? "" : token).apply();
+    }
+
     public static String getMiAccessToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_MI_ACCESS_TOKEN, "");
@@ -233,8 +238,13 @@ public class LxRetrofitClient {
 
     public static String getPureServerUrl(Context context) {
         String baseUrl = getServerUrl(context);
-        if (baseUrl.isEmpty()) {
-            return "http://localhost:58091";
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            return isMiMusicApi(context)
+                    ? "http://localhost:58091"
+                    : "http://localhost:9527";
+        }
+        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            baseUrl = "http://" + baseUrl;
         }
         while (baseUrl.endsWith("/")) {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);

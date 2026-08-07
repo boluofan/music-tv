@@ -1,6 +1,9 @@
 package top.boluofan.musictv;
 
 import android.animation.ObjectAnimator;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
@@ -646,15 +650,15 @@ public class PlayerActivity extends AppCompatActivity {
             public void onPlayerError(androidx.media3.common.PlaybackException error) {
                 String errorMsg = error.getErrorCodeName() + " - " + error.getMessage();
                 Throwable cause = error.getCause();
-                if (cause != null) {
-                    if (cause.getMessage() != null) {
-                        errorMsg += "\nCause: " + cause.getMessage();
-                    } else {
-                        errorMsg += "\nCause: " + cause.toString();
-                    }
+                int depth = 0;
+                while (cause != null && depth < 4) {
+                    String causeMessage = cause.getMessage();
+                    errorMsg += "\nCause: " + (causeMessage != null ? causeMessage : cause.toString());
+                    cause = cause.getCause();
+                    depth++;
                 }
                 Log.e(TAG, "Player Error: " + errorMsg);
-                Toast.makeText(PlayerActivity.this, "播放失败: " + errorMsg, Toast.LENGTH_LONG).show();
+                showPlaybackError(errorMsg);
             }
         });
         
@@ -668,6 +672,30 @@ public class PlayerActivity extends AppCompatActivity {
         }
         if (player.isPlaying()) startProgressUpdater();
         updateControlsUI();
+    }
+
+    private void showPlaybackError(String errorMessage) {
+        String versionName = "unknown";
+        try {
+            versionName = getPackageManager()
+                    .getPackageInfo(getPackageName(), 0)
+                    .versionName;
+        } catch (Exception ignored) {
+        }
+        final String fullMessage = "版本: " + versionName + "\n\n" + errorMessage;
+        runOnUiThread(() -> new AlertDialog.Builder(PlayerActivity.this)
+                .setTitle("播放失败（完整错误）")
+                .setMessage(fullMessage)
+                .setNeutralButton("复制错误", (dialog, which) -> {
+                    ClipboardManager clipboard =
+                            (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(ClipData.newPlainText("music-tv playback error", fullMessage));
+                        Toast.makeText(PlayerActivity.this, "完整错误已复制", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setPositiveButton("关闭", null)
+                .show());
     }
 
     private void updateMetadata(MediaItem mediaItem) {
