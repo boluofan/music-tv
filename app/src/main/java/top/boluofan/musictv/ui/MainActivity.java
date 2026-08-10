@@ -78,12 +78,19 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         SessionToken sessionToken = new SessionToken(this, new ComponentName(this, MusicService.class));
-        controllerFuture = new MediaController.Builder(this, sessionToken).buildAsync();
-        controllerFuture.addListener(() -> {
+        final ListenableFuture<MediaController> pendingController =
+                new MediaController.Builder(this, sessionToken).buildAsync();
+        controllerFuture = pendingController;
+        pendingController.addListener(() -> {
             try {
-                player = controllerFuture.get();
+                MediaController resolvedController = pendingController.get();
+                if (isFinishing() || isDestroyed() || controllerFuture != pendingController) {
+                    MediaController.releaseFuture(pendingController);
+                    return;
+                }
+                player = resolvedController;
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Failed to connect media controller", e);
             }
         }, androidx.core.content.ContextCompat.getMainExecutor(this));
     }
@@ -93,7 +100,9 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
         if (controllerFuture != null) {
             MediaController.releaseFuture(controllerFuture);
+            controllerFuture = null;
         }
+        player = null;
     }
 
     private void initViews() {

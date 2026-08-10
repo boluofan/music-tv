@@ -3,8 +3,6 @@ package top.boluofan.musictv;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.OptIn;
@@ -22,15 +20,11 @@ import androidx.media3.session.MediaSessionService;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
-import retrofit2.Call;
-import retrofit2.Callback;
 import retrofit2.Response;
 import top.boluofan.musictv.api.LxApiService;
 import top.boluofan.musictv.api.LxRetrofitClient;
+import top.boluofan.musictv.api.model.LoginResponse;
 import top.boluofan.musictv.api.model.MusicUrlResponse;
 
 public class MusicService extends MediaSessionService {
@@ -38,20 +32,16 @@ public class MusicService extends MediaSessionService {
     private static final String PREFS_NAME = "LxMusicPrefs";
     private static final String RESOLVE_SCHEME = "lxmusic";
     private static final String RESOLVE_HOST = "resolve";
-    private static final int RESOLVE_TIMEOUT_SECONDS = 30;
 
     private MediaSession mediaSession;
     private ExoPlayer player;
     private LxApiService apiService;
-    private Handler mainHandler;
     private String quality;
 
     @OptIn(markerClass = UnstableApi.class)
     @Override
     public void onCreate() {
         super.onCreate();
-
-        mainHandler = new Handler(Looper.getMainLooper());
 
         android.content.SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         quality = settings.getString("quality", LxRetrofitClient.QUALITY_320K);
@@ -84,7 +74,7 @@ public class MusicService extends MediaSessionService {
 
                         Log.d(TAG, "Resolved URL: " + resolvedUrl);
 
-                        resolvedUrl = fixUrlFormat(resolvedUrl);
+                        resolvedUrl = preparePlaybackUrl(resolvedUrl);
 
                         return dataSpec.withUri(Uri.parse(resolvedUrl));
                     }
@@ -101,9 +91,6 @@ public class MusicService extends MediaSessionService {
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(this).setDataSourceFactory(resolvingFactory))
                 .setAudioAttributes(audioAttributes, true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
-                .setLoadControl(new androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                        .setBufferDurationsMs(15000, 30000, 1500, 2000)
-                        .build())
                 .build();
 
         Intent intent = new Intent(this, top.boluofan.musictv.ui.LibraryActivity.class);
@@ -133,7 +120,23 @@ public class MusicService extends MediaSessionService {
         return url;
     }
 
-    private String resolveMusicUrlSync(String source, String songmid, String name) {
+    private String preparePlaybackUrl(String url) throws IOException {
+        String resolvedUrl = fixUrlFormat(url);
+        String serverBaseUrl = LxRetrofitClient.getPureServerUrl(this);
+        if (serverBaseUrl == null || serverBaseUrl.isEmpty()) {
+            throw new IOException("Server address is empty");
+        }
+
+        Uri resolvedUri = Uri.parse(resolvedUrl);
+        String scheme = resolvedUri.getScheme();
+        if (scheme == null || scheme.isEmpty()) {
+            String relativePath = resolvedUrl.startsWith("/") ? resolvedUrl : "/" + resolvedUrl;
+            return serverBaseUrl + relativePath;
+        }
+        return resolvedUrl;
+    }
+
+    private String resolveMusicUrlSync(String source, String songmid, String name) throws IOException {
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> songInfo = new HashMap<>();
         songInfo.put("source", source);
@@ -144,44 +147,78 @@ public class MusicService extends MediaSessionService {
         body.put("songInfo", songInfo);
         body.put("quality", quality);
 
-        AtomicReference<String> resultUrl = new AtomicReference<>();
-        CountDownLatch latch = new CountDownLatch(1);
-
-        apiService.getMusicUrl(body).enqueue(new Callback<MusicUrlResponse>() {
-            @Override
-            public void onResponse(Call<MusicUrlResponse> call, Response<MusicUrlResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    MusicUrlResponse urlResponse = response.body();
-                    if (urlResponse.isValid()) {
-                        String url = urlResponse.getUrl();
-                        Log.d(TAG, "API returned URL: " + url);
-                        resultUrl.set(url);
-                    } else {
-                        Log.e(TAG, "Invalid URL response: " + urlResponse);
-                    }
-                } else {
-                    Log.e(TAG, "API call failed: " + response.code());
-                }
-                latch.countDown();
-            }
-
-            @Override
-            public void onFailure(Call<MusicUrlResponse> call, Throwable t) {
-                Log.e(TAG, "Failed to resolve URL: " + t.getMessage());
-                latch.countDown();
-            }
-        });
+        String username = LxRetrofitClient.getUsername(this);
+        String password = LxRetrofitClient.getPassword(this);
+        String token = LxRetrofitClient.getToken(this);
+        boolean isLxServer = LxRetrofitClient.isLXServerApi(this);
 
         try {
-            if (!latch.await(RESOLVE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                Log.e(TAG, "URL resolution timed out");
+            if (isLxServer && (token == null || token.isEmpty())
+                    && !username.isEmpty() && !password.isEmpty()) {
+                token = loginAndSaveToken(username, password);
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            Log.e(TAG, "URL resolution interrupted");
-        }
 
-        return resultUrl.get();
+            Response<MusicUrlResponse> response = apiService
+                    .getMusicUrl(username, password, token, body)
+                    .execute();
+
+            if (isLxServer && response.code() == 401
+                    && !username.isEmpty() && !password.isEmpty()) {
+                token = loginAndSaveToken(username, password);
+                if (token != null && !token.isEmpty()) {
+                    response = apiService
+                            .getMusicUrl(username, password, token, body)
+                            .execute();
+                }
+            }
+
+            if (response.isSuccessful() && response.body() != null) {
+                MusicUrlResponse urlResponse = response.body();
+                if (urlResponse.isValid()) {
+                    String url = urlResponse.getUrl();
+                    Log.d(TAG, "API returned URL: " + url);
+                    return url;
+                }
+                throw new IOException("Server returned an empty music URL");
+            }
+
+            String detail = "";
+            if (response.errorBody() != null) {
+                detail = response.errorBody().string();
+                if (detail.length() > 8000) {
+                    detail = detail.substring(0, 8000) + "\n…(truncated after 8000 characters)";
+                }
+            }
+            throw new IOException("Music URL request failed: HTTP "
+                    + response.code() + (detail.isEmpty() ? "" : " - " + detail));
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to resolve URL: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    private String loginAndSaveToken(String username, String password) {
+        Map<String, String> credentials = new HashMap<>();
+        credentials.put("username", username);
+        credentials.put("password", password);
+
+        try {
+            Response<LoginResponse> response = LxRetrofitClient
+                    .getLxAuthService(this)
+                    .loginUser(credentials)
+                    .execute();
+            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                String token = response.body().getToken();
+                if (token != null && !token.isEmpty()) {
+                    LxRetrofitClient.saveToken(this, token);
+                    return token;
+                }
+            }
+            Log.e(TAG, "LXserver login failed while refreshing playback token: " + response.code());
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to refresh playback token: " + e.getMessage());
+        }
+        return null;
     }
 
     public static Uri buildResolveUri(String source, String songmid, String name) {

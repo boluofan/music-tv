@@ -29,6 +29,9 @@ public interface LxApiService {
     @POST("verify")
     Call<LoginResponse> verifyUser(@Body Map<String, String> body);
 
+    @POST("login")
+    Call<LoginResponse> loginUser(@Body Map<String, String> body);
+
     @POST("auth/login")
     Call<MiAuthTokenResponse> miMusicLogin(@Body Map<String, String> body);
 
@@ -56,7 +59,12 @@ public interface LxApiService {
     );
 
     @POST("url")
-    Call<MusicUrlResponse> getMusicUrl(@Body Map<String, Object> body);
+    Call<MusicUrlResponse> getMusicUrl(
+            @Header("x-user-name") String username,
+            @Header("x-user-password") String password,
+            @Header("x-user-token") String token,
+            @Body Map<String, Object> body
+    );
 
     @GET("lyric")
     Call<LyricInfo> getLyric(@Query("source") String source, @Query("songmid") String songmid, @Query("quality") String quality);

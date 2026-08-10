@@ -47,10 +47,11 @@ public class MusicRepository {
         body.put("username", username);
         body.put("password", password);
 
-        apiService.verifyUser(body).enqueue(new retrofit2.Callback<LoginResponse>() {
+        apiService.loginUser(body).enqueue(new retrofit2.Callback<LoginResponse>() {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    LxRetrofitClient.saveToken(context, response.body().getToken());
                     callback.onSuccess(true);
                 } else {
                     callback.onError("认证失败");
@@ -130,7 +131,12 @@ public class MusicRepository {
         body.put("songInfo", songInfo);
         body.put("quality", quality);
 
-        apiService.getMusicUrl(body).enqueue(new retrofit2.Callback<MusicUrlResponse>() {
+        String username = LxRetrofitClient.getUsername(context);
+        String password = LxRetrofitClient.getPassword(context);
+        String token = LxRetrofitClient.getToken(context);
+
+        LxApiService musicApiService = LxRetrofitClient.getApiService(context);
+        musicApiService.getMusicUrl(username, password, token, body).enqueue(new retrofit2.Callback<MusicUrlResponse>() {
             @Override
             public void onResponse(Call<MusicUrlResponse> call, Response<MusicUrlResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {

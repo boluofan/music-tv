@@ -29,7 +29,6 @@ import androidx.media3.session.SessionToken;
 
 import com.bumptech.glide.Glide;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
 
 public class FloatingPlayerWindow {
     private static final String TAG = "FloatingPlayerWindow";
@@ -56,6 +55,7 @@ public class FloatingPlayerWindow {
     private Runnable fadeOutRunnable;
     private boolean isPlaying = false;
     private boolean isConnected = false;
+    private boolean isReleased = false;
     private boolean isFadedOut = false;
     private boolean isFocused = false;
     private int collapsedWidth = 96;
@@ -328,15 +328,22 @@ public class FloatingPlayerWindow {
     }
 
     public void connectToService() {
-        if (isConnected) return;
+        if (isConnected || isReleased) return;
         
         SessionToken sessionToken = new SessionToken(context, 
                 new ComponentName(context, MusicService.class));
         
-        controllerFuture = new MediaController.Builder(context, sessionToken).buildAsync();
-        controllerFuture.addListener(() -> {
+        final ListenableFuture<MediaController> pendingController =
+                new MediaController.Builder(context, sessionToken).buildAsync();
+        controllerFuture = pendingController;
+        pendingController.addListener(() -> {
             try {
-                player = controllerFuture.get();
+                MediaController resolvedController = pendingController.get();
+                if (isReleased || activity.isFinishing() || activity.isDestroyed()) {
+                    MediaController.releaseFuture(pendingController);
+                    return;
+                }
+                player = resolvedController;
                 isConnected = true;
                 playerListener = new Player.Listener() {
                     @Override
@@ -362,7 +369,7 @@ public class FloatingPlayerWindow {
             } catch (Exception e) {
                 Log.e(TAG, "Failed to get MediaController: " + e.getMessage());
             }
-        }, MoreExecutors.directExecutor());
+        }, androidx.core.content.ContextCompat.getMainExecutor(activity));
     }
 
     private void updatePlayPauseButton() {
@@ -455,6 +462,8 @@ public class FloatingPlayerWindow {
     }
 
     public void release() {
+        if (isReleased) return;
+        isReleased = true;
         isFocused = false;
         if (scaleAnim != null) {
             scaleAnim.cancel();
@@ -477,6 +486,7 @@ public class FloatingPlayerWindow {
         }
         if (controllerFuture != null) {
             MediaController.releaseFuture(controllerFuture);
+            controllerFuture = null;
         }
         
         if (container != null) {
@@ -496,6 +506,8 @@ public class FloatingPlayerWindow {
         }
         
         isConnected = false;
+        player = null;
+        playerListener = null;
     }
     
     public View getContainer() {
