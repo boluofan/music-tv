@@ -247,8 +247,8 @@ fun TvApp(
                                         albumId = album.id ?: "",
                                         albumName = album.name ?: "专辑",
                                         source = source,
-                                        cover = album.img,
-                                        singer = album.singer
+                                        cover = album.coverUrl,
+                                        singer = album.singerName
                                     )
                                 )
                             },
@@ -321,8 +321,8 @@ fun TvApp(
                                         albumId = album.id ?: "",
                                         albumName = album.name ?: "专辑",
                                         source = source,
-                                        cover = album.img,
-                                        singer = album.singer
+                                        cover = album.coverUrl,
+                                        singer = album.singerName
                                     )
                                 )
                             },

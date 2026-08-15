@@ -12,6 +12,7 @@ data class Playlist(
     @SerializedName("img") val img: String? = null,
     @SerializedName("desc") val desc: String? = null,
     @SerializedName("songCount") val songCount: Int? = null,
+    @SerializedName("trackCount") val trackCount: Int? = null,
     @SerializedName("total") val total: String? = null,
     @SerializedName("time") val time: String? = null,
     @SerializedName("createTime") val createTime: Long? = null,
@@ -36,7 +37,7 @@ data class Playlist(
         get() = info?.desc?.takeIf { it.isNotEmpty() } ?: desc
 
     val count: Int
-        get() = songCount ?: total?.toIntOrNull() ?: songs?.size ?: 0
+        get() = songCount ?: trackCount ?: total?.toIntOrNull() ?: songs?.size ?: 0
 
     val formattedPlayCount: String
         get() {

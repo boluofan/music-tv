@@ -12,9 +12,10 @@ data class SearchArtistItem(
     @SerializedName(value = "name", alternate = ["singername", "artistName"]) val name: String? = null,
     @SerializedName("avatar") val avatar: String? = null,
     @SerializedName("pic") val pic: String? = null,
-    @SerializedName("img") val img: String? = null
+    @SerializedName("img") val img: String? = null,
+    @SerializedName("picUrl") val picUrlField: String? = null
 ) {
-    val picUrl: String? get() = avatar ?: pic ?: img
+    val picUrl: String? get() = picUrlField ?: avatar ?: pic ?: img
 }
 
 data class SongListTagsResponse(
@@ -104,10 +105,15 @@ data class AlbumItem(
     @SerializedName("id") val id: String? = null,
     @SerializedName("name") val name: String? = null,
     @SerializedName("img") val img: String? = null,
+    @SerializedName("picUrl") val picUrlField: String? = null,
     @SerializedName("singer") val singer: String? = null,
+    @SerializedName(value = "artistName", alternate = ["artist"]) val artistName: String? = null,
     @SerializedName("publishTime") val publishTime: String? = null,
     @SerializedName("total") val total: String? = null
-)
+) {
+    val coverUrl: String? get() = picUrlField ?: img
+    val singerName: String? get() = artistName ?: singer
+}
 
 data class AlbumSongsResponse(
     @SerializedName("list") val list: List<MusicInfo>? = null,

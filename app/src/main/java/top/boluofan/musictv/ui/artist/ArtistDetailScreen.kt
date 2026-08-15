@@ -255,7 +255,7 @@ private fun AlbumCard(album: AlbumItem, onClick: () -> Unit) {
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(10.dp))
         ) {
-            CoverImage(url = album.img, contentDescription = album.name)
+            CoverImage(url = album.coverUrl, contentDescription = album.name)
         }
         Text(
             text = album.name ?: "",
@@ -268,7 +268,7 @@ private fun AlbumCard(album: AlbumItem, onClick: () -> Unit) {
         )
         Text(
             text = buildString {
-                album.singer?.takeIf { it.isNotEmpty() }?.let { append(it) }
+                album.singerName?.takeIf { it.isNotEmpty() }?.let { append(it) }
                 album.total?.takeIf { it.isNotEmpty() }?.let {
                     if (isNotEmpty()) append(" · ")
                     append("$it 首")

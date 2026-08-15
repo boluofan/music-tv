@@ -129,7 +129,10 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     }
                 },
                 onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(isSearching = false, error = e.message)
+                    _uiState.value = _uiState.value.copy(
+                        isSearching = false,
+                        error = friendlySearchError(e, state.type, state.source)
+                    )
                 }
             )
         }
@@ -143,5 +146,13 @@ class SearchViewModel @Inject constructor() : ViewModel() {
             songResults = emptyList(), singerResults = emptyList(),
             albumResults = emptyList(), playlistResults = emptyList(), error = null
         )
+    }
+
+    private fun friendlySearchError(e: Throwable, type: SearchType, source: String): String {
+        val serverMsg = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()
+        if (serverMsg != null && serverMsg.contains("does not support")) {
+            return "音乐源 $source 不支持${type.label}搜索，请切换音乐源（如 tx/wy）"
+        }
+        return e.message ?: "搜索失败"
     }
 }

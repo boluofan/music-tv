@@ -75,7 +75,8 @@ interface LxMusicApi {
         @Query("name") name: String,
         @Query("source") source: String,
         @Query("page") page: Int,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("type") type: String = "singer"
     ): List<SearchArtistItem>
 
     @GET("search")
@@ -83,7 +84,8 @@ interface LxMusicApi {
         @Query("name") name: String,
         @Query("source") source: String,
         @Query("page") page: Int,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("type") type: String = "album"
     ): List<AlbumItem>
 
     @GET("search")
@@ -91,7 +93,8 @@ interface LxMusicApi {
         @Query("name") name: String,
         @Query("source") source: String,
         @Query("page") page: Int,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("type") type: String = "playlist"
     ): List<Playlist>
 
     @POST("url")

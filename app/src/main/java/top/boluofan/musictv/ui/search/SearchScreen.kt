@@ -649,7 +649,7 @@ private fun AlbumCard(
             contentAlignment = Alignment.Center
         ) {
             CoverImage(
-                url = album.img,
+                url = album.coverUrl,
                 contentDescription = album.name,
                 modifier = Modifier.fillMaxSize()
             )
@@ -665,7 +665,7 @@ private fun AlbumCard(
         )
         Text(
             text = listOfNotNull(
-                album.singer?.takeIf { it.isNotEmpty() },
+                album.singerName?.takeIf { it.isNotEmpty() },
                 album.total?.takeIf { it.isNotEmpty() }?.let { "$it 首" }
             ).joinToString(" · "),
             fontSize = 12.sp,
