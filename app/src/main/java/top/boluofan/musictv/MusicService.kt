@@ -1,229 +1,147 @@
-package top.boluofan.musictv;
+package top.boluofan.musictv
 
-import android.app.PendingIntent;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
-import android.util.Log;
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import top.boluofan.musictv.data.api.ApiClient
+import top.boluofan.musictv.data.storage.PreferencesDataStore
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
 
-import androidx.annotation.OptIn;
-import androidx.media3.common.AudioAttributes;
-import androidx.media3.common.C;
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.datasource.DefaultHttpDataSource;
-import androidx.media3.datasource.ResolvingDataSource;
-import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-import androidx.media3.session.DefaultMediaNotificationProvider;
-import androidx.media3.session.MediaSession;
-import androidx.media3.session.MediaSessionService;
+@AndroidEntryPoint
+class MusicService : MediaSessionService() {
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+    @Inject lateinit var dataStore: PreferencesDataStore
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import top.boluofan.musictv.api.LxApiService;
-import top.boluofan.musictv.api.LxRetrofitClient;
-import top.boluofan.musictv.api.model.MusicUrlResponse;
+    private var mediaSession: MediaSession? = null
+    private var player: ExoPlayer? = null
 
-public class MusicService extends MediaSessionService {
-    private static final String TAG = "MusicService";
-    private static final String PREFS_NAME = "LxMusicPrefs";
-    private static final String RESOLVE_SCHEME = "lxmusic";
-    private static final String RESOLVE_HOST = "resolve";
-    private static final int RESOLVE_TIMEOUT_SECONDS = 30;
+    // 播放地址缓存：同一首歌重复播放不再请求 /api/music/url
+    private val urlCache = ConcurrentHashMap<String, String>()
 
-    private MediaSession mediaSession;
-    private ExoPlayer player;
-    private LxApiService apiService;
-    private Handler mainHandler;
-    private String quality;
+    @OptIn(UnstableApi::class)
+    override fun onCreate() {
+        super.onCreate()
 
-    @OptIn(markerClass = UnstableApi.class)
-    @Override
-    public void onCreate() {
-        super.onCreate();
+        val quality = runCatching { runBlocking { dataStore.quality.first() } }.getOrDefault("320k")
 
-        mainHandler = new Handler(Looper.getMainLooper());
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setUserAgent(USER_AGENT)
 
-        android.content.SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-        quality = settings.getString("quality", LxRetrofitClient.QUALITY_320K);
-
-        apiService = LxRetrofitClient.getApiService(this);
-
-        DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
-                .setAllowCrossProtocolRedirects(true)
-                .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-
-        ResolvingDataSource.Factory resolvingFactory = new ResolvingDataSource.Factory(
-                httpDataSourceFactory,
-                dataSpec -> {
-                    Uri uri = dataSpec.uri;
-                    if (RESOLVE_SCHEME.equals(uri.getScheme()) && RESOLVE_HOST.equals(uri.getHost())) {
-                        String source = uri.getQueryParameter("source");
-                        String songmid = uri.getQueryParameter("songmid");
-                        String name = uri.getQueryParameter("name");
-
-                        if (source == null || songmid == null || songmid.isEmpty()) {
-                            throw new IOException("Missing or empty source or songmid for URL resolution");
-                        }
-
-                        Log.d(TAG, "Resolving URL for: source=" + source + ", songmid=" + songmid + ", name=" + name);
-
-                        String resolvedUrl = resolveMusicUrlSync(source, songmid, name);
-                        if (resolvedUrl == null || resolvedUrl.isEmpty()) {
-                            throw new IOException("Failed to resolve music URL");
-                        }
-
-                        Log.d(TAG, "Resolved URL: " + resolvedUrl);
-
-                        resolvedUrl = fixUrlFormat(resolvedUrl);
-
-                        return dataSpec.withUri(Uri.parse(resolvedUrl));
-                    }
-                    return dataSpec;
-                }
-        );
-
-        AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                .build();
-
-        player = new ExoPlayer.Builder(this)
-                .setMediaSourceFactory(new DefaultMediaSourceFactory(this).setDataSourceFactory(resolvingFactory))
-                .setAudioAttributes(audioAttributes, true)
-                .setWakeMode(C.WAKE_MODE_NETWORK)
-                .setLoadControl(new androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                        .setBufferDurationsMs(15000, 30000, 1500, 2000)
-                        .build())
-                .build();
-
-        Intent intent = new Intent(this, top.boluofan.musictv.ui.LibraryActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this, 0, intent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
-        mediaSession = new MediaSession.Builder(this, player)
-                .setSessionActivity(pendingIntent)
-                .setId("top.boluofan.musictv.session")
-                .build();
-
-        DefaultMediaNotificationProvider notificationProvider = new DefaultMediaNotificationProvider.Builder(this).build();
-        setMediaNotificationProvider(notificationProvider);
-    }
-
-    private String fixUrlFormat(String url) {
-        if (url == null) return url;
-        
-        if (url.contains("&redirect=1") && !url.contains("?")) {
-            url = url.replace("&redirect=1", "?redirect=1");
-            Log.d(TAG, "Fixed URL format: " + url);
-        }
-        
-        return url;
-    }
-
-    private String resolveMusicUrlSync(String source, String songmid, String name) {
-        Map<String, Object> body = new HashMap<>();
-        Map<String, Object> songInfo = new HashMap<>();
-        songInfo.put("source", source);
-        songInfo.put("songmid", songmid);
-        if (name != null) {
-            songInfo.put("name", name);
-        }
-        body.put("songInfo", songInfo);
-        body.put("quality", quality);
-
-        AtomicReference<String> resultUrl = new AtomicReference<>();
-        CountDownLatch latch = new CountDownLatch(1);
-
-        apiService.getMusicUrl(body).enqueue(new Callback<MusicUrlResponse>() {
-            @Override
-            public void onResponse(Call<MusicUrlResponse> call, Response<MusicUrlResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    MusicUrlResponse urlResponse = response.body();
-                    if (urlResponse.isValid()) {
-                        String url = urlResponse.getUrl();
-                        Log.d(TAG, "API returned URL: " + url);
-                        resultUrl.set(url);
-                    } else {
-                        Log.e(TAG, "Invalid URL response: " + urlResponse);
-                    }
-                } else {
-                    Log.e(TAG, "API call failed: " + response.code());
-                }
-                latch.countDown();
+        // 队列中的歌曲以 lxmusic://resolve 占位 URI 入队，播放到该曲时才解析真实地址
+        val resolvingFactory = ResolvingDataSource.Factory(
+            httpDataSourceFactory
+        ) { dataSpec ->
+            val uri = dataSpec.uri
+            if (uri.scheme != RESOLVE_SCHEME || uri.host != RESOLVE_HOST) return@Factory dataSpec
+            val source = uri.getQueryParameter("source")
+            val songmid = uri.getQueryParameter("songmid")
+            if (source.isNullOrEmpty() || songmid.isNullOrEmpty()) {
+                throw IOException("resolve 参数缺失：source=$source songmid=$songmid")
             }
-
-            @Override
-            public void onFailure(Call<MusicUrlResponse> call, Throwable t) {
-                Log.e(TAG, "Failed to resolve URL: " + t.getMessage());
-                latch.countDown();
-            }
-        });
-
-        try {
-            if (!latch.await(RESOLVE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                Log.e(TAG, "URL resolution timed out");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            Log.e(TAG, "URL resolution interrupted");
+            val cacheKey = "$source:$songmid"
+            val resolved = urlCache[cacheKey] ?: resolveMusicUrl(
+                source, songmid, uri.getQueryParameter("name"), quality
+            ) ?: throw IOException("获取播放地址失败：${uri.getQueryParameter("name")}")
+            urlCache[cacheKey] = resolved
+            dataSpec.withUri(Uri.parse(resolved))
         }
 
-        return resultUrl.get();
+        player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(resolvingFactory))
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .setUsage(C.USAGE_MEDIA)
+                    .build(),
+                true
+            )
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+
+        val sessionActivityIntent = Intent(this, PlayerActivity::class.java)
+        val sessionActivityPendingIntent = PendingIntent.getActivity(
+            this, 0, sessionActivityIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        mediaSession = MediaSession.Builder(this, player!!)
+            .setSessionActivity(sessionActivityPendingIntent)
+            .build()
     }
 
-    public static Uri buildResolveUri(String source, String songmid, String name) {
-        Uri.Builder builder = new Uri.Builder()
+    /** 请求 lxserver 获取播放地址；ApiClient 拦截器自动附加 x-user-name/x-user-token */
+    private fun resolveMusicUrl(source: String, songmid: String, name: String?, quality: String): String? {
+        return runCatching {
+            val songInfo = HashMap<String, Any?>()
+            songInfo["source"] = source
+            songInfo["songmid"] = songmid
+            if (!name.isNullOrBlank()) songInfo["name"] = name
+            runBlocking {
+                ApiClient.getMusicApi().getMusicUrl(
+                    mapOf(
+                        "songInfo" to songInfo,
+                        "quality" to quality,
+                        "enableAutoSwitchApiSource" to true
+                    )
+                )
+            }.url
+        }.onFailure { Log.e(TAG, "解析播放地址失败：source=$source songmid=$songmid", it) }
+            .getOrNull()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (player != null && !player!!.playWhenReady) {
+            stopSelf()
+        }
+    }
+
+    override fun onDestroy() {
+        mediaSession?.release()
+        mediaSession = null
+        player?.release()
+        player = null
+        super.onDestroy()
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+        mediaSession
+
+    companion object {
+        private const val TAG = "MusicService"
+        private const val RESOLVE_SCHEME = "lxmusic"
+        private const val RESOLVE_HOST = "resolve"
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+        /** v1 兼容入口：构造占位 URI，实际解析在服务端 ResolvingDataSource 中完成 */
+        @JvmStatic
+        fun buildResolveUri(source: String?, songmid: String?, name: String?): Uri {
+            val builder = Uri.Builder()
                 .scheme(RESOLVE_SCHEME)
                 .authority(RESOLVE_HOST)
-                .appendQueryParameter("source", source)
-                .appendQueryParameter("songmid", songmid);
-        if (name != null) {
-            builder.appendQueryParameter("name", name);
+                .appendQueryParameter("source", source ?: "")
+                .appendQueryParameter("songmid", songmid ?: "")
+            if (!name.isNullOrBlank()) {
+                builder.appendQueryParameter("name", name)
+            }
+            return builder.build()
         }
-        return builder.build();
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        super.onStartCommand(intent, flags, startId);
-        return START_STICKY;
-    }
-
-    @Override
-    public void onTaskRemoved(Intent rootIntent) {
-        if (player != null && !player.getPlayWhenReady()) {
-            stopSelf();
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        if (mediaSession != null) {
-            mediaSession.release();
-            mediaSession = null;
-        }
-        if (player != null) {
-            player.release();
-            player = null;
-        }
-        super.onDestroy();
-    }
-
-    @Override
-    public MediaSession onGetSession(MediaSession.ControllerInfo controllerInfo) {
-        return mediaSession;
     }
 }

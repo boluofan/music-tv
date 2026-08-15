@@ -1,22 +1,27 @@
-package top.boluofan.musictv;
+package top.boluofan.musictv
 
-import android.app.Application;
-import android.content.Context;
+import android.app.Application
+import android.content.Context
+import dagger.hilt.android.HiltAndroidApp
+import top.boluofan.musictv.data.api.TlsCompat
 
-public class MusicTvApp extends Application {
-    private static MusicTvApp instance;
+@HiltAndroidApp
+class MusicTvApp : Application() {
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        instance = this;
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+        // Android < 7.1.1 内置 ISRG Root X1，兼容 Let's Encrypt 服务器
+        TlsCompat.initialize(this)
     }
 
-    public static MusicTvApp getInstance() {
-        return instance;
-    }
+    companion object {
+        private lateinit var instance: MusicTvApp
 
-    public static Context getAppContext() {
-        return instance;
+        @JvmStatic
+        fun getInstance(): MusicTvApp = instance
+
+        @JvmStatic
+        fun getAppContext(): Context = instance
     }
 }
