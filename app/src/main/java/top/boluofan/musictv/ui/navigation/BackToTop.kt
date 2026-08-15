@@ -27,6 +27,28 @@ class TabBarBridge {
 
 val LocalTabBarBridge = compositionLocalOf<TabBarBridge?> { null }
 
+/** 悬浮播放器焦点桥：歌曲列表最右侧按钮按 → 时把焦点转移到悬浮播放器 */
+@Stable
+class PlayerBarBridge {
+    val playerFocusRequester = FocusRequester()
+
+    /** 悬浮播放器当前是否可见（有当前歌曲），由 MainActivity 维护 */
+    var visible by mutableStateOf(false)
+
+    /** 悬浮播放器可聚焦且转移成功时返回 true，调用方应消费该按键事件 */
+    fun requestPlayerFocus(): Boolean {
+        if (!visible) return false
+        return try {
+            playerFocusRequester.requestFocus()
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+}
+
+val LocalPlayerBarBridge = compositionLocalOf<PlayerBarBridge?> { null }
+
 /** 全局「返回顶部/返回底部」回调桥：当前组合中的页面注册自己的滚动实现，
  *  MainActivity 拦截到自定义按键后调用，实现任何界面快速滚动到顶/底 */
 @Stable

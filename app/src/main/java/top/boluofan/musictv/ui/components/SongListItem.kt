@@ -1,5 +1,6 @@
 package top.boluofan.musictv.ui.components
 
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -37,12 +38,18 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.boluofan.musictv.data.model.MusicInfo
+import top.boluofan.musictv.ui.navigation.LocalPlayerBarBridge
 
 enum class SongItemFavoriteMode {
     NONE,
@@ -67,6 +74,7 @@ fun SongListItem(
     var favFocused by remember { mutableStateOf(false) }
     var addFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val playerBridge = LocalPlayerBarBridge.current
     val scale by animateFloatAsState(
         targetValue = if (rowActive) 1.03f else 1.0f,
         animationSpec = tween(150),
@@ -167,6 +175,13 @@ fun SongListItem(
                         if (addFocused) MaterialTheme.colorScheme.primary else Color.Transparent
                     )
                     .onFocusChanged { addFocused = it.isFocused }
+                    .then(
+                        if (playerBridge != null) Modifier.onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown &&
+                                event.key.nativeKeyCode == AndroidKeyEvent.KEYCODE_DPAD_RIGHT
+                            ) playerBridge.requestPlayerFocus() else false
+                        } else Modifier
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -193,6 +208,13 @@ fun SongListItem(
                         if (favFocused) MaterialTheme.colorScheme.primary else Color.Transparent
                     )
                     .onFocusChanged { favFocused = it.isFocused }
+                    .then(
+                        if (playerBridge != null) Modifier.onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown &&
+                                event.key.nativeKeyCode == AndroidKeyEvent.KEYCODE_DPAD_RIGHT
+                            ) playerBridge.requestPlayerFocus() else false
+                        } else Modifier
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null

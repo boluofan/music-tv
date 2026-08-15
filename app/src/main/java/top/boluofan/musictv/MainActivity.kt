@@ -22,6 +22,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -58,8 +59,10 @@ import top.boluofan.musictv.ui.discover.LeaderboardDetailScreen
 import top.boluofan.musictv.ui.home.HomeScreen
 import top.boluofan.musictv.ui.my.MyScreen
 import top.boluofan.musictv.ui.navigation.LocalPageScrollBridge
+import top.boluofan.musictv.ui.navigation.LocalPlayerBarBridge
 import top.boluofan.musictv.ui.navigation.LocalTabBarBridge
 import top.boluofan.musictv.ui.navigation.PageScrollBridge
+import top.boluofan.musictv.ui.navigation.PlayerBarBridge
 import top.boluofan.musictv.ui.navigation.Screen
 import top.boluofan.musictv.ui.navigation.TabBarBridge
 import top.boluofan.musictv.ui.navigation.TvBottomNav
@@ -145,6 +148,7 @@ fun TvApp(
     val currentScreen = backStack.last()
     val stateHolder = rememberSaveableStateHolder()
     val tabBarBridge = remember { TabBarBridge() }
+    val playerBarBridge = remember { PlayerBarBridge() }
     val pageScrollBridge = remember { PageScrollBridge() }
     var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -187,6 +191,7 @@ fun TvApp(
 
     CompositionLocalProvider(
         LocalTabBarBridge provides tabBarBridge,
+        LocalPlayerBarBridge provides playerBarBridge,
         LocalPageScrollBridge provides pageScrollBridge
     ) {
         Scaffold(
@@ -346,6 +351,10 @@ fun TvApp(
                 }
 
                 // 悬浮播放器：有当前歌曲时显示，点击进入播放器页
+                DisposableEffect(playbackState.currentSong != null) {
+                    playerBarBridge.visible = playbackState.currentSong != null
+                    onDispose { playerBarBridge.visible = false }
+                }
                 playbackState.currentSong?.let { song ->
                     FloatingPlayerBar(
                         title = song.name ?: "",
@@ -359,7 +368,8 @@ fun TvApp(
                         },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(24.dp)
+                            .padding(24.dp),
+                        focusRequester = playerBarBridge.playerFocusRequester
                     )
                 }
             }
