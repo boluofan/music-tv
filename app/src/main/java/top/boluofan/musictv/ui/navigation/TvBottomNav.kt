@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
+import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 @Composable
 fun TvBottomNav(
@@ -68,7 +69,14 @@ fun TvBottomNav(
                     )
                     .then(
                         if (isFocused) Modifier.background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            RoundedCornerShape(8.dp)
+                        ) else Modifier
+                    )
+                    .then(
+                        if (isFocused) Modifier.border(
+                            3.dp,
+                            if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
                             RoundedCornerShape(8.dp)
                         ) else Modifier
                     )

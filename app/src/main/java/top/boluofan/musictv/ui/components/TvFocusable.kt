@@ -3,6 +3,7 @@ package top.boluofan.musictv.ui.components
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -25,11 +26,12 @@ import androidx.compose.ui.unit.dp
 object TvFocusDefaults {
     val scaleIn = 1.05f
     val scaleOut = 1.0f
-    val shadowElevationIn = 8.dp
+    val shadowElevationIn = 0.dp
     val shadowElevationOut = 0.dp
-    val borderWidth = 2.dp
+    val borderWidth = 3.dp
     val animationDuration = 150
     val cornerRadius = 12.dp
+    val focusFillAlpha = 0.15f
 }
 
 fun Modifier.tvFocusable(
@@ -37,6 +39,7 @@ fun Modifier.tvFocusable(
     shadowElevationIn: Dp = TvFocusDefaults.shadowElevationIn,
     cornerRadius: Dp = TvFocusDefaults.cornerRadius,
     borderColor: Color? = null,
+    focusedFill: Boolean = true,
     onClick: (() -> Unit)? = null
 ): Modifier = composed(
     factory = {
@@ -60,6 +63,12 @@ fun Modifier.tvFocusable(
         this
             .scale(scale)
             .shadow(elevation, shape)
+            .then(
+                if (isFocused && focusedFill) Modifier.background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = TvFocusDefaults.focusFillAlpha),
+                    shape
+                ) else Modifier
+            )
             .then(
                 if (isFocused) Modifier.border(
                     width = TvFocusDefaults.borderWidth,

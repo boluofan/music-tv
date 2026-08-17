@@ -237,7 +237,7 @@ private fun KeyboardKey(
             .then(
                 when {
                     isFocused -> Modifier.border(
-                        2.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp)
+                        3.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp)
                     )
                     isTokenKey -> Modifier.border(
                         1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), RoundedCornerShape(8.dp)

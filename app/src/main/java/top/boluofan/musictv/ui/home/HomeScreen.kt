@@ -117,7 +117,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                                .tvFocusable(cornerRadius = 8.dp, onClick = { viewModel.load() })
+                                .tvFocusable(cornerRadius = 8.dp, focusedFill = false, onClick = { viewModel.load() })
                                 .padding(horizontal = 24.dp, vertical = 10.dp)
                         )
                     }
@@ -244,7 +244,7 @@ private fun PlaylistGridCard(
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }

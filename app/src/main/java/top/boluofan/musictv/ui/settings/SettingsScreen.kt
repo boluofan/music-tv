@@ -301,12 +301,12 @@ fun SettingsScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (checkUpdateFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                if (checkUpdateFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                 else Color.Transparent
                             )
                             .then(
                                 if (checkUpdateFocused) Modifier.border(
-                                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
                                 ) else Modifier
                             )
                             .onFocusChanged { checkUpdateFocused = it.isFocused }
@@ -398,12 +398,12 @@ private fun DangerTextButton(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+                if (isFocused) MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                 else Color.Transparent
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(8.dp)
+                    3.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(8.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
@@ -456,17 +456,17 @@ private fun DangerConfirmDialog(
                     text = "取消",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (cancelFocused) MaterialTheme.colorScheme.onSurface
+                    color = if (cancelFocused) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (cancelFocused) MaterialTheme.colorScheme.surfaceVariant
+                            if (cancelFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             else Color.Transparent
                         )
                         .then(
                             if (cancelFocused) Modifier.border(
-                                2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(8.dp)
+                                3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
                             ) else Modifier
                         )
                         .focusRequester(cancelFocus)
@@ -479,16 +479,17 @@ private fun DangerConfirmDialog(
                     text = "确认",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onError,
+                    color = if (confirmFocused) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (confirmFocused) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                            if (confirmFocused) MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                            else Color.Transparent
                         )
                         .then(
                             if (confirmFocused) Modifier.border(
-                                2.dp, MaterialTheme.colorScheme.onError, RoundedCornerShape(8.dp)
+                                3.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(8.dp)
                             ) else Modifier
                         )
                         .onFocusChanged { confirmFocused = it.isFocused }
@@ -601,13 +602,19 @@ private fun KeyMappingDialog(
                     text = "关闭",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (closeFocused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                    color = if (closeFocused) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (closeFocused) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            if (closeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            else Color.Transparent
+                        )
+                        .then(
+                            if (closeFocused) Modifier.border(
+                                3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                            ) else Modifier
                         )
                         .focusRequester(closeFocus)
                         .onFocusChanged { closeFocused = it.isFocused }
@@ -641,18 +648,18 @@ private fun KeyMappingDialog(
                     text = "取消",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (cancelFocused) MaterialTheme.colorScheme.onSurface
+                    color = if (cancelFocused) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (cancelFocused) MaterialTheme.colorScheme.surfaceVariant
+                            if (cancelFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             else Color.Transparent
                         )
                         .then(
                             if (cancelFocused) Modifier.border(
-                                2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(8.dp)
+                                3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
                             ) else Modifier
                         )
                         .focusRequester(closeFocus)
@@ -703,12 +710,12 @@ private fun SettingsItem(
                 .clickable { onClick() }
             else Modifier)
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
                 ) else Modifier
             )
             .padding(16.dp),
@@ -842,8 +849,11 @@ private fun OptionChip(label: String, isSelected: Boolean, modifier: Modifier = 
             .scale(scale)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant
+                when {
+                    isSelected -> MaterialTheme.colorScheme.primary
+                    isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
             )
             .then(
                 if (isFocused) Modifier.border(

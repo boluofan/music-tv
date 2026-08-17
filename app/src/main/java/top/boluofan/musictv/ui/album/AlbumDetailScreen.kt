@@ -1,6 +1,7 @@
 package top.boluofan.musictv.ui.album
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +23,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,13 +65,33 @@ fun AlbumDetailScreen(
         viewModel.load(albumId, source, albumName, singer, cover)
     }
 
+    var backFocused by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (backFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                    .then(
+                        if (backFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(50)
+                        ) else Modifier
+                    )
+                    .onFocusChanged { backFocused = it.isFocused }
+                    .clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = if (backFocused) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -194,9 +214,11 @@ private fun ActionChip(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (isFocused) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)
+                ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable(onClick = onClick)
@@ -206,8 +228,7 @@ private fun ActionChip(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (isFocused) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(18.dp)
         )
         Spacer(Modifier.width(6.dp))
@@ -215,8 +236,7 @@ private fun ActionChip(
             text = label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }

@@ -92,7 +92,7 @@ fun FloatingPlayerBar(
                         RoundedCornerShape(32.dp)
                     )
                     .border(
-                        2.dp,
+                        3.dp,
                         MaterialTheme.colorScheme.primary,
                         RoundedCornerShape(32.dp)
                     )

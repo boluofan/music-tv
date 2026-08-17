@@ -188,8 +188,13 @@ private fun LoginForm(viewModel: AuthViewModel) {
                         .size(52.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (eyeFocused) MaterialTheme.colorScheme.primary
+                            if (eyeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        .then(
+                            if (eyeFocused) Modifier.border(
+                                3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
+                            ) else Modifier
                         )
                         .onFocusChanged { eyeFocused = it.isFocused }
                         .clickable { passwordVisible = !passwordVisible },
@@ -199,7 +204,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
                         imageVector = if (passwordVisible) Icons.Rounded.Visibility
                                       else Icons.Rounded.VisibilityOff,
                         contentDescription = if (passwordVisible) "隐藏密码" else "显示密码",
-                        tint = if (eyeFocused) MaterialTheme.colorScheme.onPrimary
+                        tint = if (eyeFocused) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.size(22.dp)
                     )
@@ -224,7 +229,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
                     .background(if (isLoading) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary)
                     .then(
                         if (btnFocused) Modifier.border(
-                            2.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(12.dp)
+                            3.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(12.dp)
                         ) else Modifier
                     )
                     .onFocusChanged { btnFocused = it.isFocused }
@@ -388,12 +393,12 @@ private fun InputField(
             .clip(RoundedCornerShape(12.dp))
             .background(
                 if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                else if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                else if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant
             )
             .then(
                 if (focused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
                 ) else Modifier
             )
             // 仅确认键（点击）激活自定义键盘，焦点经过不弹出

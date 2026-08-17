@@ -2,6 +2,7 @@ package top.boluofan.musictv.ui.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -163,13 +165,19 @@ fun HelpDialog(onDismiss: () -> Unit) {
                 text = "我知道了",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (closeFocused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                color = if (closeFocused) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (closeFocused) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        if (closeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (closeFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                        ) else Modifier
                     )
                     .focusRequester(closeFocus)
                     .onFocusChanged { closeFocused = it.isFocused }

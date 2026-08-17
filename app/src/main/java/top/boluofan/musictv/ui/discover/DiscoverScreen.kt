@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +58,7 @@ import top.boluofan.musictv.data.model.TagGroup
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
+import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 private val SOURCES = listOf(
     "wy" to "小芸",
@@ -75,6 +77,7 @@ fun DiscoverScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
+    val sourceFocus = remember { FocusRequester() }
 
     // 滚动接近底部时懒加载下一页
     LaunchedEffect(uiState.section, uiState.selectedTagId, uiState.source) {
@@ -120,7 +123,8 @@ fun DiscoverScreen(
                 SectionChip(
                     label = DiscoverSection.SQUARE.label,
                     isSelected = uiState.section == DiscoverSection.SQUARE,
-                    focusRequester = topFocus
+                    focusRequester = topFocus,
+                    leftFocus = sourceFocus
                 ) { viewModel.switchSection(DiscoverSection.SQUARE) }
                 SectionChip(
                     label = DiscoverSection.LEADERBOARD.label,
@@ -141,6 +145,7 @@ fun DiscoverScreen(
                     SourceChip(
                         label = name,
                         isSelected = uiState.source == code,
+                        focusRequester = if (uiState.source == code) sourceFocus else null,
                         onClick = { viewModel.selectSource(code) }
                     )
                 }
@@ -290,6 +295,7 @@ private fun SectionChip(
     label: String,
     isSelected: Boolean,
     focusRequester: FocusRequester? = null,
+    leftFocus: FocusRequester? = null,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -318,7 +324,15 @@ private fun SectionChip(
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
             )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp,
+                    if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(16.dp)
+                ) else Modifier
+            )
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(if (leftFocus != null) Modifier.focusProperties { left = leftFocus } else Modifier)
             .onFocusChanged { isFocused = it.isFocused }
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -348,6 +362,7 @@ private fun RefreshButton(onClick: () -> Unit) {
 private fun SourceChip(
     label: String,
     isSelected: Boolean,
+    focusRequester: FocusRequester? = null,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -359,17 +374,25 @@ private fun SourceChip(
             .background(
                 when {
                     isSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 }
             )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp,
+                    if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(10.dp)
+                ) else Modifier
+            )
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { isFocused = it.isFocused }
             .clickable { onClick() }
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = label,
+            text = if (isSelected) "✓ $label" else label,
             fontSize = 14.sp,
             fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
             color = when {
@@ -407,6 +430,13 @@ private fun TagChip(
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
             )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp,
+                    if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(14.dp)
+                ) else Modifier
+            )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -436,7 +466,7 @@ private fun PlaylistCard(
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
@@ -503,7 +533,7 @@ private fun BoardCard(
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }

@@ -152,14 +152,20 @@ fun SongListItem(
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(
-                        if (mainFocused) MaterialTheme.colorScheme.primary else Color.Transparent
+                        if (mainFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (mainFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                        ) else Modifier
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = "播放",
-                    tint = if (mainFocused) MaterialTheme.colorScheme.onPrimary
+                    tint = if (mainFocused) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     modifier = Modifier.size(18.dp)
                 )
@@ -172,7 +178,13 @@ fun SongListItem(
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(
-                        if (addFocused) MaterialTheme.colorScheme.primary else Color.Transparent
+                        if (addFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (addFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                        ) else Modifier
                     )
                     .onFocusChanged { addFocused = it.isFocused }
                     .then(
@@ -191,7 +203,7 @@ fun SongListItem(
                 Icon(
                     imageVector = Icons.Rounded.Add,
                     contentDescription = "加歌到歌单",
-                    tint = if (addFocused) MaterialTheme.colorScheme.onPrimary
+                    tint = if (addFocused) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     modifier = Modifier.size(18.dp)
                 )
@@ -205,7 +217,13 @@ fun SongListItem(
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(
-                        if (favFocused) MaterialTheme.colorScheme.primary else Color.Transparent
+                        if (favFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (favFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                        ) else Modifier
                     )
                     .onFocusChanged { favFocused = it.isFocused }
                     .then(
@@ -230,7 +248,7 @@ fun SongListItem(
                     imageVector = if (filled) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = if (filled) "取消收藏" else "收藏",
                     tint = when {
-                        favFocused -> MaterialTheme.colorScheme.onPrimary
+                        favFocused -> MaterialTheme.colorScheme.primary
                         filled -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     },

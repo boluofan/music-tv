@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
@@ -37,10 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -245,14 +248,26 @@ private fun ArtistRow(
 ) {
     var rowActive by remember { mutableStateOf(false) }
     var removeFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val scale by animateFloatAsState(
+        targetValue = if (rowActive) 1.03f else 1.0f,
+        animationSpec = tween(150),
+        label = "myArtistRowScale"
+    )
 
     Row(
         modifier = Modifier
+            .scale(scale)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (rowActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 else MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+            )
+            .then(
+                if (rowActive) Modifier.border(
+                    1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(8.dp)
+                ) else Modifier
             )
             .onFocusChanged { rowActive = it.hasFocus },
         verticalAlignment = Alignment.CenterVertically
@@ -301,17 +316,27 @@ private fun ArtistRow(
                 .padding(end = 14.dp)
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(if (removeFocused) MaterialTheme.colorScheme.primary else Color.Transparent)
+                .background(
+                    if (removeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else Color.Transparent
+                )
+                .then(
+                    if (removeFocused) Modifier.border(
+                        3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                    ) else Modifier
+                )
                 .onFocusChanged { removeFocused = it.isFocused }
-                .clickable { onRemove() },
+                .clickable {
+                    focusManager.moveFocus(FocusDirection.Up)
+                    onRemove()
+                },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "取消收藏",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (removeFocused) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+            Icon(
+                imageVector = Icons.Rounded.Favorite,
+                contentDescription = "取消收藏",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -325,14 +350,26 @@ private fun AlbumRow(
 ) {
     var rowActive by remember { mutableStateOf(false) }
     var removeFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val scale by animateFloatAsState(
+        targetValue = if (rowActive) 1.03f else 1.0f,
+        animationSpec = tween(150),
+        label = "myAlbumRowScale"
+    )
 
     Row(
         modifier = Modifier
+            .scale(scale)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (rowActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 else MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+            )
+            .then(
+                if (rowActive) Modifier.border(
+                    1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(8.dp)
+                ) else Modifier
             )
             .onFocusChanged { rowActive = it.hasFocus },
         verticalAlignment = Alignment.CenterVertically
@@ -388,17 +425,27 @@ private fun AlbumRow(
                 .padding(end = 14.dp)
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(if (removeFocused) MaterialTheme.colorScheme.primary else Color.Transparent)
+                .background(
+                    if (removeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else Color.Transparent
+                )
+                .then(
+                    if (removeFocused) Modifier.border(
+                        3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                    ) else Modifier
+                )
                 .onFocusChanged { removeFocused = it.isFocused }
-                .clickable { onRemove() },
+                .clickable {
+                    focusManager.moveFocus(FocusDirection.Up)
+                    onRemove()
+                },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "取消收藏",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (removeFocused) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+            Icon(
+                imageVector = Icons.Rounded.Favorite,
+                contentDescription = "取消收藏",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
             )
         }
     }

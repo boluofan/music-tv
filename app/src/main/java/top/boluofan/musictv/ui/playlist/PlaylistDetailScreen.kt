@@ -171,33 +171,50 @@ fun PlaylistDetailScreen(
                             }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ActionButton(
-                                icon = Icons.Rounded.PlayArrow,
-                                label = "播放全部",
-                                onClick = {
-                                    if (uiState.songs.isNotEmpty()) onSongClick(uiState.songs, 0)
-                                },
-                                focusRequester = playAllFocus
-                            )
-                            ActionButton(
-                                icon = Icons.Rounded.Shuffle,
-                                label = "随机播放",
-                                onClick = {
-                                    if (uiState.songs.isNotEmpty()) onShufflePlay(uiState.songs)
-                                }
-                            )
+                        Column(
+                            modifier = Modifier.width(340.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                ActionButton(
+                                    icon = Icons.Rounded.PlayArrow,
+                                    label = "播放全部",
+                                    onClick = {
+                                        if (uiState.songs.isNotEmpty()) onSongClick(uiState.songs, 0)
+                                    },
+                                    focusRequester = playAllFocus,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                ActionButton(
+                                    icon = Icons.Rounded.Shuffle,
+                                    label = "随机播放",
+                                    onClick = {
+                                        if (uiState.songs.isNotEmpty()) onShufflePlay(uiState.songs)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                             if (uiState.isUserList) {
-                                ActionButton(
-                                    icon = Icons.Rounded.Edit,
-                                    label = "重命名",
-                                    onClick = { showRenameDialog = true }
-                                )
-                                ActionButton(
-                                    icon = Icons.Rounded.Delete,
-                                    label = "删除歌单",
-                                    onClick = { showDeleteDialog = true }
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    ActionButton(
+                                        icon = Icons.Rounded.Edit,
+                                        label = "重命名",
+                                        onClick = { showRenameDialog = true },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    ActionButton(
+                                        icon = Icons.Rounded.Delete,
+                                        label = "删除歌单",
+                                        onClick = { showDeleteDialog = true },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -448,7 +465,8 @@ private fun ActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    focusRequester: FocusRequester? = null
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -459,7 +477,7 @@ private fun ActionButton(
     val color = MaterialTheme.colorScheme.primary
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .scale(scale)
             .clip(RoundedCornerShape(8.dp))
@@ -476,7 +494,7 @@ private fun ActionButton(
             .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
         Text(

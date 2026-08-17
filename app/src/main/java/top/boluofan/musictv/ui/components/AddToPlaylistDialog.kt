@@ -1,6 +1,7 @@
 package top.boluofan.musictv.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -132,6 +133,11 @@ private fun PlaylistRow(
             .background(
                 if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)
+                ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable(onClick = onClick)

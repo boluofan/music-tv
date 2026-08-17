@@ -1,6 +1,7 @@
 package top.boluofan.musictv.ui.artist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -23,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,13 +68,33 @@ fun ArtistDetailScreen(
         viewModel.load(artistId, source)
     }
 
+    var backFocused by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (backFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                    .then(
+                        if (backFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(50)
+                        ) else Modifier
+                    )
+                    .onFocusChanged { backFocused = it.isFocused }
+                    .clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = if (backFocused) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(22.dp)
                 )
             }
             Text(
@@ -242,8 +263,13 @@ private fun AlbumCard(album: AlbumItem, onClick: () -> Unit) {
             .focusGroup()
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
+                ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable(onClick = onClick)

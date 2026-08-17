@@ -58,6 +58,7 @@ import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.SongListItem
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
+import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 private val SEARCH_SOURCES = listOf("kw", "kg", "tx", "wy", "mg")
 
@@ -158,12 +159,12 @@ fun SearchScreen(
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
-                        if (searchFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        if (searchFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
                     .then(
                         if (searchFocused) Modifier.border(
-                            2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
                         ) else Modifier
                     )
                     .focusRequester(searchBoxFocus)
@@ -195,6 +196,11 @@ fun SearchScreen(
                         .background(
                             if (clearFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                        .then(
+                            if (clearFocused) Modifier.border(
+                                3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                            ) else Modifier
                         )
                         .onFocusChanged { clearFocused = it.isFocused }
                         .clickable { viewModel.clearSearch() }
@@ -489,6 +495,13 @@ private fun SourceChip(label: String, isSelected: Boolean, onClick: () -> Unit) 
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
             )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp,
+                    if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(14.dp)
+                ) else Modifier
+            )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -515,6 +528,13 @@ private fun TypeChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
                     isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
+            )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp,
+                    if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(14.dp)
+                ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable { onClick() }
@@ -576,7 +596,7 @@ private fun ArtistCard(
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
@@ -632,7 +652,7 @@ private fun AlbumCard(
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
@@ -698,7 +718,7 @@ private fun PlaylistCard(
             )
             .then(
                 if (isFocused) Modifier.border(
-                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
