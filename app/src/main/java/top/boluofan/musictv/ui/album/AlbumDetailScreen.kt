@@ -34,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +68,9 @@ fun AlbumDetailScreen(
     }
 
     var backFocused by remember { mutableStateOf(false) }
+    val backFocus = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { runCatching { backFocus.requestFocus() } }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -83,6 +88,7 @@ fun AlbumDetailScreen(
                         ) else Modifier
                     )
                     .onFocusChanged { backFocused = it.isFocused }
+                    .focusRequester(backFocus)
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
@@ -95,6 +101,8 @@ fun AlbumDetailScreen(
                 )
             }
         }
+
+        Spacer(Modifier.height(16.dp))
 
         when {
             uiState.isLoading -> {

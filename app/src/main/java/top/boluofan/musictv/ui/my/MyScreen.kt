@@ -23,7 +23,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.SouthEast
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
@@ -43,6 +45,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.nativeKeyCode
+import android.view.KeyEvent as AndroidKeyEvent
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,7 +80,7 @@ fun MyScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
-    val settingsFocus = remember { FocusRequester() }
+    val albumTabFocus = remember { FocusRequester() }
     var topFocusHasFocus by remember { mutableStateOf(false) }
     val restorer = rememberScreenFocusRestorer()
 
@@ -96,8 +105,12 @@ fun MyScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
             SettingsButton(
-                onClick = onNavigateToSettings,
-                modifier = Modifier.focusRequester(settingsFocus)
+                onClick = {
+                    restorer.record("settings")
+                    onNavigateToSettings()
+                },
+                albumTabFocus = albumTabFocus,
+                modifier = Modifier.restorableFocus(restorer, "settings")
             )
         }
 
@@ -105,14 +118,14 @@ fun MyScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TabChip("收藏歌手", uiState.selectedTab == 0, focusRequester = topFocus, onFocusChange = { topFocusHasFocus = it }) { viewModel.selectTab(0) }
-            TabChip("收藏专辑", uiState.selectedTab == 1) { viewModel.selectTab(1) }
+            TabChip("收藏专辑", uiState.selectedTab == 1, focusRequester = albumTabFocus) { viewModel.selectTab(1) }
         }
 
         Spacer(Modifier.height(16.dp))
 
         when {
-            uiState.isLoading -> CenterHint("加载中...")
-            uiState.error != null -> CenterHint("加载失败：${uiState.error}")
+            uiState.isLoading -> CenterHint("加载�?..")
+            uiState.error != null -> CenterHint("加载失败�?{uiState.error}")
             uiState.selectedTab == 0 && uiState.artists.isEmpty() -> CenterHint("暂无收藏歌手，可在歌手页收藏")
             uiState.selectedTab == 1 && uiState.albums.isEmpty() -> CenterHint("暂无收藏专辑，可在专辑页收藏")
             else -> {
@@ -188,15 +201,7 @@ private fun TabChip(
         label = "myTabChipScale"
     )
 
-    Text(
-        text = if (isSelected) "✓ $label" else label,
-        fontSize = 15.sp,
-        fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
-        color = when {
-            isSelected -> MaterialTheme.colorScheme.onPrimary
-            isFocused -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        },
+    Row(
         modifier = Modifier
             .scale(scale)
             .clip(RoundedCornerShape(16.dp))
@@ -220,12 +225,37 @@ private fun TabChip(
                 onFocusChange?.invoke(it.isFocused)
             }
             .clickable { onClick() }
-            .padding(horizontal = 20.dp, vertical = 10.dp)
-    )
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Text(
+            text = label,
+            fontSize = 15.sp,
+            fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
+            color = when {
+                isSelected -> MaterialTheme.colorScheme.onPrimary
+                isFocused -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            }
+        )
+    }
 }
 
 @Composable
-private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SettingsButton(
+    onClick: () -> Unit,
+    albumTabFocus: FocusRequester,
+    modifier: Modifier = Modifier
+) {
     var isFocused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1.0f,
@@ -248,6 +278,15 @@ private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 ) else Modifier
             )
             .onFocusChanged { isFocused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key.nativeKeyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN ||
+                        event.key.nativeKeyCode == AndroidKeyEvent.KEYCODE_DPAD_LEFT)
+                ) {
+                    albumTabFocus.requestFocus()
+                    true
+                } else false
+            }
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -260,6 +299,41 @@ private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             modifier = Modifier.size(18.dp)
         )
         Text(text = "设置", fontSize = 16.sp, color = color)
+    }
+}
+
+@Composable
+private fun RowActionButton(
+    icon: ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(
+                if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                else Color.Transparent
+            )
+            .then(
+                if (focused) Modifier.border(
+                    3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                ) else Modifier
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (focused) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
@@ -300,7 +374,6 @@ private fun ArtistRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable { onClick() }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -335,6 +408,12 @@ private fun ArtistRow(
                 )
             }
         }
+        RowActionButton(
+            icon = Icons.Rounded.SouthEast,
+            contentDescription = "进入",
+            modifier = Modifier.padding(end = 10.dp),
+            onClick = onClick
+        )
         Box(
             modifier = Modifier
                 .padding(end = 14.dp)
@@ -403,7 +482,6 @@ private fun AlbumRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable { onClick() }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -445,6 +523,12 @@ private fun AlbumRow(
                 )
             }
         }
+        RowActionButton(
+            icon = Icons.Rounded.SouthEast,
+            contentDescription = "进入",
+            modifier = Modifier.padding(end = 10.dp),
+            onClick = onClick
+        )
         Box(
             modifier = Modifier
                 .padding(end = 14.dp)
