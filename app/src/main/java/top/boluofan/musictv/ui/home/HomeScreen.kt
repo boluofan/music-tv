@@ -28,12 +28,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +51,11 @@ import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.SongItemFavoriteMode
 import top.boluofan.musictv.ui.components.SongListItem
 import top.boluofan.musictv.ui.components.tvFocusable
+import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
+import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
+import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.restorableFocus
 
 @Composable
 fun HomeScreen(
@@ -64,6 +66,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
+    val restorer = rememberScreenFocusRestorer()
 
     ListBackToTopHandler(
         listState = listState,
@@ -71,13 +74,8 @@ fun HomeScreen(
         topFocusInList = false,
         jumpToTabBar = true
     )
-
-    LaunchedEffect(Unit) {
-        repeat(10) {
-            withFrameNanos { }
-            if (runCatching { topFocus.requestFocus() }.isSuccess) return@LaunchedEffect
-        }
-    }
+    RestoreFocusEffect(restorer)
+    DefaultFocusEffect(restorer, topFocus)
 
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp),
@@ -146,10 +144,14 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             rows[rowIndex].forEach { playlist ->
+                                val pk = "playlist:${playlist.id ?: ""}"
                                 PlaylistGridCard(
                                     playlist = playlist,
-                                    onClick = { onPlaylistClick(playlist) },
-                                    modifier = Modifier.weight(1f)
+                                    onClick = {
+                                        restorer.record(pk)
+                                        onPlaylistClick(playlist)
+                                    },
+                                    modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
                                 )
                             }
                             repeat(4 - rows[rowIndex].size) {

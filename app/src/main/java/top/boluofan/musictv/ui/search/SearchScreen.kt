@@ -35,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,13 +50,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
-import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.SearchArtistItem
 import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.SongListItem
+import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
+import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
+import top.boluofan.musictv.ui.navigation.ScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.restorableFocus
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 private val SEARCH_SOURCES = listOf("kw", "kg", "tx", "wy", "mg")
@@ -68,8 +71,7 @@ fun SearchScreen(
     addToPlaylistViewModel: AddToPlaylistViewModel = hiltViewModel(),
     onSongClick: (List<MusicInfo>, Int) -> Unit = { _, _ -> },
     onArtistClick: (SearchArtistItem, String) -> Unit = { _, _ -> },
-    onAlbumClick: (AlbumItem, String) -> Unit = { _, _ -> },
-    onPlaylistClick: (Playlist, String) -> Unit = { _, _ -> }
+    onAlbumClick: (AlbumItem, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showKeyboard by remember { mutableStateOf(false) }
@@ -77,6 +79,7 @@ fun SearchScreen(
     val keyboardFocus = remember { FocusRequester() }
     val listState = rememberLazyListState()
     var searchFocused by remember { mutableStateOf(false) }
+    val restorer = rememberScreenFocusRestorer()
 
     LaunchedEffect(showKeyboard) {
         if (showKeyboard) runCatching { keyboardFocus.requestFocus() }
@@ -86,12 +89,8 @@ fun SearchScreen(
         runCatching { searchBoxFocus.requestFocus() }
     }
 
-    LaunchedEffect(Unit) {
-        repeat(10) {
-            withFrameNanos { }
-            if (runCatching { searchBoxFocus.requestFocus() }.isSuccess) return@LaunchedEffect
-        }
-    }
+    RestoreFocusEffect(restorer)
+    DefaultFocusEffect(restorer, searchBoxFocus)
 
     BackHandler(enabled = showKeyboard) {
         showKeyboard = false
@@ -292,19 +291,15 @@ fun SearchScreen(
                         artists = uiState.singerResults,
                         source = uiState.source,
                         listState = listState,
+                        restorer = restorer,
                         onArtistClick = onArtistClick
                     )
                     SearchType.ALBUM -> AlbumResultGrid(
                         albums = uiState.albumResults,
                         source = uiState.source,
                         listState = listState,
+                        restorer = restorer,
                         onAlbumClick = onAlbumClick
-                    )
-                    SearchType.PLAYLIST -> PlaylistResultGrid(
-                        playlists = uiState.playlistResults,
-                        source = uiState.source,
-                        listState = listState,
-                        onPlaylistClick = onPlaylistClick
                     )
                 }
             }
@@ -341,7 +336,6 @@ private fun hasResults(uiState: SearchUiState): Boolean = when (uiState.type) {
     SearchType.SONG -> uiState.songResults.isNotEmpty()
     SearchType.SINGER -> uiState.singerResults.isNotEmpty()
     SearchType.ALBUM -> uiState.albumResults.isNotEmpty()
-    SearchType.PLAYLIST -> uiState.playlistResults.isNotEmpty()
 }
 
 @Composable
@@ -380,6 +374,7 @@ private fun SingerResultGrid(
     artists: List<SearchArtistItem>,
     source: String,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    restorer: ScreenFocusRestorer,
     onArtistClick: (SearchArtistItem, String) -> Unit
 ) {
     LazyColumn(
@@ -394,10 +389,14 @@ private fun SingerResultGrid(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 rows[rowIndex].forEach { artist ->
+                    val pk = "artist:${artist.id ?: ""}:$source"
                     ArtistCard(
                         artist = artist,
-                        onClick = { onArtistClick(artist, source) },
-                        modifier = Modifier.weight(1f)
+                        onClick = {
+                            restorer.record(pk)
+                            onArtistClick(artist, source)
+                        },
+                        modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
                     )
                 }
                 repeat(4 - rows[rowIndex].size) {
@@ -413,6 +412,7 @@ private fun AlbumResultGrid(
     albums: List<AlbumItem>,
     source: String,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    restorer: ScreenFocusRestorer,
     onAlbumClick: (AlbumItem, String) -> Unit
 ) {
     LazyColumn(
@@ -427,10 +427,14 @@ private fun AlbumResultGrid(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 rows[rowIndex].forEach { album ->
+                    val pk = "album:${album.id ?: ""}:$source"
                     AlbumCard(
                         album = album,
-                        onClick = { onAlbumClick(album, source) },
-                        modifier = Modifier.weight(1f)
+                        onClick = {
+                            restorer.record(pk)
+                            onAlbumClick(album, source)
+                        },
+                        modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
                     )
                 }
                 repeat(4 - rows[rowIndex].size) {
@@ -441,38 +445,6 @@ private fun AlbumResultGrid(
     }
 }
 
-@Composable
-private fun PlaylistResultGrid(
-    playlists: List<Playlist>,
-    source: String,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    onPlaylistClick: (Playlist, String) -> Unit
-) {
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
-        val rows = playlists.chunked(4)
-        items(rows.size) { rowIndex ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rows[rowIndex].forEach { playlist ->
-                    PlaylistCard(
-                        playlist = playlist,
-                        onClick = { onPlaylistClick(playlist, source) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                repeat(4 - rows[rowIndex].size) {
-                    Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun SourceChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
@@ -692,62 +664,6 @@ private fun AlbumCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
-    }
-}
-
-@Composable
-private fun PlaylistCard(
-    playlist: Playlist,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.05f else 1.0f,
-        animationSpec = tween(150),
-        label = "playlistCardScale"
-    )
-    Column(
-        modifier = modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-            )
-            .then(
-                if (isFocused) Modifier.border(
-                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
-                ) else Modifier
-            )
-            .onFocusChanged { isFocused = it.isFocused }
-            .clickable { onClick() }
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            CoverImage(
-                url = playlist.coverUrl,
-                contentDescription = playlist.name,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = playlist.name ?: "",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onBackground
         )
     }
 }

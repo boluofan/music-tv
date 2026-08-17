@@ -53,7 +53,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.data.model.LibraryAlbumItem
 import top.boluofan.musictv.data.model.LibraryArtistItem
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
+import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
+import top.boluofan.musictv.ui.navigation.ScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.restorableFocus
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 @Composable
@@ -67,8 +72,12 @@ fun MyScreen(
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
     val settingsFocus = remember { FocusRequester() }
+    var topFocusHasFocus by remember { mutableStateOf(false) }
+    val restorer = rememberScreenFocusRestorer()
 
-    ListBackToTopHandler(listState, topFocus, topFocusHasFocus = false, jumpToTabBar = true)
+    ListBackToTopHandler(listState, topFocus, topFocusHasFocus = topFocusHasFocus, jumpToTabBar = true)
+    RestoreFocusEffect(restorer)
+    DefaultFocusEffect(restorer, topFocus)
 
     Column(
         modifier = Modifier
@@ -95,7 +104,7 @@ fun MyScreen(
         Spacer(Modifier.height(24.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TabChip("收藏歌手", uiState.selectedTab == 0, focusRequester = topFocus) { viewModel.selectTab(0) }
+            TabChip("收藏歌手", uiState.selectedTab == 0, focusRequester = topFocus, onFocusChange = { topFocusHasFocus = it }) { viewModel.selectTab(0) }
             TabChip("收藏专辑", uiState.selectedTab == 1) { viewModel.selectTab(1) }
         }
 
@@ -114,21 +123,31 @@ fun MyScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     if (uiState.selectedTab == 0) {
-                        itemsIndexed(uiState.artists) { _, item ->
-                            ArtistRow(
-                                item = item,
-                                onClick = { onArtistClick(item, item.source ?: "wy") },
-                                onRemove = { viewModel.removeArtist(item) }
-                            )
-                        }
+                itemsIndexed(uiState.artists) { _, item ->
+                    val pk = "artist:${item.id ?: ""}:${item.source ?: ""}"
+                    ArtistRow(
+                        item = item,
+                        onClick = {
+                            restorer.record(pk)
+                            onArtistClick(item, item.source ?: "wy")
+                        },
+                        onRemove = { viewModel.removeArtist(item) },
+                        modifier = Modifier.restorableFocus(restorer, pk)
+                    )
+                }
                     } else {
-                        itemsIndexed(uiState.albums) { _, item ->
-                            AlbumRow(
-                                item = item,
-                                onClick = { onAlbumClick(item, item.source ?: "wy") },
-                                onRemove = { viewModel.removeAlbum(item) }
-                            )
-                        }
+                itemsIndexed(uiState.albums) { _, item ->
+                    val pk = "album:${item.id ?: ""}:${item.source ?: ""}"
+                    AlbumRow(
+                        item = item,
+                        onClick = {
+                            restorer.record(pk)
+                            onAlbumClick(item, item.source ?: "wy")
+                        },
+                        onRemove = { viewModel.removeAlbum(item) },
+                        modifier = Modifier.restorableFocus(restorer, pk)
+                    )
+                }
                     }
                 }
             }
@@ -159,6 +178,7 @@ private fun TabChip(
     label: String,
     isSelected: Boolean,
     focusRequester: FocusRequester? = null,
+    onFocusChange: ((Boolean) -> Unit)? = null,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -195,7 +215,10 @@ private fun TabChip(
                 ) else Modifier
             )
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .onFocusChanged { isFocused = it.isFocused }
+            .onFocusChanged {
+                isFocused = it.isFocused
+                onFocusChange?.invoke(it.isFocused)
+            }
             .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 10.dp)
     )
@@ -244,7 +267,8 @@ private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 private fun ArtistRow(
     item: LibraryArtistItem,
     onClick: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var rowActive by remember { mutableStateOf(false) }
     var removeFocused by remember { mutableStateOf(false) }
@@ -256,7 +280,7 @@ private fun ArtistRow(
     )
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .scale(scale)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
@@ -346,7 +370,8 @@ private fun ArtistRow(
 private fun AlbumRow(
     item: LibraryAlbumItem,
     onClick: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var rowActive by remember { mutableStateOf(false) }
     var removeFocused by remember { mutableStateOf(false) }
@@ -358,7 +383,7 @@ private fun AlbumRow(
     )
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .scale(scale)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))

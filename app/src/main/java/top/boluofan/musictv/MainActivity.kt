@@ -256,14 +256,6 @@ fun TvApp(
                                         singer = album.singerName
                                     )
                                 )
-                            },
-                            onPlaylistClick = { playlist, source ->
-                                push(
-                                    Screen.PlaylistDetail(
-                                        playlistId = playlist.id ?: "",
-                                        source = source
-                                    )
-                                )
                             }
                         )
                         Screen.My -> MyScreen(

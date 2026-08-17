@@ -12,15 +12,13 @@ import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.api.ApiClient
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
-import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.SearchArtistItem
 import javax.inject.Inject
 
 enum class SearchType(val label: String, val apiType: String) {
     SONG("歌曲", "song"),
     SINGER("歌手", "singer"),
-    ALBUM("专辑", "album"),
-    PLAYLIST("歌单", "playlist")
+    ALBUM("专辑", "album")
 }
 
 data class SearchUiState(
@@ -32,7 +30,6 @@ data class SearchUiState(
     val songResults: List<MusicInfo> = emptyList(),
     val singerResults: List<SearchArtistItem> = emptyList(),
     val albumResults: List<AlbumItem> = emptyList(),
-    val playlistResults: List<Playlist> = emptyList(),
     val isSearching: Boolean = false,
     val hasSearched: Boolean = false,
     val error: String? = null
@@ -113,9 +110,6 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     SearchType.ALBUM -> ApiClient.getMusicApi().searchAlbums(
                         name = keyword, source = state.source, page = 1, limit = 30
                     )
-                    SearchType.PLAYLIST -> ApiClient.getMusicApi().searchPlaylists(
-                        name = keyword, source = state.source, page = 1, limit = 30
-                    )
                 }
             }.fold(
                 onSuccess = { result ->
@@ -125,7 +119,6 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                         SearchType.SONG -> current.copy(songResults = result as List<MusicInfo>, isSearching = false)
                         SearchType.SINGER -> current.copy(singerResults = result as List<SearchArtistItem>, isSearching = false)
                         SearchType.ALBUM -> current.copy(albumResults = result as List<AlbumItem>, isSearching = false)
-                        SearchType.PLAYLIST -> current.copy(playlistResults = result as List<Playlist>, isSearching = false)
                     }
                 },
                 onFailure = { e ->
@@ -144,7 +137,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         _uiState.value = _uiState.value.copy(
             query = "", tips = emptyList(), isSearching = false, hasSearched = false,
             songResults = emptyList(), singerResults = emptyList(),
-            albumResults = emptyList(), playlistResults = emptyList(), error = null
+            albumResults = emptyList(), error = null
         )
     }
 

@@ -36,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +52,11 @@ import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.FavoriteToggle
 import top.boluofan.musictv.ui.components.SongListItem
+import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
+import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
+import top.boluofan.musictv.ui.navigation.ScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.restorableFocus
 
 @Composable
 fun ArtistDetailScreen(
@@ -63,10 +70,15 @@ fun ArtistDetailScreen(
     onBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val restorer = rememberScreenFocusRestorer()
+    val backFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(artistId, source) {
         viewModel.load(artistId, source)
     }
+
+    RestoreFocusEffect(restorer)
+    DefaultFocusEffect(restorer, backFocusRequester)
 
     var backFocused by remember { mutableStateOf(false) }
 
@@ -86,6 +98,7 @@ fun ArtistDetailScreen(
                         ) else Modifier
                     )
                     .onFocusChanged { backFocused = it.isFocused }
+                    .focusRequester(backFocusRequester)
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
@@ -228,6 +241,7 @@ fun ArtistDetailScreen(
                         item {
                             AlbumGrid(
                                 albums = uiState.albums,
+                                restorer = restorer,
                                 onAlbumClick = { onAlbumClick(it, source) }
                             )
                         }
@@ -241,7 +255,11 @@ fun ArtistDetailScreen(
 }
 
 @Composable
-private fun AlbumGrid(albums: List<AlbumItem>, onAlbumClick: (AlbumItem) -> Unit) {
+private fun AlbumGrid(
+    albums: List<AlbumItem>,
+    restorer: ScreenFocusRestorer,
+    onAlbumClick: (AlbumItem) -> Unit
+) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -249,17 +267,25 @@ private fun AlbumGrid(albums: List<AlbumItem>, onAlbumClick: (AlbumItem) -> Unit
         modifier = Modifier.fillMaxWidth()
     ) {
         items(albums) { album ->
-            AlbumCard(album) { onAlbumClick(album) }
+            val pk = "album:${album.id ?: ""}"
+            AlbumCard(
+                album = album,
+                onClick = {
+                    restorer.record(pk)
+                    onAlbumClick(album)
+                },
+                modifier = Modifier.restorableFocus(restorer, pk)
+            )
         }
     }
 }
 
 @Composable
-private fun AlbumCard(album: AlbumItem, onClick: () -> Unit) {
+private fun AlbumCard(album: AlbumItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var isFocused by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .focusGroup()
             .clip(RoundedCornerShape(12.dp))
             .background(

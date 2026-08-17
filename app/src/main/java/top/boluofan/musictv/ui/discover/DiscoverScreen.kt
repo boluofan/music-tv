@@ -57,7 +57,12 @@ import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.TagGroup
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.tvFocusable
+import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
+import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
+import top.boluofan.musictv.ui.navigation.ScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
+import top.boluofan.musictv.ui.navigation.restorableFocus
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 private val SOURCES = listOf(
@@ -78,6 +83,8 @@ fun DiscoverScreen(
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
     val sourceFocus = remember { FocusRequester() }
+    var topFocusHasFocus by remember { mutableStateOf(false) }
+    val restorer = rememberScreenFocusRestorer()
 
     // 滚动接近底部时懒加载下一页
     LaunchedEffect(uiState.section, uiState.selectedTagId, uiState.source) {
@@ -95,9 +102,13 @@ fun DiscoverScreen(
     ListBackToTopHandler(
         listState = listState,
         topFocus = topFocus,
+        topFocusHasFocus = topFocusHasFocus,
         topFocusInList = false,
         jumpToTabBar = true
     )
+
+    RestoreFocusEffect(restorer)
+    DefaultFocusEffect(restorer, topFocus)
 
     LaunchedEffect(Unit) {
         repeat(10) {
@@ -124,7 +135,8 @@ fun DiscoverScreen(
                     label = DiscoverSection.SQUARE.label,
                     isSelected = uiState.section == DiscoverSection.SQUARE,
                     focusRequester = topFocus,
-                    leftFocus = sourceFocus
+                    leftFocus = sourceFocus,
+                    onFocusChange = { topFocusHasFocus = it }
                 ) { viewModel.switchSection(DiscoverSection.SQUARE) }
                 SectionChip(
                     label = DiscoverSection.LEADERBOARD.label,
@@ -169,12 +181,14 @@ fun DiscoverScreen(
                         DiscoverSection.SQUARE -> SquareContent(
                             uiState = uiState,
                             listState = listState,
+                            restorer = restorer,
                             onTagClick = { viewModel.selectTag(it) },
                             onPlaylistClick = onPlaylistClick
                         )
                         DiscoverSection.LEADERBOARD -> LeaderboardContent(
                             uiState = uiState,
                             listState = listState,
+                            restorer = restorer,
                             onBoardClick = { board -> onBoardClick(board, uiState.source) }
                         )
                     }
@@ -188,6 +202,7 @@ fun DiscoverScreen(
 private fun SquareContent(
     uiState: DiscoverUiState,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    restorer: ScreenFocusRestorer,
     onTagClick: (String?) -> Unit,
     onPlaylistClick: (Playlist) -> Unit
 ) {
@@ -210,7 +225,7 @@ private fun SquareContent(
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
         ) {
             val rows = uiState.playlists.chunked(4)
             items(rows.size) { rowIndex ->
@@ -219,10 +234,14 @@ private fun SquareContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     rows[rowIndex].forEach { playlist ->
+                        val pk = "playlist:${playlist.id ?: ""}"
                         PlaylistCard(
                             playlist = playlist,
-                            onClick = { onPlaylistClick(playlist) },
-                            modifier = Modifier.weight(1f)
+                            onClick = {
+                                restorer.record(pk)
+                                onPlaylistClick(playlist)
+                            },
+                            modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
                         )
                     }
                     repeat(4 - rows[rowIndex].size) {
@@ -252,12 +271,13 @@ private fun SquareContent(
 private fun LeaderboardContent(
     uiState: DiscoverUiState,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    restorer: ScreenFocusRestorer,
     onBoardClick: (BoardItem) -> Unit
 ) {
     LazyColumn(
         state = listState,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
     ) {
         val rows = uiState.boards.chunked(4)
         items(rows.size) { rowIndex ->
@@ -266,10 +286,14 @@ private fun LeaderboardContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 rows[rowIndex].forEach { board ->
+                    val pk = "board:${board.bangid ?: board.id ?: ""}"
                     BoardCard(
                         board = board,
-                        onClick = { onBoardClick(board) },
-                        modifier = Modifier.weight(1f)
+                        onClick = {
+                            restorer.record(pk)
+                            onBoardClick(board)
+                        },
+                        modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
                     )
                 }
                 repeat(4 - rows[rowIndex].size) {
@@ -296,6 +320,7 @@ private fun SectionChip(
     isSelected: Boolean,
     focusRequester: FocusRequester? = null,
     leftFocus: FocusRequester? = null,
+    onFocusChange: ((Boolean) -> Unit)? = null,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -333,7 +358,10 @@ private fun SectionChip(
             )
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .then(if (leftFocus != null) Modifier.focusProperties { left = leftFocus } else Modifier)
-            .onFocusChanged { isFocused = it.isFocused }
+            .onFocusChanged {
+                isFocused = it.isFocused
+                onFocusChange?.invoke(it.isFocused)
+            }
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     )
