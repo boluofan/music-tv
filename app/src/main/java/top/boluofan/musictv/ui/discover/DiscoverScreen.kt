@@ -36,7 +36,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,13 +108,6 @@ fun DiscoverScreen(
 
     RestoreFocusEffect(restorer)
     DefaultFocusEffect(restorer, topFocus)
-
-    LaunchedEffect(Unit) {
-        repeat(10) {
-            withFrameNanos { }
-            if (runCatching { topFocus.requestFocus() }.isSuccess) return@LaunchedEffect
-        }
-    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)
