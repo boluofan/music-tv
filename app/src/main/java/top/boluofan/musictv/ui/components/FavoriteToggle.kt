@@ -43,8 +43,7 @@ fun FavoriteToggle(
         animationSpec = tween(120),
         label = "favoriteToggleScale"
     )
-    val color = if (isFavorite) MaterialTheme.colorScheme.error
-    else MaterialTheme.colorScheme.primary
+    val color = MaterialTheme.colorScheme.primary
 
     Row(
         modifier = modifier
