@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -119,25 +120,25 @@ fun SearchScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // 平台 + 类型
+            // 平台 + 类型（级联：选择的平台决定可搜索类型，反之选择类型决定可选平台）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(SEARCH_SOURCES) { code ->
-                        SourceChip(
-                            label = code,
+                    items(SEARCH_SOURCES.filter { it in supportedSourcesForType(uiState.type) }) { code ->
+                        FilterChip(
+                            text = code.uppercase(),
                             isSelected = uiState.source == code,
                             onClick = { viewModel.selectSource(code) }
                         )
                     }
                 }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(SearchType.entries) { type ->
-                        TypeChip(
-                            label = type.label,
+                    items(SearchType.entries.filter { it in supportedTypesForSource(uiState.source) }) { type ->
+                        FilterChip(
+                            text = type.label,
                             isSelected = uiState.type == type,
                             onClick = { viewModel.selectType(type) }
                         )
@@ -447,26 +448,27 @@ private fun AlbumResultGrid(
 
 
 @Composable
-private fun SourceChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
+private fun FilterChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var isFocused by remember { mutableStateOf(false) }
-    Text(
-        text = label.uppercase(),
-        fontSize = 14.sp,
-        fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
-        color = when {
-            isSelected -> MaterialTheme.colorScheme.onPrimary
-            isFocused -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        },
-        modifier = Modifier
+    val bg = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val fg = when {
+        isSelected -> MaterialTheme.colorScheme.onPrimary
+        isFocused -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    }
+    Row(
+        modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(
-                when {
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-            )
+            .background(bg)
             .then(
                 if (isFocused) Modifier.border(
                     3.dp,
@@ -476,42 +478,26 @@ private fun SourceChip(label: String, isSelected: Boolean, onClick: () -> Unit) 
             )
             .onFocusChanged { isFocused = it.isFocused }
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 6.dp)
-    )
-}
-
-@Composable
-private fun TypeChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
-    var isFocused by remember { mutableStateOf(false) }
-    Text(
-        text = label,
-        fontSize = 14.sp,
-        fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
-        color = when {
-            isSelected -> MaterialTheme.colorScheme.onPrimary
-            isFocused -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        },
-        modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                when {
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = fg,
+                modifier = Modifier
+                    .size(16.dp)
+                    .padding(end = 4.dp)
             )
-            .then(
-                if (isFocused) Modifier.border(
-                    3.dp,
-                    if (isSelected) SelectedFocusBorder else MaterialTheme.colorScheme.primary,
-                    RoundedCornerShape(14.dp)
-                ) else Modifier
-            )
-            .onFocusChanged { isFocused = it.isFocused }
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 6.dp)
-    )
+        }
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
+            color = fg
+        )
+    }
 }
 
 @Composable

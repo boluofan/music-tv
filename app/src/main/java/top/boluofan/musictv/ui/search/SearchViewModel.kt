@@ -21,6 +21,20 @@ enum class SearchType(val label: String, val apiType: String) {
     ALBUM("专辑", "album")
 }
 
+private val SOURCE_SUPPORTED_TYPES: Map<String, List<SearchType>> = mapOf(
+    "kw" to listOf(SearchType.SONG),
+    "kg" to listOf(SearchType.SONG),
+    "tx" to listOf(SearchType.SONG, SearchType.SINGER, SearchType.ALBUM),
+    "wy" to listOf(SearchType.SONG, SearchType.SINGER, SearchType.ALBUM),
+    "mg" to listOf(SearchType.SONG)
+)
+
+fun supportedTypesForSource(source: String): List<SearchType> =
+    SOURCE_SUPPORTED_TYPES[source] ?: listOf(SearchType.SONG)
+
+fun supportedSourcesForType(type: SearchType): List<String> =
+    SOURCE_SUPPORTED_TYPES.filter { type in it.value }.keys.toList()
+
 data class SearchUiState(
     val query: String = "",
     val type: SearchType = SearchType.SONG,
@@ -59,14 +73,19 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
     fun selectSource(source: String) {
         if (_uiState.value.source == source) return
-        _uiState.value = _uiState.value.copy(source = source)
+        val supported = supportedTypesForSource(source)
+        val type = if (_uiState.value.type in supported) _uiState.value.type else supported.first()
+        _uiState.value = _uiState.value.copy(source = source, type = type)
         loadHotTags()
         if (_uiState.value.query.isNotBlank()) search()
     }
 
     fun selectType(type: SearchType) {
         if (_uiState.value.type == type) return
-        _uiState.value = _uiState.value.copy(type = type, hasSearched = false)
+        val supported = supportedSourcesForType(type)
+        val source = if (_uiState.value.source in supported) _uiState.value.source
+        else supported.firstOrNull() ?: _uiState.value.source
+        _uiState.value = _uiState.value.copy(type = type, source = source, hasSearched = false)
         if (_uiState.value.query.isNotBlank()) search()
     }
 
