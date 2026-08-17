@@ -162,6 +162,10 @@ fun TvApp(
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
 
+    fun openPlayer() {
+        runCatching { context.startActivity(Intent(context, PlayerActivity::class.java)) }
+    }
+
     BackHandler {
         when {
             backStack.size > 1 -> goBack()
@@ -211,7 +215,7 @@ fun TvApp(
                 stateHolder.SaveableStateProvider(currentScreen.stateKey) {
                     when (val screen = currentScreen) {
                         Screen.Home -> HomeScreen(
-                            onSongClick = { queue, index -> playerController.play(queue, index) },
+                            onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onPlaylistClick = { playlist ->
                                 push(Screen.PlaylistDetail(playlistId = playlist.id ?: "", source = null))
                             }
@@ -236,7 +240,7 @@ fun TvApp(
                             }
                         )
                         Screen.Search -> SearchScreen(
-                            onSongClick = { queue, index -> playerController.play(queue, index) },
+                            onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onArtistClick = { artist, source ->
                                 push(
                                     Screen.ArtistDetail(
@@ -289,10 +293,11 @@ fun TvApp(
                         is Screen.PlaylistDetail -> PlaylistDetailScreen(
                             playlistId = screen.playlistId,
                             source = screen.source,
-                            onSongClick = { queue, index -> playerController.play(queue, index) },
+                            onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onShufflePlay = { queue ->
                                 playerController.setPlayMode(PlayMode.RANDOM)
                                 playerController.play(queue, (0 until queue.size).random())
+                                openPlayer()
                             },
                             onBack = { goBack() }
                         )
@@ -300,10 +305,11 @@ fun TvApp(
                             bangid = screen.bangid,
                             boardName = screen.boardName,
                             source = screen.source,
-                            onSongClick = { queue, index -> playerController.play(queue, index) },
+                            onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onShufflePlay = { queue ->
                                 playerController.setPlayMode(PlayMode.RANDOM)
                                 playerController.play(queue, (0 until queue.size).random())
+                                openPlayer()
                             },
                             onBack = { goBack() }
                         )
@@ -311,7 +317,7 @@ fun TvApp(
                             artistId = screen.artistId,
                             artistName = screen.artistName,
                             source = screen.source,
-                            onSongClick = { queue, index -> playerController.play(queue, index) },
+                            onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onAlbumClick = { album, source ->
                                 push(
                                     Screen.AlbumDetail(
@@ -331,10 +337,11 @@ fun TvApp(
                             source = screen.source,
                             cover = screen.cover,
                             singer = screen.singer,
-                            onSongClick = { queue, index -> playerController.play(queue, index) },
+                            onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onShufflePlay = { queue ->
                                 playerController.setPlayMode(PlayMode.RANDOM)
                                 playerController.play(queue, (0 until queue.size).random())
+                                openPlayer()
                             },
                             onBack = { goBack() }
                         )
