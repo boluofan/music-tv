@@ -106,7 +106,10 @@ fun PlaylistDetailScreen(
                 onBack,
                 focusRequester = topFocus,
                 onFocusChanged = { backButtonHasFocus = it },
-                modifier = Modifier.focusProperties { down = playAllFocus }
+                modifier = Modifier.then(
+                    if (!uiState.isLoading && uiState.error == null && uiState.playlist != null)
+                        Modifier.focusProperties { down = playAllFocus } else Modifier
+                )
             )
         }
 

@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +84,7 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
     val firstPlaylistFocus = remember { FocusRequester() }
+    var firstPlaylistComposed by remember { mutableStateOf(false) }
     val restorer = rememberScreenFocusRestorer()
 
     ListBackToTopHandler(
@@ -112,7 +114,10 @@ fun HomeScreen(
                  refreshing = uiState.isRefreshing,
                  focusRequester = topFocus,
                  onClick = { viewModel.load() },
-                 modifier = Modifier.focusProperties { down = firstPlaylistFocus }
+                 modifier = Modifier.then(
+                     if (firstPlaylistComposed) Modifier.focusProperties { down = firstPlaylistFocus }
+                     else Modifier
+                 )
              )
         }
 
@@ -162,6 +167,12 @@ fun HomeScreen(
                         ) {
                             itemsIndexed(displayPlaylists) { index, playlist ->
                                 val pk = "playlist:${playlist.id ?: ""}"
+                                if (index == 0) {
+                                    DisposableEffect(Unit) {
+                                        firstPlaylistComposed = true
+                                        onDispose { firstPlaylistComposed = false }
+                                    }
+                                }
                                 PlaylistGridCard(
                                     playlist = playlist,
                                     onClick = {
