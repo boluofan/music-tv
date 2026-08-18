@@ -374,6 +374,7 @@ private fun ArtistRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -482,6 +483,7 @@ private fun AlbumRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
