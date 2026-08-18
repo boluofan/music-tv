@@ -318,6 +318,11 @@ fun TvApp(
                             artistName = screen.artistName,
                             source = screen.source,
                             onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
+                            onShufflePlay = { queue ->
+                                playerController.setPlayMode(PlayMode.RANDOM)
+                                playerController.play(queue, (0 until queue.size).random())
+                                openPlayer()
+                            },
                             onAlbumClick = { album, source ->
                                 push(
                                     Screen.AlbumDetail(

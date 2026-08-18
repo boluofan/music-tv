@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,6 +70,7 @@ fun ArtistDetailScreen(
     addToPlaylistViewModel: AddToPlaylistViewModel = hiltViewModel(),
     onSongClick: (List<MusicInfo>, Int) -> Unit = { _, _ -> },
     onAlbumClick: (AlbumItem, String) -> Unit = { _, _ -> },
+    onShufflePlay: (List<MusicInfo>) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -191,6 +195,17 @@ fun ArtistDetailScreen(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
+                            }
+                            if (uiState.songs.isNotEmpty()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    ActionChip(icon = Icons.Rounded.PlayArrow, label = "播放全部") {
+                                        onSongClick(uiState.songs, 0)
+                                    }
+                                    ActionChip(icon = Icons.Rounded.Shuffle, label = "随机播放") {
+                                        onShufflePlay(uiState.songs)
+                                    }
+                                }
+                                Spacer(Modifier.width(16.dp))
                             }
                             FavoriteToggle(
                                 isFavorite = uiState.isFavorite,
@@ -331,6 +346,43 @@ private fun AlbumCard(album: AlbumItem, onClick: () -> Unit, modifier: Modifier 
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun ActionChip(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)
+                ) else Modifier
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
