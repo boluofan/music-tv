@@ -5,14 +5,18 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.api.ApiClient
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.SearchArtistItem
+import top.boluofan.musictv.ui.config.ConfigWebServer
 import javax.inject.Inject
 
 enum class SearchType(val label: String, val apiType: String) {
@@ -160,11 +164,52 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         )
     }
 
+    private var remoteServer: SearchWebServer? = null
+
+    private val _remoteUrl = MutableStateFlow<String?>(null)
+    val remoteUrl: StateFlow<String?> = _remoteUrl.asStateFlow()
+
+    private val _remoteSubmitEvents = MutableSharedFlow<Unit>()
+    val remoteSubmitEvents: SharedFlow<Unit> = _remoteSubmitEvents.asSharedFlow()
+
+    fun startRemoteInput() {
+        if (remoteServer != null) return
+        val ip = ConfigWebServer.localIpAddress() ?: return
+        for (port in REMOTE_PORTS) {
+            val server = SearchWebServer(port) { keyword ->
+                viewModelScope.launch {
+                    onQueryChanged(keyword)
+                    search()
+                    _remoteSubmitEvents.emit(Unit)
+                }
+            }
+            if (runCatching { server.start() }.isSuccess) {
+                remoteServer = server
+                _remoteUrl.value = "http://$ip:$port"
+                return
+            }
+        }
+    }
+
+    fun stopRemoteInput() {
+        remoteServer?.stop()
+        remoteServer = null
+        _remoteUrl.value = null
+    }
+
+    override fun onCleared() {
+        stopRemoteInput()
+    }
+
     private fun friendlySearchError(e: Throwable, type: SearchType, source: String): String {
         val serverMsg = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()
         if (serverMsg != null && serverMsg.contains("does not support")) {
             return "音乐源 $source 不支持${type.label}搜索，请切换音乐源（如 tx/wy）"
         }
         return e.message ?: "搜索失败"
+    }
+
+    companion object {
+        private val REMOTE_PORTS = intArrayOf(18903, 18904, 18905, 18906)
     }
 }

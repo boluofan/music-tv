@@ -3,6 +3,7 @@ package top.boluofan.musictv.ui.search
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,10 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.QrCode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,12 +46,17 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.collect
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.SearchArtistItem
@@ -56,6 +64,7 @@ import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.SongListItem
+import top.boluofan.musictv.ui.components.generateQrBitmap
 import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
 import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
@@ -75,7 +84,9 @@ fun SearchScreen(
     onAlbumClick: (AlbumItem, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val remoteUrl by viewModel.remoteUrl.collectAsStateWithLifecycle()
     var showKeyboard by remember { mutableStateOf(false) }
+    var showQrDialog by remember { mutableStateOf(false) }
     val searchBoxFocus = remember { FocusRequester() }
     val keyboardFocus = remember { FocusRequester() }
     val listState = rememberLazyListState()
@@ -88,6 +99,15 @@ fun SearchScreen(
     LaunchedEffect(showKeyboard) {
         if (showKeyboard) return@LaunchedEffect
         runCatching { searchBoxFocus.requestFocus() }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.remoteSubmitEvents.collect {
+            showQrDialog = false
+            showKeyboard = false
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopRemoteInput() }
     }
 
     RestoreFocusEffect(restorer)
@@ -207,6 +227,31 @@ fun SearchScreen(
                         .padding(horizontal = 10.dp, vertical = 14.dp)
                 )
             }
+            var qrFocused by remember { mutableStateOf(false) }
+            Icon(
+                imageVector = Icons.Rounded.QrCode,
+                contentDescription = "扫码搜索",
+                tint = if (qrFocused) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (qrFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                    .then(
+                        if (qrFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                        ) else Modifier
+                    )
+                    .onFocusChanged { qrFocused = it.isFocused }
+                    .clickable {
+                        viewModel.startRemoteInput()
+                        showQrDialog = true
+                    }
+                    .padding(horizontal = 10.dp, vertical = 14.dp)
+            )
         }
 
         // 联想词（输入时，从服务端 tipSearch 获取，键盘打开时也展示在键盘上方）
@@ -338,7 +383,73 @@ fun SearchScreen(
         }
     }
 
+    if (showQrDialog) {
+        SearchQrDialog(
+            url = remoteUrl,
+            onDismiss = {
+                showQrDialog = false
+                viewModel.stopRemoteInput()
+            }
+        )
+    }
+
     AddToPlaylistHost(viewModel = addToPlaylistViewModel)
+}
+
+@Composable
+private fun SearchQrDialog(url: String?, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (url == null) {
+                Text(
+                    text = "未获取到局域网地址\n请检查电视网络连接",
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            } else {
+                val qrBitmap = remember(url) { generateQrBitmap(url) }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                        .padding(12.dp)
+                ) {
+                    Image(
+                        bitmap = qrBitmap.asImageBitmap(),
+                        contentDescription = "扫码搜索",
+                        modifier = Modifier.size(200.dp)
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "手机扫码搜索",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "同一局域网内扫码，在手机上输入\n关键字远程搜索，可反复提交",
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = url,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
 }
 
 private fun hasResults(uiState: SearchUiState): Boolean = when (uiState.type) {
