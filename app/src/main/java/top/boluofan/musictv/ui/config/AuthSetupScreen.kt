@@ -138,7 +138,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(24.dp))
-            Text("菠萝音乐 TV", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text("菠萝音乐", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
             Text("连接到 lxserver 服务器并登录", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             Spacer(Modifier.height(32.dp))
@@ -158,7 +158,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
             InputField(
                 label = "账号",
                 value = username,
-                placeholder = "lxserver 配置的用户名",
+                placeholder = "lxserver用户名",
                 focusRequester = usernameFocus,
                 isActive = activeField == ActiveField.USERNAME,
                 onTextChange = viewModel::onUsernameChanged,
@@ -339,7 +339,7 @@ private fun QrPanel(url: String, modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "手机与电视处于同一局域网时，\n用手机浏览器扫码填写服务器信息",
+            text = "手机与电视处于同一局域网时，\n可手机扫码配置登录",
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)

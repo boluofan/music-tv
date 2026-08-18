@@ -43,7 +43,7 @@ class SearchWebServer(
         private val PAGE = """
             <!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>菠萝音乐 TV - 扫码搜索</title>
+            <title>菠萝音乐 - 扫码搜索</title>
             <style>
             body{font-family:-apple-system,sans-serif;background:#0f172a;color:#eee;margin:0;padding:24px}
             h2{color:#38bdf8;text-align:center}
@@ -54,7 +54,7 @@ class SearchWebServer(
             button.submit{width:100%;margin-top:24px;padding:14px;font-size:16px;font-weight:bold;
             border:none;border-radius:8px;background:#38bdf8;color:#0f172a}
             </style></head><body>
-            <h2>菠萝音乐 TV</h2>
+            <h2>菠萝音乐</h2>
             <p class="desc">手机输入关键词，电视端同步搜索</p>
             <form method="post" action="/search">
               <label>搜索关键词</label>

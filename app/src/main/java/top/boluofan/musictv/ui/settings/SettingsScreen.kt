@@ -174,7 +174,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        SettingsSection("音频格式（服务端转码，视频/多音轨文件不受影响）") {
+        SettingsSection("优先播放音质（如果可用）") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QualityOption("128k", "128k", uiState.audioQuality) { viewModel.setAudioQuality("128k") }
                 QualityOption("320k", "320k", uiState.audioQuality) { viewModel.setAudioQuality("320k") }
