@@ -42,6 +42,14 @@ class PreferencesDataStore @Inject constructor(
         )
     }
 
+    // 音效（均衡器 + 音效模式）：总开关 / 预设 key / 增益(dB逗号串) / 音效模式 key / 强度 0-100
+    val eqEnabled: Flow<Boolean> = context.dataStore.data.map { it[EQ_ENABLED] ?: false }
+    val eqPreset: Flow<String> = context.dataStore.data.map { it[EQ_PRESET] ?: "flat" }
+    val eqBands: Flow<String> = context.dataStore.data.map { it[EQ_BANDS] ?: "" }
+    val sfxEnabled: Flow<Boolean> = context.dataStore.data.map { it[SFX_ENABLED] ?: false }
+    val sfxMode: Flow<String> = context.dataStore.data.map { it[SFX_MODE] ?: "virtualizer" }
+    val sfxStrength: Flow<Int> = context.dataStore.data.map { it[SFX_STRENGTH] ?: 50 }
+
     suspend fun setThemeMode(mode: Int) {
         context.dataStore.edit { it[THEME_MODE] = mode }
     }
@@ -103,6 +111,30 @@ class PreferencesDataStore @Inject constructor(
         }
     }
 
+    suspend fun setEqEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[EQ_ENABLED] = enabled }
+    }
+
+    suspend fun setEqPreset(preset: String) {
+        context.dataStore.edit { it[EQ_PRESET] = preset }
+    }
+
+    suspend fun setEqBands(bands: String) {
+        context.dataStore.edit { it[EQ_BANDS] = bands }
+    }
+
+    suspend fun setSfxEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SFX_ENABLED] = enabled }
+    }
+
+    suspend fun setSfxMode(mode: String) {
+        context.dataStore.edit { it[SFX_MODE] = mode }
+    }
+
+    suspend fun setSfxStrength(strength: Int) {
+        context.dataStore.edit { it[SFX_STRENGTH] = strength }
+    }
+
     /** 一次性快照，用于启动时同步 ApiClient 拦截器 */
     suspend fun authSnapshot(): AuthSnapshot {
         val data = context.dataStore.data.first()
@@ -137,5 +169,12 @@ class PreferencesDataStore @Inject constructor(
         private val KEY_MAPPING_CONFIRM = intPreferencesKey("key_mapping_confirm")
         private val KEY_MAPPING_TOP = intPreferencesKey("key_mapping_top")
         private val KEY_MAPPING_BOTTOM = intPreferencesKey("key_mapping_bottom")
+
+        private val EQ_ENABLED = booleanPreferencesKey("eq_enabled")
+        private val EQ_PRESET = stringPreferencesKey("eq_preset")
+        private val EQ_BANDS = stringPreferencesKey("eq_bands")
+        private val SFX_ENABLED = booleanPreferencesKey("sfx_enabled")
+        private val SFX_MODE = stringPreferencesKey("sfx_mode")
+        private val SFX_STRENGTH = intPreferencesKey("sfx_strength")
     }
 }

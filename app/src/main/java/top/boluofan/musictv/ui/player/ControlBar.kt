@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
@@ -153,6 +154,8 @@ fun ControlBar(
     onToggleQueue: () -> Unit,
     onToggleFavorite: () -> Unit = {},
     onRefreshLyrics: () -> Unit = {},
+    onToggleSound: (() -> Unit)? = null,
+    soundButtonFocusRequester: FocusRequester? = null,
     isLyricRefreshing: Boolean = false,
     playPauseFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
@@ -235,6 +238,14 @@ fun ControlBar(
                 loading = isLyricRefreshing
             )
             TransportButton(Icons.AutoMirrored.Rounded.QueueMusic, "播放队列", onToggleQueue)
+            if (onToggleSound != null) {
+                TransportButton(
+                    Icons.Rounded.GraphicEq,
+                    "音效",
+                    onToggleSound,
+                    focusRequester = soundButtonFocusRequester
+                )
+            }
         }
     }
 }

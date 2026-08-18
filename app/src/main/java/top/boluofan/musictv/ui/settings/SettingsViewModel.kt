@@ -35,7 +35,10 @@ data class SettingsUiState(
     val sleepAfterSongs: Int = 0,
     val sleepAfterSongsRemaining: Int = 0,
     val logExportStatus: String = "",
-    val keyMapping: KeyMapping = KeyMapping()
+    val keyMapping: KeyMapping = KeyMapping(),
+    val eqEnabled: Boolean = false,
+    val sfxEnabled: Boolean = false,
+    val soundUnsupportedNotice: Boolean = false
 )
 
 @HiltViewModel
@@ -85,7 +88,9 @@ class SettingsViewModel @Inject constructor(
                     sleepTimerMinutes = s.sleepTimerMinutes,
                     sleepTimerRemaining = s.sleepTimerRemaining,
                     sleepAfterSongs = s.sleepAfterSongs,
-                    sleepAfterSongsRemaining = s.sleepAfterSongsRemaining
+                    sleepAfterSongsRemaining = s.sleepAfterSongsRemaining,
+                    eqEnabled = s.eqEnabled,
+                    sfxEnabled = s.sfxEnabled
                 )
             }
         }
@@ -113,6 +118,33 @@ class SettingsViewModel @Inject constructor(
 
     fun setBackgroundPlayback(enabled: Boolean) {
         viewModelScope.launch { dataStore.setBackgroundPlay(enabled) }
+    }
+
+    // 音效总开关：开启时分别校验设备能力，均衡器与音效任一支持即可；都不支持则提示
+    fun setSoundEnabled(enabled: Boolean) {
+        if (!enabled) {
+            playerController.setEqualizerEnabled(false)
+            playerController.setSfxEnabled(false)
+            return
+        }
+        var pending = 2
+        var anySupported = false
+        playerController.setEqualizerEnabled(true) { ok ->
+            if (ok) anySupported = true
+            if (--pending == 0 && !anySupported) {
+                _uiState.value = _uiState.value.copy(soundUnsupportedNotice = true)
+            }
+        }
+        playerController.setSfxEnabled(true) { ok ->
+            if (ok) anySupported = true
+            if (--pending == 0 && !anySupported) {
+                _uiState.value = _uiState.value.copy(soundUnsupportedNotice = true)
+            }
+        }
+    }
+
+    fun dismissSoundUnsupportedNotice() {
+        _uiState.value = _uiState.value.copy(soundUnsupportedNotice = false)
     }
 
     fun setKeyMapping(target: MappingTarget, keyCode: Int) {

@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -195,6 +196,25 @@ fun SettingsScreen(
                 OptionChip("是", uiState.backgroundPlayback) { viewModel.setBackgroundPlayback(true) }
                 OptionChip("否", !uiState.backgroundPlayback) { viewModel.setBackgroundPlayback(false) }
             }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        SettingsSection("音效开关（音效 + 均衡器，开启后可在播放器界面调节）") {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip("开启", uiState.eqEnabled || uiState.sfxEnabled) { viewModel.setSoundEnabled(true) }
+                OptionChip("关闭", !uiState.eqEnabled && !uiState.sfxEnabled) { viewModel.setSoundEnabled(false) }
+            }
+        }
+        if (uiState.soundUnsupportedNotice) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSoundUnsupportedNotice() },
+                confirmButton = {
+                    OptionChip("知道了", true) { viewModel.dismissSoundUnsupportedNotice() }
+                },
+                title = { Text("当前设备不支持音效") },
+                text = { Text("音效功能未开启，播放器不会显示音效按钮。") }
+            )
         }
 
         Spacer(Modifier.height(24.dp))

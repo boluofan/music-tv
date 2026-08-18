@@ -34,7 +34,28 @@ data class PlayerUiState(
     val showQueueDrawer: Boolean = false,
     val isBuffering: Boolean = false,
     val isFavorite: Boolean = false,
-    val isLyricRefreshing: Boolean = false
+    val isLyricRefreshing: Boolean = false,
+    val showSoundPanel: Boolean = false,
+    // 均衡器
+    val eqSupported: Boolean = false,
+    val eqEnabled: Boolean = false,
+    val eqPreset: String = "flat",
+    val eqPresetKeys: List<String> = emptyList(),
+    val eqPresetNames: List<String> = emptyList(),
+    val eqBands: List<Int> = emptyList(),
+    val eqBandFrequencies: List<Int> = emptyList(),
+    val eqBandLevelMin: Int = -1500,
+    val eqBandLevelMax: Int = 1500,
+    // 音效模式
+    val sfxEnabled: Boolean = false,
+    val sfxMode: String = "virtualizer",
+    val sfxStrength: Int = 50,
+    val sfxModeKeys: List<String> = emptyList(),
+    val sfxModeNames: List<String> = emptyList(),
+    val sfxModeSupported: List<Boolean> = emptyList(),
+    val sfxSupported: Boolean = false,
+    val sfxOnA2dp: Boolean = false,
+    val sfxActiveMode: String = "off"
 )
 
 @HiltViewModel
@@ -66,7 +87,25 @@ class PlayerViewModel @Inject constructor(
                         duration = s.duration,
                         playMode = s.playMode,
                         queue = s.queue,
-                        currentIndex = s.currentIndex
+                        currentIndex = s.currentIndex,
+                        eqSupported = s.eqSupported,
+                        eqEnabled = s.eqEnabled,
+                        eqPreset = s.eqPreset,
+                        eqPresetKeys = s.eqPresetKeys,
+                        eqPresetNames = s.eqPresetNames,
+                        eqBands = s.eqBands,
+                        eqBandFrequencies = s.eqBandFrequencies,
+                        eqBandLevelMin = s.eqBandLevelMin,
+                        eqBandLevelMax = s.eqBandLevelMax,
+                        sfxEnabled = s.sfxEnabled,
+                        sfxMode = s.sfxMode,
+                        sfxStrength = s.sfxStrength,
+                        sfxModeKeys = s.sfxModeKeys,
+                        sfxModeNames = s.sfxModeNames,
+                        sfxModeSupported = s.sfxModeSupported,
+                        sfxSupported = s.sfxSupported,
+                        sfxOnA2dp = s.sfxOnA2dp,
+                        sfxActiveMode = s.sfxActiveMode
                     )
                 }
                 val songId = s.currentSong?.songId
@@ -146,6 +185,29 @@ class PlayerViewModel @Inject constructor(
     fun closeQueueDrawer() {
         _uiState.update { it.copy(showQueueDrawer = false) }
     }
+
+    fun toggleSoundPanel() {
+        val opening = !_uiState.value.showSoundPanel
+        _uiState.update { it.copy(showSoundPanel = opening) }
+        if (opening) {
+            playerController.refreshEqInfo()
+            playerController.refreshSfxInfo()
+        }
+    }
+
+    fun closeSoundPanel() {
+        _uiState.update { it.copy(showSoundPanel = false) }
+    }
+
+    fun setSfxMode(mode: String) = playerController.setSfxMode(mode)
+
+    fun setSfxStrength(strength: Int) = playerController.setSfxStrength(strength)
+
+    fun setEqualizerEnabled(enabled: Boolean) = playerController.setEqualizerEnabled(enabled)
+
+    fun setEqualizerPreset(preset: String) = playerController.setEqualizerPreset(preset)
+
+    fun setEqualizerBand(index: Int, levelDb: Int) = playerController.setEqualizerBand(index, levelDb)
 
     fun toggleControls() {
         _uiState.update { it.copy(showControls = !it.showControls) }
