@@ -209,14 +209,22 @@ fun SearchScreen(
             }
         }
 
-        // 搜索提示（输入时）
-        if (!showKeyboard && uiState.tips.isNotEmpty()) {
+        // 联想词（输入时，从服务端 tipSearch 获取，键盘打开时也展示在键盘上方）
+        if (uiState.tips.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
+            Text(
+                text = "联想词",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(uiState.tips) { tip ->
                     TagChip(tip) {
                         viewModel.onQueryChanged(tip)
                         viewModel.search()
+                        showKeyboard = false
                     }
                 }
             }
