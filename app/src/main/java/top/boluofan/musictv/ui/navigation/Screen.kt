@@ -4,7 +4,6 @@ sealed class Screen(val route: String, val label: String) {
     object Home : Screen("home", "首页")
     object Discover : Screen("discover", "发现")
     object Search : Screen("search", "搜索")
-    object My : Screen("my", "我的")
     object Settings : Screen("settings", "设置")
     data class PlaylistDetail(val playlistId: String, val source: String? = null) : Screen("playlist_detail", "歌单详情")
     data class LeaderboardDetail(val bangid: String, val boardName: String, val source: String) : Screen("leaderboard_detail", "榜单详情")
@@ -18,7 +17,7 @@ sealed class Screen(val route: String, val label: String) {
     ) : Screen("album_detail", "专辑详情")
 
     companion object {
-        val all = listOf<Screen>(Home, Discover, Search, My)
+        val all = listOf<Screen>(Home, Discover, Search, Settings)
     }
 }
 

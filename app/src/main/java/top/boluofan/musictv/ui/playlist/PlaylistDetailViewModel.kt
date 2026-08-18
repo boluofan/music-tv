@@ -61,7 +61,7 @@ class PlaylistDetailViewModel @Inject constructor(
 
     private fun resolveFromListData(list: ListData, playlistId: String) {
         val (playlist, songs) = when (playlistId) {
-            "default" -> Playlist(id = "default", name = "试听列表", songs = list.defaultList) to list.defaultList.orEmpty()
+            "default" -> Playlist(id = "default", name = "默认列表", songs = list.defaultList) to list.defaultList.orEmpty()
             "love" -> Playlist(id = "love", name = "我的收藏", songs = list.loveList) to list.loveList.orEmpty()
             else -> {
                 val p = list.userList.orEmpty().find { it.id == playlistId }

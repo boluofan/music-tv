@@ -54,6 +54,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -73,6 +74,7 @@ import top.boluofan.musictv.ui.update.UpdateViewModel
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
+    asTab: Boolean = false,
     onBack: () -> Unit = {},
     onConfigureServer: () -> Unit = {},
     onLogout: () -> Unit = {}
@@ -107,19 +109,22 @@ fun SettingsScreen(
         }
     }
 
-    // 焦点已在返回按钮且页面在顶部时禁用，「返回键」穿透到外层 BackHandler 直接返回上一级
+    // 三段式返回键（与首页/搜索/发现一致）：
+    // 1) 未在顶部或焦点不在返回按钮 -> 滚回顶部并聚焦左上角返回按钮；
+    // 2) 已在顶部且焦点在返回按钮 -> 聚焦底部 Tab 栏；
+    // 3) 焦点已在 Tab 栏 -> 穿透到外层 BackHandler 直接回首页。
+    // 触摸模式下焦点请求无效（hasFocus 恒 false），三段式会吞掉返回键，故禁用。
+    val touchMode = LocalView.current.isInTouchMode
     BackHandler(
-        enabled = bridge?.hasFocus != true && !(backButtonHasFocus && scrollState.value == 0)
+        enabled = !touchMode && bridge?.hasFocus != true
     ) {
-        if (scrollState.value > 0) {
+        if (scrollState.value > 0 || !backButtonHasFocus) {
             scope.launch {
                 runCatching { topFocus.requestFocus() }
                 scrollState.animateScrollTo(0)
             }
         } else {
-            scope.launch {
-                runCatching { topFocus.requestFocus() }
-            }
+            bridge?.focusTabBar()
         }
     }
 

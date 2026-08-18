@@ -36,7 +36,7 @@ fun TvBottomNav(
     onScreenSelected: (Screen) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tabs = remember { listOf(Screen.Home, Screen.Search, Screen.Discover, Screen.My) }
+    val tabs = remember { listOf(Screen.Home, Screen.Search, Screen.Discover, Screen.Settings) }
     val bridge = LocalTabBarBridge.current
 
     Row(

@@ -57,7 +57,6 @@ import top.boluofan.musictv.ui.artist.ArtistDetailScreen
 import top.boluofan.musictv.ui.discover.DiscoverScreen
 import top.boluofan.musictv.ui.discover.LeaderboardDetailScreen
 import top.boluofan.musictv.ui.home.HomeScreen
-import top.boluofan.musictv.ui.my.MyScreen
 import top.boluofan.musictv.ui.navigation.LocalPageScrollBridge
 import top.boluofan.musictv.ui.navigation.LocalPlayerBarBridge
 import top.boluofan.musictv.ui.navigation.LocalTabBarBridge
@@ -218,6 +217,26 @@ fun TvApp(
                             onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onPlaylistClick = { playlist ->
                                 push(Screen.PlaylistDetail(playlistId = playlist.id ?: "", source = null))
+                            },
+                            onArtistClick = { artist, source ->
+                                push(
+                                    Screen.ArtistDetail(
+                                        artistId = artist.id ?: "",
+                                        artistName = artist.name ?: "歌手",
+                                        source = source
+                                    )
+                                )
+                            },
+                            onAlbumClick = { album, source ->
+                                push(
+                                    Screen.AlbumDetail(
+                                        albumId = album.id ?: "",
+                                        albumName = album.name ?: "专辑",
+                                        source = source,
+                                        cover = album.img,
+                                        singer = album.singer
+                                    )
+                                )
                             }
                         )
                         Screen.Discover -> DiscoverScreen(
@@ -262,31 +281,9 @@ fun TvApp(
                                 )
                             }
                         )
-                        Screen.My -> MyScreen(
-                            onArtistClick = { artist, source ->
-                                push(
-                                    Screen.ArtistDetail(
-                                        artistId = artist.id ?: "",
-                                        artistName = artist.name ?: "歌手",
-                                        source = source
-                                    )
-                                )
-                            },
-                            onAlbumClick = { album, source ->
-                                push(
-                                    Screen.AlbumDetail(
-                                        albumId = album.id ?: "",
-                                        albumName = album.name ?: "专辑",
-                                        source = source,
-                                        cover = album.img,
-                                        singer = album.singer
-                                    )
-                                )
-                            },
-                            onNavigateToSettings = { push(Screen.Settings) }
-                        )
                         Screen.Settings -> SettingsScreen(
-                            onBack = { goBack() },
+                            asTab = true,
+                            onBack = { backStack[0] = Screen.Home },
                             onConfigureServer = { authViewModel.resetToConfig() },
                             onLogout = { authViewModel.logout() }
                         )

@@ -68,7 +68,7 @@ data class ListData(
     @SerializedName("tempList") val tempList: List<MusicInfo>? = null
 ) {
     val defaultPlaylist: Playlist
-        get() = Playlist(id = "default", name = "试听列表", songs = defaultList)
+        get() = Playlist(id = "default", name = "默认列表", songs = defaultList)
     val lovePlaylist: Playlist
         get() = Playlist(id = "love", name = "我的收藏", songs = loveList)
 }
