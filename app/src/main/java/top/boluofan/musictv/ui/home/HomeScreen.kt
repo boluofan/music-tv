@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -80,6 +82,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
+    val firstPlaylistFocus = remember { FocusRequester() }
     val restorer = rememberScreenFocusRestorer()
 
     ListBackToTopHandler(
@@ -105,11 +108,12 @@ fun HomeScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            RefreshButton(
-                refreshing = uiState.isRefreshing,
-                focusRequester = topFocus,
-                onClick = { viewModel.load() }
-            )
+             RefreshButton(
+                 refreshing = uiState.isRefreshing,
+                 focusRequester = topFocus,
+                 onClick = { viewModel.load() },
+                 modifier = Modifier.focusProperties { down = firstPlaylistFocus }
+             )
         }
 
         when {
@@ -145,19 +149,18 @@ fun HomeScreen(
                 }
                 LazyColumn(
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     item {
                         SectionTitle("我的歌单")
                     }
-                    val rows = displayPlaylists.chunked(4)
-                    items(rows.size) { rowIndex ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    item {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                         ) {
-                            rows[rowIndex].forEach { playlist ->
+                            itemsIndexed(displayPlaylists) { index, playlist ->
                                 val pk = "playlist:${playlist.id ?: ""}"
                                 PlaylistGridCard(
                                     playlist = playlist,
@@ -165,11 +168,11 @@ fun HomeScreen(
                                         restorer.record(pk)
                                         onPlaylistClick(playlist)
                                     },
-                                    modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
+                                    modifier = Modifier
+                                        .width(140.dp)
+                                        .restorableFocus(restorer, pk)
+                                        .then(if (index == 0) Modifier.focusRequester(firstPlaylistFocus) else Modifier)
                                 )
-                            }
-                            repeat(4 - rows[rowIndex].size) {
-                                Spacer(Modifier.weight(1f))
                             }
                         }
                     }
@@ -276,10 +279,11 @@ private fun CategoryHint(text: String) {
 private fun RefreshButton(
     refreshing: Boolean,
     focusRequester: FocusRequester? = null,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(36.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))

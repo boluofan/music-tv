@@ -197,7 +197,7 @@ fun PlaylistDetailScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                             }
-                            if (uiState.isUserList) {
+                            /*if (uiState.isUserList) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -215,7 +215,7 @@ fun PlaylistDetailScreen(
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
-                            }
+                            }*/
                         }
                     }
 
