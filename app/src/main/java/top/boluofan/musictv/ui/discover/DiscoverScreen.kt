@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.ensureActive
 import top.boluofan.musictv.data.model.BoardItem
 import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.TagGroup
@@ -95,6 +98,17 @@ fun DiscoverScreen(
             if (totalItems > 0 && lastVisible >= totalItems - 3) {
                 viewModel.loadMore()
             }
+        }
+    }
+
+    // 切换平台/分区/标签后回到第一屏（加载中列表被移出组合，加载完成后再滚动，按帧重试防被焦点滚动取消）
+    LaunchedEffect(uiState.source, uiState.section, uiState.selectedTagId, uiState.isLoading) {
+        if (uiState.isLoading) return@LaunchedEffect
+        repeat(10) {
+            withFrameNanos { }
+            if (!listState.canScrollBackward) return@LaunchedEffect
+            runCatching { listState.scrollToItem(0) }
+            ensureActive()
         }
     }
 
@@ -214,44 +228,41 @@ private fun SquareContent(
             }
         }
         Spacer(Modifier.height(8.dp))
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
-        ) {
-            val rows = uiState.playlists.chunked(4)
-            items(rows.size) { rowIndex ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    rows[rowIndex].forEach { playlist ->
-                        val pk = "playlist:${playlist.id ?: ""}"
-                        PlaylistCard(
-                            playlist = playlist,
-                            onClick = {
-                                restorer.record(pk)
-                                onPlaylistClick(playlist)
-                            },
-                            modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
-                        )
-                    }
-                    repeat(4 - rows[rowIndex].size) {
-                        Spacer(Modifier.weight(1f))
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val columns = maxOf(1, ((maxWidth + 12.dp) / (140.dp + 12.dp)).toInt())
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+            ) {
+                val rows = uiState.playlists.chunked(columns)
+                items(rows.size) { rowIndex ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        rows[rowIndex].forEach { playlist ->
+                            val pk = "playlist:${playlist.id ?: ""}"
+                            PlaylistCard(
+                                playlist = playlist,
+                                onClick = {
+                                    restorer.record(pk)
+                                    onPlaylistClick(playlist)
+                                },
+                                modifier = Modifier.restorableFocus(restorer, pk).width(140.dp)
+                            )
+                        }
                     }
                 }
-            }
-            if (uiState.isLoadingMore) {
-                item {
-                    Box(
-                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                if (uiState.isLoadingMore) {
+                    item {
+                        Box(
+                            Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -266,40 +277,37 @@ private fun LeaderboardContent(
     restorer: ScreenFocusRestorer,
     onBoardClick: (BoardItem) -> Unit
 ) {
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
-    ) {
-        val rows = uiState.boards.chunked(4)
-        items(rows.size) { rowIndex ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rows[rowIndex].forEach { board ->
-                    val pk = "board:${board.bangid ?: board.id ?: ""}"
-                    BoardCard(
-                        board = board,
-                        onClick = {
-                            restorer.record(pk)
-                            onBoardClick(board)
-                        },
-                        modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
-                    )
-                }
-                repeat(4 - rows[rowIndex].size) {
-                    Spacer(Modifier.weight(1f))
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val columns = maxOf(1, ((maxWidth + 12.dp) / (140.dp + 12.dp)).toInt())
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+        ) {
+            val rows = uiState.boards.chunked(columns)
+            items(rows.size) { rowIndex ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rows[rowIndex].forEach { board ->
+                        val pk = "board:${board.bangid ?: board.id ?: ""}"
+                        BoardCard(
+                            board = board,
+                            onClick = {
+                                restorer.record(pk)
+                                onBoardClick(board)
+                            },
+                            modifier = Modifier.restorableFocus(restorer, pk).width(140.dp)
+                        )
+                    }
                 }
             }
-        }
-        if (uiState.boards.isEmpty()) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(vertical = 60.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        "该平台暂无榜单",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+            if (uiState.boards.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 60.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            "该平台暂无榜单",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
         }

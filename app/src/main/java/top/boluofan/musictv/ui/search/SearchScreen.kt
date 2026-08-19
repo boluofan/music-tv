@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -497,30 +499,27 @@ private fun SingerResultGrid(
     restorer: ScreenFocusRestorer,
     onArtistClick: (SearchArtistItem, String) -> Unit
 ) {
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
-        val rows = artists.chunked(4)
-        items(rows.size) { rowIndex ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rows[rowIndex].forEach { artist ->
-                    val pk = "artist:${artist.id ?: ""}:$source"
-                    ArtistCard(
-                        artist = artist,
-                        onClick = {
-                            restorer.record(pk)
-                            onArtistClick(artist, source)
-                        },
-                        modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
-                    )
-                }
-                repeat(4 - rows[rowIndex].size) {
-                    Spacer(Modifier.weight(1f))
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val columns = maxOf(1, ((maxWidth + 12.dp) / (140.dp + 12.dp)).toInt())
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            val rows = artists.chunked(columns)
+            items(rows.size) { rowIndex ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rows[rowIndex].forEach { artist ->
+                        val pk = "artist:${artist.id ?: ""}:$source"
+                        ArtistCard(
+                            artist = artist,
+                            onClick = {
+                                restorer.record(pk)
+                                onArtistClick(artist, source)
+                            },
+                            modifier = Modifier.restorableFocus(restorer, pk).width(140.dp)
+                        )
+                    }
                 }
             }
         }
@@ -535,30 +534,27 @@ private fun AlbumResultGrid(
     restorer: ScreenFocusRestorer,
     onAlbumClick: (AlbumItem, String) -> Unit
 ) {
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
-        val rows = albums.chunked(4)
-        items(rows.size) { rowIndex ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rows[rowIndex].forEach { album ->
-                    val pk = "album:${album.id ?: ""}:$source"
-                    AlbumCard(
-                        album = album,
-                        onClick = {
-                            restorer.record(pk)
-                            onAlbumClick(album, source)
-                        },
-                        modifier = Modifier.restorableFocus(restorer, pk).weight(1f)
-                    )
-                }
-                repeat(4 - rows[rowIndex].size) {
-                    Spacer(Modifier.weight(1f))
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val columns = maxOf(1, ((maxWidth + 12.dp) / (140.dp + 12.dp)).toInt())
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            val rows = albums.chunked(columns)
+            items(rows.size) { rowIndex ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rows[rowIndex].forEach { album ->
+                        val pk = "album:${album.id ?: ""}:$source"
+                        AlbumCard(
+                            album = album,
+                            onClick = {
+                                restorer.record(pk)
+                                onAlbumClick(album, source)
+                            },
+                            modifier = Modifier.restorableFocus(restorer, pk).width(140.dp)
+                        )
+                    }
                 }
             }
         }
