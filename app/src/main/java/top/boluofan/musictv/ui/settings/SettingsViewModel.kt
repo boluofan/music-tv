@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.api.ApiClient
 import top.boluofan.musictv.data.storage.PreferencesDataStore
+import top.boluofan.musictv.ui.config.ConfigWebServer
 import top.boluofan.musictv.domain.KeyMapping
 import top.boluofan.musictv.domain.MappingTarget
 import top.boluofan.musictv.domain.PlayerController
@@ -199,10 +200,42 @@ class SettingsViewModel @Inject constructor(
                         reader.forEachLine { writer.appendLine(sanitizeLogLine(it)) }
                     }
                 }
-                "已导出 $fileName（已脱敏），手机扫码页面「日志」页签可下载"
+                startLogServer(file)
+                if (_logDownloadUrl.value != null) "已导出 $fileName（已脱敏），手机扫码即可下载"
+                else "已导出 $fileName（已脱敏），未获取到局域网地址，无法扫码下载"
             }.getOrElse { e -> "导出失败：${e.message}" }
             _uiState.value = _uiState.value.copy(logExportStatus = status)
         }
+    }
+
+    private var logServer: LogDownloadServer? = null
+
+    private val _logDownloadUrl = MutableStateFlow<String?>(null)
+    val logDownloadUrl: StateFlow<String?> = _logDownloadUrl.asStateFlow()
+
+    private fun startLogServer(file: File) {
+        logServer?.stop()
+        logServer = null
+        _logDownloadUrl.value = null
+        val ip = ConfigWebServer.localIpAddress() ?: return
+        for (port in LOG_PORTS) {
+            val server = LogDownloadServer(port, file)
+            if (runCatching { server.start() }.isSuccess) {
+                logServer = server
+                _logDownloadUrl.value = "http://$ip:$port"
+                return
+            }
+        }
+    }
+
+    fun stopLogDownload() {
+        logServer?.stop()
+        logServer = null
+        _logDownloadUrl.value = null
+    }
+
+    override fun onCleared() {
+        stopLogDownload()
     }
 
     private fun sanitizeLogLine(line: String): String {
@@ -219,6 +252,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     private companion object {
+        val LOG_PORTS = intArrayOf(18907, 18908, 18909)
         val SENSITIVE_HEADER_REGEX =
             Regex("(?i)\\b(authorization|cookie|set-cookie|x-api-key)\\s*:\\s*.*")
         val SENSITIVE_JSON_REGEX =

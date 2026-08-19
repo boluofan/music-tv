@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,6 +47,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -53,6 +56,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.sp
@@ -65,6 +69,7 @@ import top.boluofan.musictv.domain.KeyMapping
 import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.domain.MappingTarget
 import top.boluofan.musictv.ui.components.HelpDialog
+import top.boluofan.musictv.ui.components.generateQrBitmap
 import top.boluofan.musictv.ui.navigation.LocalPageScrollBridge
 import top.boluofan.musictv.ui.navigation.LocalTabBarBridge
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
@@ -273,6 +278,10 @@ fun SettingsScreen(
                 value = uiState.logExportStatus.ifEmpty { "导出运行日志用于排查问题" },
                 onClick = { viewModel.exportLogs() }
             )
+        }
+        val logDownloadUrl by viewModel.logDownloadUrl.collectAsStateWithLifecycle()
+        logDownloadUrl?.let { url ->
+            LogQrDialog(url = url, onDismiss = { viewModel.stopLogDownload() })
         }
 
         Spacer(Modifier.height(24.dp))
@@ -700,6 +709,81 @@ private fun KeyMappingDialog(
     LaunchedEffect(capturing) {
         if (capturing == null) runCatching { firstRowFocus.requestFocus() }
     }
+}
+
+@Composable
+private fun LogQrDialog(url: String, onDismiss: () -> Unit) {
+    val closeFocus = remember { FocusRequester() }
+    var closeFocused by remember { mutableStateOf(false) }
+    val qrBitmap = remember(url) { generateQrBitmap(url) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 36.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "导出日志",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "手机扫码下载日志文件",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            Spacer(Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .padding(12.dp)
+            ) {
+                Image(
+                    bitmap = qrBitmap.asImageBitmap(),
+                    contentDescription = "扫码下载日志",
+                    modifier = Modifier.size(220.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = url,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "关闭",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (closeFocused) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (closeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (closeFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                        ) else Modifier
+                    )
+                    .focusRequester(closeFocus)
+                    .onFocusChanged { closeFocused = it.isFocused }
+                    .clickable { onDismiss() }
+                    .padding(horizontal = 28.dp, vertical = 10.dp)
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) { runCatching { closeFocus.requestFocus() } }
 }
 
 @Composable
