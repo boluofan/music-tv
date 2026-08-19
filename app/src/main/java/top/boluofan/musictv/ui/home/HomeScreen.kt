@@ -37,10 +37,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.ensureActive
 import top.boluofan.musictv.data.model.LibraryAlbumItem
 import top.boluofan.musictv.data.model.LibraryArtistItem
 import top.boluofan.musictv.data.model.MusicInfo
@@ -85,6 +88,7 @@ fun HomeScreen(
     val firstPlaylistFocus = remember { FocusRequester() }
     var firstPlaylistComposed by remember { mutableStateOf(false) }
     val restorer = rememberScreenFocusRestorer()
+    var topHasFocus by remember { mutableStateOf(false) }
 
     ListBackToTopHandler(
         listState = listState,
@@ -94,6 +98,18 @@ fun HomeScreen(
     )
     RestoreFocusEffect(restorer)
     DefaultFocusEffect(restorer, topFocus)
+
+    // 焦点落到顶部刷新按钮时滚回列表顶，露出第一屏内容（我的歌单等）；
+    // 焦点系统自带的 bringIntoView 滚动会取消单次 scrollToItem，故按帧重试直到到顶
+    LaunchedEffect(topHasFocus) {
+        if (!topHasFocus) return@LaunchedEffect
+        repeat(10) {
+            withFrameNanos { }
+            if (!listState.canScrollBackward) return@LaunchedEffect
+            runCatching { listState.scrollToItem(0) }
+            ensureActive()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp),
@@ -113,10 +129,12 @@ fun HomeScreen(
                  refreshing = uiState.isRefreshing,
                  focusRequester = topFocus,
                  onClick = { viewModel.load() },
-                 modifier = Modifier.then(
-                     if (firstPlaylistComposed) Modifier.focusProperties { down = firstPlaylistFocus }
-                     else Modifier
-                 )
+                 modifier = Modifier
+                     .onFocusChanged { topHasFocus = it.isFocused }
+                     .then(
+                         if (firstPlaylistComposed) Modifier.focusProperties { down = firstPlaylistFocus }
+                         else Modifier
+                     )
              )
         }
 
