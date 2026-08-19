@@ -14,8 +14,8 @@ android {
         applicationId = "top.boluofan.musictv"
         minSdk = 21
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.1.1"
+        versionCode = 7
+        versionName = "2.0.0-beta.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
