@@ -1,74 +1,283 @@
-name: Build Android APK
+name: Build and Release
 
 on:
   push:
-    # branches:
-    #   - main
-    #   - master
     tags:
       - 'v*'
+    branches:
+      - main      # push 到 main 自动打测试包并发布 dev prerelease
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'doc/**'
+  workflow_dispatch:
+
+# 同一 ref 只保留最新一次运行
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  # ============================================================
+  # 构建 APK
+  # ============================================================
+  build-android:
+    name: Android (APK)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
         with:
-          distribution: 'temurin'
+          fetch-depth: 0  # 需要完整历史与 tag 以生成 changelog
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
           java-version: '17'
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      
-      - name: Grant execute permission
-        run: chmod +x gradlew
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Extract version from build.gradle.kts
+        id: version
+        run: |
+          GRADLE_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed 's/.*versionName = "\(.*\)".*/\1/')
+          VERSION_CODE=$(grep 'versionCode = ' app/build.gradle.kts | head -1 | sed 's/.*versionCode = \([0-9]*\).*/\1/')
+          VERSION_CODE=${VERSION_CODE:-0}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="$GRADLE_VERSION"
+          else
+            VERSION="dev"
+          fi
+          BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "build_time=$BUILD_TIME" >> "$GITHUB_OUTPUT"
+          echo "git_commit=$GIT_COMMIT" >> "$GITHUB_OUTPUT"
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release-keystore.jks
 
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
       - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
         env:
-          GRADLE_CONNECT_TIMEOUT_MAX: 120
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
           KEYSTORE_ALIAS_PASSWORD: ${{ secrets.KEYSTORE_ALIAS_PASSWORD }}
 
-      - name: Upload APK files
-        uses: actions/upload-artifact@v4
+      - name: Collect APK
+        run: |
+          mkdir -p apk-output
+          cp app/build/outputs/apk/release/music-tv.apk apk-output/music-tv.apk
+
+      - name: Get previous tag
+        id: prev-tag
+        run: |
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # release 构建：按名称排除当前 tag
+            CURRENT_TAG="${GITHUB_REF#refs/tags/}"
+            PREV_TAG=$(git --no-pager tag --sort=creatordate --merged HEAD | grep '^v' | grep -v "^${CURRENT_TAG}$" | tail -1)
+          else
+            # dev 构建：排除指向 HEAD 同一 commit 的 tag，防止 fromTag==toTag 导致 changelog 为空报错
+            PREV_TAG=""
+            for tag in $(git --no-pager tag --sort=-creatordate --merged HEAD | grep '^v'); do
+              TAG_SHA=$(git rev-list -n1 "$tag")
+              if [[ "$TAG_SHA" != "$HEAD_SHA" ]]; then
+                PREV_TAG="$tag"
+                break
+              fi
+            done
+          fi
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+            echo "No previous tag found, using first commit: ${PREV_TAG}"
+          else
+            echo "Previous tag: ${PREV_TAG}"
+          fi
+          echo "previous_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        uses: requarks/changelog-action@v1
         with:
-          name: apk-files
-          path: app/build/outputs/apk/release/*.apk
+          token: ${{ github.token }}
+          fromTag: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.sha }}
+          toTag: ${{ steps.prev-tag.outputs.previous_tag }}
+          writeToFile: false
+          useGitmojis: true
+          includeInvalidCommits: false
+          restrictToTypes: feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert
 
+      - name: Generate version.json
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          GIT_COMMIT: ${{ steps.version.outputs.git_commit }}
+          BUILD_TIME: ${{ steps.version.outputs.build_time }}
+          RELEASE_NOTES: ${{ steps.changelog.outputs.changes }}
+        run: |
+          # 精简 release notes：去掉 commit 链接（节点 id + 网址），保留提交信息与署名
+          SIMPLE_NOTES=$(printf '%s' "${RELEASE_NOTES}" | sed -E 's/- \[`[0-9a-f]+`\]\([^)]*\) - /- /g')
+          jq -n \
+            --arg version "${VERSION}" \
+            --argjson version_code "${VERSION_CODE}" \
+            --arg git_commit "${GIT_COMMIT}" \
+            --arg build_time "${BUILD_TIME}" \
+            --arg release_notes "${SIMPLE_NOTES}" \
+            '{version: $version, version_code: $version_code, git_commit: $git_commit, build_time: $build_time, release_notes: $release_notes}' \
+            > apk-output/version.json
+          cat apk-output/version.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: music-tv-apk
+          path: |
+            apk-output/*.apk
+            apk-output/version.json
+
+  # ============================================================
+  # 发布 Release
+  # ============================================================
   release:
-    needs: build
+    name: Create Release
+    needs: build-android
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: Download APK files
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史以生成 changelog
+
+      - name: Determine release info
+        id: release_info
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "name=Release $TAG" >> "$GITHUB_OUTPUT"
+            # 带预发布后缀的 tag（如 v2.0.0-beta.1）标记为 Pre-release，且不计入 latest
+            if [[ "$TAG" == *-* ]]; then
+              echo "prerelease=true" >> "$GITHUB_OUTPUT"
+              echo "make_latest=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "prerelease=false" >> "$GITHUB_OUTPUT"
+              echo "make_latest=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # 分支触发（push to main / workflow_dispatch）统一用 dev tag 滚动 prerelease
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            echo "tag=dev" >> "$GITHUB_OUTPUT"
+            echo "name=Dev Build ($BRANCH)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get previous tag
+        id: prev-tag
+        run: |
+          CURRENT_TAG="${{ steps.release_info.outputs.tag }}"
+          HEAD_SHA=$(git rev-parse HEAD)
+
+          if [[ "$CURRENT_TAG" == "dev" ]]; then
+            # dev 构建：排除指向 HEAD 同一 commit 的 tag，防止 fromTag==toTag 导致 changelog 为空报错
+            PREV_TAG=""
+            for tag in $(git --no-pager tag --sort=-creatordate --merged HEAD | grep '^v'); do
+              TAG_SHA=$(git rev-list -n1 "$tag")
+              if [[ "$TAG_SHA" != "$HEAD_SHA" ]]; then
+                PREV_TAG="$tag"
+                break
+              fi
+            done
+          else
+            # release 构建：按名称排除当前 tag
+            PREV_TAG=$(git --no-pager tag --sort=creatordate --merged HEAD | grep '^v' | grep -v "^${CURRENT_TAG}$" | tail -1)
+          fi
+
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+            echo "No previous tag found, using first commit: ${PREV_TAG}"
+          else
+            echo "Previous tag: ${PREV_TAG}"
+          fi
+
+          echo "previous_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Changelog from Conventional Commits
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          fromTag: ${{ startsWith(github.ref, 'refs/tags/') && steps.release_info.outputs.tag || github.sha }}
+          toTag: ${{ steps.prev-tag.outputs.previous_tag }}
+          writeToFile: false
+          useGitmojis: true
+          includeInvalidCommits: false
+          restrictToTypes: feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert
+
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: apk-files
-          path: .
+          path: release-assets
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p final-assets
+          find release-assets -type f \( -name '*.apk' -o -name 'version.json' \) -exec cp {} final-assets/ \;
+          echo "=== Release Assets ==="
+          ls -lh final-assets/
+
+      - name: Delete existing release (for branch builds)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ steps.release_info.outputs.tag }}" --yes --cleanup-tag 2>/dev/null || true
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: '*.apk'
-          generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGELOG_BODY: ${{ steps.changelog.outputs.changes }}
+        run: |
+          TAG="${{ steps.release_info.outputs.tag }}"
+          TITLE="${{ steps.release_info.outputs.name }}"
+          IS_PRERELEASE="${{ steps.release_info.outputs.prerelease }}"
+          MAKE_LATEST="${{ steps.release_info.outputs.make_latest }}"
+
+          # 通过环境变量获取 changelog，避免反引号等特殊字符被 shell 解释
+          RELEASE_NOTES="${CHANGELOG_BODY}"
+
+          # 如果 changelog 为空，使用默认内容
+          if [ -z "$RELEASE_NOTES" ]; then
+            if [[ "${IS_PRERELEASE}" == "true" ]]; then
+              RELEASE_NOTES="Development build from branch: ${GITHUB_REF_NAME}"
+            else
+              RELEASE_NOTES="Release ${TAG}"
+            fi
+          fi
+
+          ARGS=(
+            "${TAG}"
+            --title "${TITLE}"
+            --notes "${RELEASE_NOTES}"
+          )
+
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            ARGS+=(--prerelease)
+          fi
+
+          if [[ "${MAKE_LATEST}" == "true" ]]; then
+            ARGS+=(--latest)
+          fi
+
+          # 对于 tag 触发，直接使用已有 tag；对于分支触发，需要指定 target
+          if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+            ARGS+=(--target "${{ github.sha }}")
+          fi
+
+          gh release create "${ARGS[@]}" final-assets/*

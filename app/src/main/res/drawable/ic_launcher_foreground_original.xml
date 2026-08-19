@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Keep the logo in the safe zone (66% of the 108dp icon) to prevent clipping -->
-    <item
-        android:drawable="@drawable/ic_logo"
-        android:gravity="center"
-        android:width="72dp"
-        android:height="72dp" />
-</layer-list>

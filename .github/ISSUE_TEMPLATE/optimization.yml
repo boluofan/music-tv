@@ -1,0 +1,51 @@
+name: "⚡ 功能优化"
+description: "对现有功能提出改进或体验优化建议"
+title: "[Optimize] "
+labels: ["optimization"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        针对已有功能的改进建议（性能、体验、交互等）。全新功能请使用「功能建议」模板。
+  - type: input
+    id: feature
+    attributes:
+      label: 相关功能
+      description: 需要优化的现有功能或页面
+      placeholder: 例如：首页歌单加载、全屏播放器歌词显示
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: 当前表现
+      description: 目前的行为或体验存在什么不足？
+      placeholder: 例如：歌单超过 500 首时滚动明显卡顿
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: 优化建议
+      description: 你期望优化后达到的效果，或具体的改进思路
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: 优化类型
+      options:
+        - 性能（卡顿、加载慢、内存等）
+        - 交互体验（遥控器操作、焦点逻辑等）
+        - 界面视觉（布局、样式等）
+        - 稳定性
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 设备与版本（性能类问题请填写）
+      placeholder: 例如 小米电视 ES55 / Android 11 / v2.0.0
+    validations:
+      required: false
