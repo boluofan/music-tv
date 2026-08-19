@@ -717,7 +717,10 @@ private fun LogQrDialog(url: String, onDismiss: () -> Unit) {
     var closeFocused by remember { mutableStateOf(false) }
     val qrBitmap = remember(url) { generateQrBitmap(url) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.5f)

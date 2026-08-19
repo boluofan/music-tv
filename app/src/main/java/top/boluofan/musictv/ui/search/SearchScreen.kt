@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collect
@@ -400,14 +401,28 @@ fun SearchScreen(
 
 @Composable
 private fun SearchQrDialog(url: String?, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
+    val closeFocus = remember { FocusRequester() }
+    var closeFocused by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Column(
             modifier = Modifier
+                .fillMaxWidth(0.5f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(32.dp),
+                .padding(horizontal = 36.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Text(
+                text = "扫码搜索",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(16.dp))
             if (url == null) {
                 Text(
                     text = "未获取到局域网地址\n请检查电视网络连接",
@@ -431,17 +446,10 @@ private fun SearchQrDialog(url: String?, onDismiss: () -> Unit) {
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = "手机扫码搜索",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "同一局域网内扫码，在手机上输入\n关键字远程搜索，可反复提交",
-                    fontSize = 12.sp,
+                    text = "扫码输入关键字搜索",
+                    fontSize = 14.sp,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -450,8 +458,33 @@ private fun SearchQrDialog(url: String?, onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                 )
             }
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "关闭",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (closeFocused) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (closeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (closeFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                        ) else Modifier
+                    )
+                    .focusRequester(closeFocus)
+                    .onFocusChanged { closeFocused = it.isFocused }
+                    .clickable { onDismiss() }
+                    .padding(horizontal = 28.dp, vertical = 10.dp)
+            )
         }
     }
+
+    LaunchedEffect(Unit) { runCatching { closeFocus.requestFocus() } }
 }
 
 private fun hasResults(uiState: SearchUiState): Boolean = when (uiState.type) {
