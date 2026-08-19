@@ -51,7 +51,6 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -382,41 +381,6 @@ private fun PlaylistGridCard(
 }
 
 @Composable
-private fun RowActionButton(
-    icon: ImageVector,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    var focused by remember { mutableStateOf(false) }
-    Box(
-        modifier = modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(
-                if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                else Color.Transparent
-            )
-            .then(
-                if (focused) Modifier.border(
-                    3.dp, MaterialTheme.colorScheme.primary, CircleShape
-                ) else Modifier
-            )
-            .onFocusChanged { focused = it.isFocused }
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = if (focused) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
-@Composable
 private fun ArtistRow(
     item: LibraryArtistItem,
     onClick: () -> Unit,
@@ -424,6 +388,7 @@ private fun ArtistRow(
     modifier: Modifier = Modifier
 ) {
     var rowActive by remember { mutableStateOf(false) }
+    var mainFocused by remember { mutableStateOf(false) }
     var removeFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val scale by animateFloatAsState(
@@ -454,6 +419,7 @@ private fun ArtistRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
+                .onFocusChanged { mainFocused = it.isFocused }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -492,13 +458,31 @@ private fun ArtistRow(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
+            Box(
+                modifier = Modifier
+                    .padding(end = 10.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (mainFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (mainFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                        ) else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.SouthEast,
+                    contentDescription = "进入",
+                    tint = if (mainFocused) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
-        RowActionButton(
-            icon = Icons.Rounded.SouthEast,
-            contentDescription = "进入",
-            modifier = Modifier.padding(end = 10.dp),
-            onClick = onClick
-        )
         Box(
             modifier = Modifier
                 .padding(end = 14.dp)
@@ -538,6 +522,7 @@ private fun AlbumRow(
     modifier: Modifier = Modifier
 ) {
     var rowActive by remember { mutableStateOf(false) }
+    var mainFocused by remember { mutableStateOf(false) }
     var removeFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val scale by animateFloatAsState(
@@ -568,6 +553,7 @@ private fun AlbumRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
+                .onFocusChanged { mainFocused = it.isFocused }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -613,13 +599,31 @@ private fun AlbumRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            Box(
+                modifier = Modifier
+                    .padding(end = 10.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (mainFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (mainFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, CircleShape
+                        ) else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.SouthEast,
+                    contentDescription = "进入",
+                    tint = if (mainFocused) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
-        RowActionButton(
-            icon = Icons.Rounded.SouthEast,
-            contentDescription = "进入",
-            modifier = Modifier.padding(end = 10.dp),
-            onClick = onClick
-        )
         Box(
             modifier = Modifier
                 .padding(end = 14.dp)
