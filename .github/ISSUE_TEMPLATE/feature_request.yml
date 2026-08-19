@@ -1,0 +1,51 @@
+name: "✨ 功能建议"
+description: "提出一个新功能或新需求"
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提出建议！提交前请先搜索已有 Issues，避免重复。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 需求背景
+      description: 这个功能想解决什么问题？什么场景下会用到？
+      placeholder: 例如：家里有多台电视，希望收藏和歌单能在设备间同步
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的功能
+      description: 描述你希望实现的功能和大致交互方式
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 是否考虑过其他实现方式或临时解决办法？
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 涉及范围
+      description: 该功能可能涉及的部分（可多选）
+      options:
+        - label: 播放器 / 播放控制（歌词、队列、音效等）
+        - label: 界面 / 交互（遥控器操作、焦点逻辑）
+        - label: 连接 / 登录（扫码配置、服务端对接）
+        - label: 歌单 / 收藏管理
+        - label: 搜索 / 发现（歌单广场、排行榜）
+        - label: 更新 / 设置
+        - label: 其他
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充说明
+      description: 其他相关信息、参考应用截图等
+    validations:
+      required: false

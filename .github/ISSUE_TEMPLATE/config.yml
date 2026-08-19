@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 使用交流与提问
+    url: https://github.com/boluofan/music-tv/discussions
+    about: 使用疑问、配置求助等请到 Discussions 讨论
+  - name: 🖥️ lxserver 服务端问题
+    url: https://github.com/XCQ0607/lxserver/issues
+    about: 洛雪音乐同步服务端相关问题请到服务端仓库反馈

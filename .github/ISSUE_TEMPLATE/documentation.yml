@@ -1,0 +1,39 @@
+name: "📖 文档问题"
+description: "报告文档错误、缺失或提出文档改进建议"
+title: "[Docs] "
+labels: ["documentation"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: 文档位置
+      description: 相关文档的文件路径或链接
+      placeholder: 例如 README.md、doc/TECH_DESIGN.md
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: 问题类型
+      options:
+        - 内容错误（与实际行为不符）
+        - 内容缺失（未覆盖某功能/步骤）
+        - 描述不清晰（易产生误解）
+        - 内容过时（版本更新后未同步）
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 具体说明文档存在的问题
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 修改建议
+      description: 如有建议的修改内容请写在这里
+    validations:
+      required: false
