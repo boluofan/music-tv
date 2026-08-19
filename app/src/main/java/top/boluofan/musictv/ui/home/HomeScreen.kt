@@ -93,6 +93,7 @@ fun HomeScreen(
     ListBackToTopHandler(
         listState = listState,
         topFocus = topFocus,
+        topFocusHasFocus = topHasFocus,
         topFocusInList = false,
         jumpToTabBar = true
     )
