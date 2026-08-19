@@ -37,7 +37,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.data.model.MusicInfo
+import top.boluofan.musictv.ui.components.ActionChip
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.FavoriteToggle
 import top.boluofan.musictv.ui.components.SongListItem
@@ -212,39 +212,3 @@ fun AlbumDetailScreen(
     }
 }
 
-@Composable
-private fun ActionChip(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
-    var isFocused by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-            .then(
-                if (isFocused) Modifier.border(
-                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)
-                ) else Modifier
-            )
-            .onFocusChanged { isFocused = it.isFocused }
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}

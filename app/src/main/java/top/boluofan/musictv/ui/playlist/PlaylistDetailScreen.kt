@@ -23,8 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
@@ -45,7 +43,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +51,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.data.model.MusicInfo
+import top.boluofan.musictv.ui.components.ActionChip
 import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.CoverImage
@@ -174,51 +172,25 @@ fun PlaylistDetailScreen(
                             }
                         }
 
-                        Column(
-                            modifier = Modifier.width(340.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        Row(
+                            modifier = Modifier.padding(start = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                ActionButton(
-                                    icon = Icons.Rounded.PlayArrow,
-                                    label = "播放全部",
-                                    onClick = {
-                                        if (uiState.songs.isNotEmpty()) onSongClick(uiState.songs, 0)
-                                    },
-                                    focusRequester = playAllFocus,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                ActionButton(
-                                    icon = Icons.Rounded.Shuffle,
-                                    label = "随机播放",
-                                    onClick = {
-                                        if (uiState.songs.isNotEmpty()) onShufflePlay(uiState.songs)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            /*if (uiState.isUserList) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    ActionButton(
-                                        icon = Icons.Rounded.Edit,
-                                        label = "重命名",
-                                        onClick = { showRenameDialog = true },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    ActionButton(
-                                        icon = Icons.Rounded.Delete,
-                                        label = "删除歌单",
-                                        onClick = { showDeleteDialog = true },
-                                        modifier = Modifier.weight(1f)
-                                    )
+                            ActionChip(
+                                icon = Icons.Rounded.PlayArrow,
+                                label = "播放全部",
+                                onClick = {
+                                    if (uiState.songs.isNotEmpty()) onSongClick(uiState.songs, 0)
+                                },
+                                focusRequester = playAllFocus
+                            )
+                            ActionChip(
+                                icon = Icons.Rounded.Shuffle,
+                                label = "随机播放",
+                                onClick = {
+                                    if (uiState.songs.isNotEmpty()) onShufflePlay(uiState.songs)
                                 }
-                            }*/
+                            )
                         }
                     }
 
@@ -460,51 +432,5 @@ private fun BackButton(
             modifier = Modifier.size(18.dp)
         )
         Text(text = "返回", fontSize = 16.sp, color = color)
-    }
-}
-
-@Composable
-private fun ActionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    focusRequester: FocusRequester? = null,
-    modifier: Modifier = Modifier
-) {
-    var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.1f else 1.0f,
-        animationSpec = tween(120),
-        label = "actionButtonScale"
-    )
-    val color = MaterialTheme.colorScheme.primary
-
-    Row(
-        modifier = modifier
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            )
-            .then(
-                if (isFocused) Modifier.border(
-                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
-                ) else Modifier
-            )
-            .onFocusChanged { isFocused = it.isFocused }
-            .clickable { onClick() }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
-    ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = color
-        )
     }
 }

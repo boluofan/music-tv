@@ -1,18 +1,14 @@
 package top.boluofan.musictv.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,57 +20,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** 收藏切换按钮（歌手/专辑详情头部用），聚焦时高亮，已收藏时填充红心 */
+/** 详情页头部操作按钮（播放全部/随机播放等），紧凑尺寸，聚焦时描边高亮 */
 @Composable
-fun FavoriteToggle(
-    isFavorite: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+fun ActionChip(
+    icon: ImageVector,
+    label: String,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.1f else 1.0f,
-        animationSpec = tween(120),
-        label = "favoriteToggleScale"
-    )
-    val color = MaterialTheme.colorScheme.primary
-
     Row(
         modifier = modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            )
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
             .then(
                 if (isFocused) Modifier.border(
-                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)
                 ) else Modifier
             )
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { isFocused = it.isFocused }
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-            contentDescription = if (isFavorite) "取消收藏" else "收藏",
-            tint = color,
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(16.dp)
         )
+        Spacer(Modifier.width(6.dp))
         Text(
-            text = if (isFavorite) "已收藏" else "收藏",
+            text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = color
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
