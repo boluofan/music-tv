@@ -15,6 +15,9 @@
 #   2. git commit + tag + push（push tag 后由 .github/workflows/android.yml
 #      完成 APK 构建、GitHub Release；带 -beta 等后缀的 tag 自动标记为 Pre-release）
 #
+# 健壮性：推送失败时自动回滚（删除本地 tag + 回退 commit），保证不会留下
+#   “本地有 tag、远程没有”的半成品状态，可直接重试。
+#
 # 最后一行 stdout 输出新版本号（带 v 前缀），方便链式调用。
 
 set -e
@@ -90,6 +93,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 GRADLE_FILE="$PROJECT_DIR/app/build.gradle.kts"
 
+# 已创建的本地 tag / commit，推送失败时用于回滚
+ROLLBACK_TAG=""
+ROLLBACK_COMMIT=false
+
 log_info() {
     echo -e "${BLUE}$1${NC}" >&2
 }
@@ -104,6 +111,18 @@ log_warn() {
 
 log_err() {
     echo -e "${RED}错误：$1${NC}" >&2
+}
+
+# 推送失败时回滚：删除本地 tag，回退本地 commit，保证本地干净可重试
+rollback() {
+    if [ -n "$ROLLBACK_TAG" ]; then
+        git tag -d "$ROLLBACK_TAG" >/dev/null 2>&1 || true
+        log_warn "已删除本地 tag ${ROLLBACK_TAG}"
+    fi
+    if [ "$ROLLBACK_COMMIT" = true ] && [ "$DRY_RUN" = false ]; then
+        git reset --hard HEAD~1 >/dev/null 2>&1 || true
+        log_warn "已回退本地 commit（build.gradle.kts 已恢复到发布前状态）"
+    fi
 }
 
 # 获取当前版本号（从 build.gradle.kts 的 versionName）
@@ -263,7 +282,7 @@ main() {
 
     # 检查 build.gradle.kts
     if [ ! -f "$GRADLE_FILE" ]; then
-        log_err "未找到 $GRADLE_FILE，请在项目根目录运行此脚本"
+        log_err "未找到 $GRADLE_FILE（请在项目根目录运行此脚本）"
         exit 1
     fi
 
@@ -326,6 +345,7 @@ main() {
         git add "$GRADLE_FILE"
         if ! git diff-index --quiet --cached HEAD --; then
             git commit -m "chore: release version ${new_version}"
+            ROLLBACK_COMMIT=true
             log_ok "更改已提交"
         else
             log_warn "没有检测到需要提交的更改"
@@ -352,17 +372,33 @@ main() {
             fi
         fi
         git tag -a "$tag_name" -m "Release version ${new_version}"
+        ROLLBACK_TAG="$tag_name"
     fi
     log_ok "Git 标签 ${tag_name} 已创建"
 
-    # 4. 推送
+    # 4. 推送（失败则回滚，避免留下半成品状态）
     log_info "[4/4] 推送更改和 tag..."
     if [ "$DRY_RUN" = true ]; then
         echo -e "${YELLOW}[dry-run]${NC} git push --follow-tags" >&2
     else
-        git push --follow-tags
+        if ! git push --follow-tags; then
+            log_err "推送失败，正在回滚本地改动..."
+            rollback
+            log_err "请检查网络 / 凭据后重新运行本脚本"
+            exit 1
+        fi
     fi
     log_ok "已推送到远程仓库"
+
+    # 校验 tag 已到达远程
+    if [ "$DRY_RUN" = false ]; then
+        if ! git ls-remote --tags origin "$tag_name" | grep -q "refs/tags/$tag_name$"; then
+            log_err "tag 未出现在远程，正在回滚..."
+            rollback
+            log_err "请检查网络 / 凭据后重新运行本脚本"
+            exit 1
+        fi
+    fi
 
     echo "" >&2
     local repo_url
