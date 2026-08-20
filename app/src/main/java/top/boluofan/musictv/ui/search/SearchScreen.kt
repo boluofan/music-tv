@@ -538,7 +538,7 @@ private fun SingerResultGrid(
                 text = "共 ${artists.size} 位",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp, start = 16.dp)
             )
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -581,7 +581,7 @@ private fun AlbumResultGrid(
                 text = "共 ${albums.size} 张",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp, start = 16.dp)
             )
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
