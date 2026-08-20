@@ -99,10 +99,6 @@ fun SearchScreen(
     LaunchedEffect(showKeyboard) {
         if (showKeyboard) runCatching { keyboardFocus.requestFocus() }
     }
-    LaunchedEffect(showKeyboard) {
-        if (showKeyboard) return@LaunchedEffect
-        runCatching { searchBoxFocus.requestFocus() }
-    }
     LaunchedEffect(Unit) {
         viewModel.remoteSubmitEvents.collect {
             showQrDialog = false
@@ -257,8 +253,8 @@ fun SearchScreen(
             )
         }
 
-        // 联想词（输入时，从服务端 tipSearch 获取，键盘打开时也展示在键盘上方）
-        if (uiState.tips.isNotEmpty()) {
+        // 联想词 (仅在输入框聚焦且键盘打开时显示)
+        if (uiState.query.isNotEmpty() && uiState.tips.isNotEmpty() && showKeyboard) {
             Spacer(Modifier.height(10.dp))
             Text(
                 text = "联想词",
