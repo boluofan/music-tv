@@ -532,27 +532,35 @@ private fun SingerResultGrid(
     restorer: ScreenFocusRestorer,
     onArtistClick: (SearchArtistItem, String) -> Unit
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val columns = maxOf(1, ((maxWidth + 12.dp) / (140.dp + 12.dp)).toInt())
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            val rows = artists.chunked(columns)
-            items(rows.size) { rowIndex ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    rows[rowIndex].forEach { artist ->
-                        val pk = "artist:${artist.id ?: ""}:$source"
-                        ArtistCard(
-                            artist = artist,
-                            onClick = {
-                                restorer.record(pk)
-                                onArtistClick(artist, source)
-                            },
-                            modifier = Modifier.restorableFocus(restorer, pk).width(140.dp)
-                        )
-                    }
+    LazyColumn(
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            Text(
+                text = "共 ${artists.size} 位",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                items(artists.size) { index ->
+                    val artist = artists[index]
+                    val pk = "artist:${artist.id ?: ""}:$source"
+                    ArtistCard(
+                        artist = artist,
+                        onClick = {
+                            restorer.record(pk)
+                            onArtistClick(artist, source)
+                        },
+                        modifier = Modifier
+                            .width(140.dp)
+                            .restorableFocus(restorer, pk)
+                    )
                 }
             }
         }
@@ -567,27 +575,35 @@ private fun AlbumResultGrid(
     restorer: ScreenFocusRestorer,
     onAlbumClick: (AlbumItem, String) -> Unit
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val columns = maxOf(1, ((maxWidth + 12.dp) / (140.dp + 12.dp)).toInt())
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            val rows = albums.chunked(columns)
-            items(rows.size) { rowIndex ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    rows[rowIndex].forEach { album ->
-                        val pk = "album:${album.id ?: ""}:$source"
-                        AlbumCard(
-                            album = album,
-                            onClick = {
-                                restorer.record(pk)
-                                onAlbumClick(album, source)
-                            },
-                            modifier = Modifier.restorableFocus(restorer, pk).width(140.dp)
-                        )
-                    }
+    LazyColumn(
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            Text(
+                text = "共 ${albums.size} 张",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                items(albums.size) { index ->
+                    val album = albums[index]
+                    val pk = "album:${album.id ?: ""}:$source"
+                    AlbumCard(
+                        album = album,
+                        onClick = {
+                            restorer.record(pk)
+                            onAlbumClick(album, source)
+                        },
+                        modifier = Modifier
+                            .width(140.dp)
+                            .restorableFocus(restorer, pk)
+                    )
                 }
             }
         }
@@ -793,7 +809,7 @@ private fun AlbumCard(
             text = listOfNotNull(
                 album.singerName?.takeIf { it.isNotEmpty() },
                 album.total?.takeIf { it.isNotEmpty() }?.let { "$it 首" }
-            ).joinToString(" · "),
+            ).joinToString(" · ").ifEmpty { album.singerName ?: "" },
             fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -379,6 +379,7 @@ private fun PlaylistGridCard(
             CoverImage(
                 url = playlist.coverUrl,
                 contentDescription = playlist.name,
+                placeholder = Icons.Rounded.Person,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -392,8 +393,13 @@ private fun PlaylistGridCard(
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "${playlist.count} 首",
+            text = listOfNotNull(
+                playlist.count.takeIf { it > 0 }?.let { "$it 首" },
+                playlist.formattedPlayCount.takeIf { it.isNotEmpty() }?.let { "播放 $it" }
+            ).joinToString(" · ").ifEmpty { playlist.creatorName ?: "" },
             fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
