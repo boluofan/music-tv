@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collect
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
+import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.SearchArtistItem
 import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
@@ -84,7 +85,8 @@ fun SearchScreen(
     addToPlaylistViewModel: AddToPlaylistViewModel = hiltViewModel(),
     onSongClick: (List<MusicInfo>, Int) -> Unit = { _, _ -> },
     onArtistClick: (SearchArtistItem, String) -> Unit = { _, _ -> },
-    onAlbumClick: (AlbumItem, String) -> Unit = { _, _ -> }
+    onAlbumClick: (AlbumItem, String) -> Unit = { _, _ -> },
+    onPlaylistClick: (Playlist) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val remoteUrl by viewModel.remoteUrl.collectAsStateWithLifecycle()
@@ -330,7 +332,13 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("未找到结果", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        val countText = when (uiState.type) {
+                            SearchType.SONG -> "${uiState.songResults.size} 首"
+                            SearchType.SINGER -> "${uiState.singerResults.size} 位"
+                            SearchType.ALBUM -> "${uiState.albumResults.size} 张"
+                            SearchType.PLAYLIST -> "${uiState.playlistResults.size} 个"
+                        }
+                        Text("未找到匹配结果 (${countText})", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     }
                 }
                 else -> when (uiState.type) {
@@ -353,6 +361,12 @@ fun SearchScreen(
                         listState = listState,
                         restorer = restorer,
                         onAlbumClick = onAlbumClick
+                    )
+                    SearchType.PLAYLIST -> PlaylistResultGrid(
+                        playlists = uiState.playlistResults,
+                        listState = listState,
+                        restorer = restorer,
+                        onPlaylistClick = onPlaylistClick
                     )
                 }
             }
@@ -487,6 +501,7 @@ private fun hasResults(uiState: SearchUiState): Boolean = when (uiState.type) {
     SearchType.SONG -> uiState.songResults.isNotEmpty()
     SearchType.SINGER -> uiState.singerResults.isNotEmpty()
     SearchType.ALBUM -> uiState.albumResults.isNotEmpty()
+    SearchType.PLAYLIST -> uiState.playlistResults.isNotEmpty()
 }
 
 @Composable
@@ -806,6 +821,114 @@ private fun AlbumCard(
                 album.singerName?.takeIf { it.isNotEmpty() },
                 album.total?.takeIf { it.isNotEmpty() }?.let { "$it 首" }
             ).joinToString(" · ").ifEmpty { album.singerName ?: "" },
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun PlaylistResultGrid(
+    playlists: List<Playlist>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    restorer: ScreenFocusRestorer,
+    onPlaylistClick: (Playlist) -> Unit
+) {
+    LazyColumn(
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            Text(
+                text = "共 ${playlists.size} 个",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp, start = 16.dp)
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                items(playlists.size) { index ->
+                    val playlist = playlists[index]
+                    val pk = "playlist:${playlist.id ?: ""}:${playlist.source ?: ""}"
+                    PlaylistCard(
+                        playlist = playlist,
+                        onClick = {
+                            restorer.record(pk)
+                            onPlaylistClick(playlist)
+                        },
+                        modifier = Modifier
+                            .width(180.dp)
+                            .restorableFocus(restorer, pk)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCard(
+    playlist: Playlist,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.05f else 1.0f,
+        animationSpec = tween(150),
+        label = "playlistCardScale"
+    )
+    Column(
+        modifier = modifier
+            .scale(scale)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+            )
+            .then(
+                if (isFocused) Modifier.border(
+                    3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                ) else Modifier
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .clickable { onClick() }
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .aspectRatio(1f)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            CoverImage(
+                url = playlist.coverUrl,
+                contentDescription = playlist.name,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = playlist.name ?: "",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = listOfNotNull(
+                playlist.creatorName?.takeIf { it.isNotEmpty() },
+                playlist.count.takeIf { it > 0 }?.let { "${it}首" }
+            ).joinToString(" · ").ifEmpty { playlist.count.takeIf { it > 0 }?.let { "$it 首" } ?: "" },
             fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

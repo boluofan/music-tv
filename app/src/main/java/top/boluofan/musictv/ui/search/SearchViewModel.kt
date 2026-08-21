@@ -15,22 +15,25 @@ import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.api.ApiClient
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
+import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.SearchArtistItem
+import top.boluofan.musictv.data.model.SongListPageResponse
 import top.boluofan.musictv.ui.config.ConfigWebServer
 import javax.inject.Inject
 
 enum class SearchType(val label: String, val apiType: String) {
     SONG("歌曲", "song"),
     SINGER("歌手", "singer"),
-    ALBUM("专辑", "album")
+    ALBUM("专辑", "album"),
+    PLAYLIST("歌单", "playlist")
 }
 
 private val SOURCE_SUPPORTED_TYPES: Map<String, List<SearchType>> = mapOf(
-    "kw" to listOf(SearchType.SONG),
-    "kg" to listOf(SearchType.SONG),
-    "tx" to listOf(SearchType.SONG, SearchType.SINGER, SearchType.ALBUM),
-    "wy" to listOf(SearchType.SONG, SearchType.SINGER, SearchType.ALBUM),
-    "mg" to listOf(SearchType.SONG)
+    "kw" to listOf(SearchType.SONG, SearchType.PLAYLIST),
+    "kg" to listOf(SearchType.SONG, SearchType.PLAYLIST),
+    "tx" to listOf(SearchType.SONG, SearchType.SINGER, SearchType.ALBUM, SearchType.PLAYLIST),
+    "wy" to listOf(SearchType.SONG, SearchType.SINGER, SearchType.ALBUM, SearchType.PLAYLIST),
+    "mg" to listOf(SearchType.SONG, SearchType.PLAYLIST)
 )
 
 fun supportedTypesForSource(source: String): List<SearchType> =
@@ -48,10 +51,14 @@ data class SearchUiState(
     val songResults: List<MusicInfo> = emptyList(),
     val singerResults: List<SearchArtistItem> = emptyList(),
     val albumResults: List<AlbumItem> = emptyList(),
+    val playlistResults: List<Playlist> = emptyList(),
     val isSearching: Boolean = false,
     val hasSearched: Boolean = false,
     val error: String? = null
-)
+) {
+    // 歌单搜索需要额外的分页参数
+    val playlistPage: Int = 1
+}
 
 @HiltViewModel
 class SearchViewModel @Inject constructor() : ViewModel() {
@@ -133,6 +140,9 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     SearchType.ALBUM -> ApiClient.getMusicApi().searchAlbums(
                         name = keyword, source = state.source, page = 1, limit = 30
                     )
+                    SearchType.PLAYLIST -> ApiClient.getMusicApi().searchSongList(
+                        source = state.source, text = keyword, page = state.playlistPage
+                    )
                 }
             }.fold(
                 onSuccess = { result ->
@@ -142,6 +152,10 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                         SearchType.SONG -> current.copy(songResults = result as List<MusicInfo>, isSearching = false)
                         SearchType.SINGER -> current.copy(singerResults = result as List<SearchArtistItem>, isSearching = false)
                         SearchType.ALBUM -> current.copy(albumResults = result as List<AlbumItem>, isSearching = false)
+                        SearchType.PLAYLIST -> current.copy(
+                            playlistResults = (result as SongListPageResponse).list ?: emptyList(),
+                            isSearching = false
+                        )
                     }
                 },
                 onFailure = { e ->
@@ -206,7 +220,10 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         if (serverMsg != null && serverMsg.contains("does not support")) {
             return "音乐源 $source 不支持${type.label}搜索，请切换音乐源（如 tx/wy）"
         }
-        return e.message ?: "搜索失败"
+        return when (type) {
+            SearchType.PLAYLIST -> "歌单搜索失败：${e.message ?: "未知错误"}"
+            else -> e.message ?: "搜索失败"
+        }
     }
 
     companion object {
