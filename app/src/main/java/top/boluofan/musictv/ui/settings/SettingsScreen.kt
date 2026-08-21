@@ -436,9 +436,11 @@ private fun DangerTextButton(
                 else Color.Transparent
             )
             .then(
-                if (isFocused) Modifier.border(
-                    3.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(8.dp)
-                ) else Modifier
+                Modifier.border(
+                    if (isFocused) 3.dp else 1.dp,
+                    MaterialTheme.colorScheme.error.copy(alpha = if (isFocused) 1f else 0.7f),
+                    RoundedCornerShape(8.dp)
+                )
             )
             .onFocusChanged { isFocused = it.isFocused }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
