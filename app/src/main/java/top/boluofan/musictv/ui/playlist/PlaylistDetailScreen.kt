@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
@@ -72,7 +73,8 @@ fun PlaylistDetailScreen(
     addToPlaylistViewModel: AddToPlaylistViewModel = hiltViewModel(),
     onSongClick: (List<MusicInfo>, Int) -> Unit = { _, _ -> },
     onShufflePlay: (List<MusicInfo>) -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onPlaylistDeleted: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -209,6 +211,13 @@ fun PlaylistDetailScreen(
                                     enabled = !uiState.addToUserListLoading
                                 )
                             }
+                            if (uiState.isUserList) {
+                                ActionChip(
+                                    icon = Icons.Rounded.Delete,
+                                    label = "删除歌单",
+                                    onClick = { showDeleteDialog = true }
+                                )
+                            }
                         }
                     }
 
@@ -263,11 +272,11 @@ fun PlaylistDetailScreen(
     if (showDeleteDialog) {
         ConfirmDialog(
             title = "删除歌单「${uiState.playlist?.name.orEmpty()}」？",
-            message = "歌单中的歌曲不会被删除",
+            message = "删除后不可恢复",
             confirmText = "删除",
             onConfirm = {
                 showDeleteDialog = false
-                viewModel.deletePlaylist { success -> if (success) onBack() }
+                viewModel.deletePlaylist { success -> if (success) { onPlaylistDeleted(); onBack() } }
             },
             onDismiss = { showDeleteDialog = false }
         )

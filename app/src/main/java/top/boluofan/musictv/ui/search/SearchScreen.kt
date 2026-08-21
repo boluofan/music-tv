@@ -862,7 +862,7 @@ private fun PlaylistResultGrid(
                             onPlaylistClick(playlist)
                         },
                         modifier = Modifier
-                            .width(180.dp)
+                            .width(140.dp)
                             .restorableFocus(restorer, pk)
                     )
                 }

@@ -64,6 +64,7 @@ import top.boluofan.musictv.ui.artist.ArtistDetailScreen
 import top.boluofan.musictv.ui.discover.DiscoverScreen
 import top.boluofan.musictv.ui.discover.LeaderboardDetailScreen
 import top.boluofan.musictv.ui.home.HomeScreen
+import top.boluofan.musictv.ui.home.HomeViewModel
 import top.boluofan.musictv.ui.navigation.LocalPageScrollBridge
 import top.boluofan.musictv.ui.navigation.LocalPlayerBarBridge
 import top.boluofan.musictv.ui.navigation.LocalTabBarBridge
@@ -159,6 +160,7 @@ fun TvApp(
     var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val playbackState by playerController.state.collectAsStateWithLifecycle()
+    val homeViewModel: HomeViewModel = hiltViewModel()
 
     fun push(screen: Screen) {
         backStack.add(screen)
@@ -221,6 +223,7 @@ fun TvApp(
                 stateHolder.SaveableStateProvider(currentScreen.stateKey) {
                     when (val screen = currentScreen) {
                         Screen.Home -> HomeScreen(
+                            viewModel = homeViewModel,
                             onSongClick = { queue, index -> playerController.play(queue, index); openPlayer() },
                             onPlaylistClick = { playlist ->
                                 push(Screen.PlaylistDetail(playlistId = playlist.id ?: "", source = null))
@@ -313,7 +316,8 @@ fun TvApp(
                                 playerController.play(queue, (0 until queue.size).random())
                                 openPlayer()
                             },
-                            onBack = { goBack() }
+                            onBack = { goBack() },
+                            onPlaylistDeleted = { homeViewModel.load() }
                         )
                         is Screen.LeaderboardDetail -> LeaderboardDetailScreen(
                             bangid = screen.bangid,
