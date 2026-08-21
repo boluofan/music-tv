@@ -155,9 +155,14 @@ fun DiscoverScreen(
         Spacer(Modifier.height(16.dp))
 
         Row(modifier = Modifier.weight(1f)) {
+            val sourceTopPadding = if (uiState.section == DiscoverSection.SQUARE) {
+                64.dp
+            } else {
+                12.dp
+            }
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.width(88.dp)
+                modifier = Modifier.width(88.dp).padding(top = sourceTopPadding)
             ) {
                 SOURCES.forEach { (code, name) ->
                     SourceChip(
