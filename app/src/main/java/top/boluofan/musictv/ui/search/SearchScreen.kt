@@ -9,7 +9,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -66,6 +65,7 @@ import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.SearchArtistItem
 import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
+import top.boluofan.musictv.ui.components.sourceLabel
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.SongListItem
 import top.boluofan.musictv.ui.components.generateQrBitmap
@@ -77,7 +77,7 @@ import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
 import top.boluofan.musictv.ui.navigation.restorableFocus
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
-private val SEARCH_SOURCES = listOf("kw", "kg", "tx", "wy", "mg")
+private val SEARCH_SOURCES = listOf("tx", "kw", "kg", "wy", "mg")
 
 @Composable
 fun SearchScreen(
@@ -151,7 +151,7 @@ fun SearchScreen(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(SEARCH_SOURCES.filter { it in supportedSourcesForType(uiState.type) }) { code ->
                         FilterChip(
-                            text = code.uppercase(),
+                            text = sourceLabel(code),
                             isSelected = uiState.source == code,
                             onClick = { viewModel.selectSource(code) }
                         )

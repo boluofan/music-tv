@@ -45,7 +45,7 @@ fun supportedSourcesForType(type: SearchType): List<String> =
 data class SearchUiState(
     val query: String = "",
     val type: SearchType = SearchType.SONG,
-    val source: String = "kw",
+    val source: String = "tx",
     val hotTags: List<String> = emptyList(),
     val tips: List<String> = emptyList(),
     val songResults: List<MusicInfo> = emptyList(),

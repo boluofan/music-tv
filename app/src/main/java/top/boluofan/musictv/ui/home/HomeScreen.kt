@@ -66,6 +66,7 @@ import top.boluofan.musictv.data.model.LibraryArtistItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.sourceLabel
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
@@ -680,11 +681,3 @@ private fun AlbumRow(
     }
 }
 
-private fun sourceLabel(source: String?): String = when (source) {
-    "kw" -> "小蜗"
-    "kg" -> "小枸"
-    "tx" -> "小秋"
-    "wy" -> "小芸"
-    "mg" -> "小蜜"
-    else -> source ?: ""
-}

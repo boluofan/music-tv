@@ -56,8 +56,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.ensureActive
 import top.boluofan.musictv.data.model.BoardItem
 import top.boluofan.musictv.data.model.Playlist
-import top.boluofan.musictv.data.model.TagGroup
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.sourceLabel
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
@@ -67,13 +67,7 @@ import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
 import top.boluofan.musictv.ui.navigation.restorableFocus
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
-private val SOURCES = listOf(
-    "wy" to "小芸",
-    "kw" to "小蜗",
-    "kg" to "小枸",
-    "tx" to "小秋",
-    "mg" to "小蜜"
-)
+private val SOURCES = listOf("tx", "kw", "kg", "wy", "mg").map { it to sourceLabel(it) }
 
 @Composable
 fun DiscoverScreen(

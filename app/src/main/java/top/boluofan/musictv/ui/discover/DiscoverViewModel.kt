@@ -21,7 +21,7 @@ enum class DiscoverSection(val label: String) {
 
 data class DiscoverUiState(
     val section: DiscoverSection = DiscoverSection.SQUARE,
-    val source: String = "wy",
+    val source: String = "tx",
     val selectedTagId: String? = null,
     val squareTags: List<TagGroup> = emptyList(),
     val playlists: List<Playlist> = emptyList(),
