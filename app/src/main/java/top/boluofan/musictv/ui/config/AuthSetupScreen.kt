@@ -127,7 +127,8 @@ private fun LoginForm(viewModel: AuthViewModel) {
         activeField = ActiveField.NONE
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.weight(1f)) {
         // 表单区域（可滚动）
         Column(
@@ -256,70 +257,85 @@ private fun LoginForm(viewModel: AuthViewModel) {
         }
         }
 
-        // 键盘区域（自定义键盘；键盘可能遮挡表单，回显栏实时显示当前字段内容）
-        if (showKeyboard) {
-            val echoLabel = when (activeField) {
-                ActiveField.SERVER_URL -> "服务器地址"
-                ActiveField.USERNAME -> "账号"
-                ActiveField.PASSWORD -> "密码"
-                else -> ""
-            }
-            val echoText = when (activeField) {
-                ActiveField.SERVER_URL -> serverUrl
-                ActiveField.USERNAME -> username
-                ActiveField.PASSWORD -> password
-                else -> ""
-            }
-            Row(
+    }
+
+    if (showKeyboard) {
+        // 全屏遮罩：点击非键盘区域关闭自定义键盘
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { activeField = ActiveField.NONE }
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 32.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.BottomCenter)
+                    .clickable { }
             ) {
-                Text(
-                    "$echoLabel：",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Text(
-                    if (echoText.isEmpty()) "（未输入）" else echoText,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (echoText.isEmpty())
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    else MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                // 键盘区域（回显栏 + 自定义键盘）
+                val echoLabel = when (activeField) {
+                    ActiveField.SERVER_URL -> "服务器地址"
+                    ActiveField.USERNAME -> "账号"
+                    ActiveField.PASSWORD -> "密码"
+                    else -> ""
+                }
+                val echoText = when (activeField) {
+                    ActiveField.SERVER_URL -> serverUrl
+                    ActiveField.USERNAME -> username
+                    ActiveField.PASSWORD -> password
+                    else -> ""
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 32.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "$echoLabel：",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        if (echoText.isEmpty()) "（未输入）" else echoText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (echoText.isEmpty())
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        else MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                TvKeyboard(
+                    mode = TvKeyboardMode.LOGIN,
+                    firstKeyFocusRequester = keyboardFocus,
+                    onKeyPress = { key ->
+                        val current = when (activeField) {
+                            ActiveField.SERVER_URL -> serverUrl
+                            ActiveField.USERNAME -> username
+                            ActiveField.PASSWORD -> password
+                            else -> return@TvKeyboard
+                        }
+                        val newValue = when (key) {
+                            "←退格" -> if (current.isNotEmpty()) current.substring(0, current.length - 1) else current
+                            "清空" -> ""
+                            "确定" -> { activeField = ActiveField.NONE; return@TvKeyboard }
+                            "空格" -> "$current "
+                            else -> "$current$key"
+                        }
+                        when (activeField) {
+                            ActiveField.SERVER_URL -> viewModel.onServerUrlChanged(newValue)
+                            ActiveField.USERNAME -> viewModel.onUsernameChanged(newValue)
+                            ActiveField.PASSWORD -> viewModel.onPasswordChanged(newValue)
+                            else -> {}
+                        }
+                    }
                 )
             }
-            TvKeyboard(
-                mode = TvKeyboardMode.LOGIN,
-                firstKeyFocusRequester = keyboardFocus,
-                onKeyPress = { key ->
-                    val current = when (activeField) {
-                        ActiveField.SERVER_URL -> serverUrl
-                        ActiveField.USERNAME -> username
-                        ActiveField.PASSWORD -> password
-                        else -> return@TvKeyboard
-                    }
-                    val newValue = when (key) {
-                        "←退格" -> if (current.isNotEmpty()) current.substring(0, current.length - 1) else current
-                        "清空" -> ""
-                        "确定" -> { activeField = ActiveField.NONE; return@TvKeyboard }
-                        "空格" -> "$current "
-                        else -> "$current$key"
-                    }
-                    when (activeField) {
-                        ActiveField.SERVER_URL -> viewModel.onServerUrlChanged(newValue)
-                        ActiveField.USERNAME -> viewModel.onUsernameChanged(newValue)
-                        ActiveField.PASSWORD -> viewModel.onPasswordChanged(newValue)
-                        else -> {}
-                    }
-                }
-            )
         }
     }
+}
 }
 
 @Composable

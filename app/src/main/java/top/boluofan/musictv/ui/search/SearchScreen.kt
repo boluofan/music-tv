@@ -127,6 +127,7 @@ fun SearchScreen(
         enabled = !showKeyboard
     )
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -372,29 +373,44 @@ fun SearchScreen(
             }
         }
 
-        if (showKeyboard) {
-            TvKeyboard(
-                firstKeyFocusRequester = keyboardFocus,
-                onKeyPress = { key ->
-                    when (key) {
-                        "←退格" -> {
-                            val current = uiState.query
-                            if (current.isNotEmpty()) {
-                                viewModel.onQueryChanged(current.substring(0, current.length - 1))
+    }
+
+    if (showKeyboard) {
+        // 全屏遮罩：点击非键盘区域关闭自定义键盘
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { showKeyboard = false }
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .clickable { }
+            ) {
+                TvKeyboard(
+                    firstKeyFocusRequester = keyboardFocus,
+                    onKeyPress = { key ->
+                        when (key) {
+                            "←退格" -> {
+                                val current = uiState.query
+                                if (current.isNotEmpty()) {
+                                    viewModel.onQueryChanged(current.substring(0, current.length - 1))
+                                }
                             }
+                            "清空" -> viewModel.clearSearch()
+                            "确定" -> {
+                                showKeyboard = false
+                                viewModel.search()
+                            }
+                            "空格" -> viewModel.onQueryChanged("${uiState.query} ")
+                            else -> viewModel.onQueryChanged("${uiState.query}$key")
                         }
-                        "清空" -> viewModel.clearSearch()
-                        "确定" -> {
-                            showKeyboard = false
-                            viewModel.search()
-                        }
-                        "空格" -> viewModel.onQueryChanged("${uiState.query} ")
-                        else -> viewModel.onQueryChanged("${uiState.query}$key")
                     }
-                }
-            )
+                )
+            }
         }
     }
+}
 
     if (showQrDialog) {
         SearchQrDialog(
