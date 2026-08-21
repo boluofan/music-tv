@@ -20,7 +20,9 @@ data class PlaylistDetailUiState(
     val songs: List<MusicInfo> = emptyList(),
     val isLoading: Boolean = true,
     val isUserList: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isPlayingListAdded: Boolean = false,
+    val addToUserListLoading: Boolean = false
 )
 
 @HiltViewModel
@@ -149,5 +151,41 @@ class PlaylistDetailViewModel @Inject constructor(
     fun clear() {
         loadJob?.cancel()
         _uiState.value = PlaylistDetailUiState()
+    }
+
+    /** 将当前歌单添加到用户的「我的歌单」列表 */
+    fun addToUserList(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        val playlist = _uiState.value.playlist ?: return
+        if (_uiState.value.addToUserListLoading) return
+        
+        _uiState.value = _uiState.value.copy(addToUserListLoading = true)
+        
+        viewModelScope.launch {
+            runCatching {
+                // 1. 获取用户当前的歌单列表
+                val userListData = userRepository.getUserList()
+                
+                // 2. 检查是否已经存在（按 id + source 判断）
+                val existsInUserList = userListData.userList.orEmpty().any { 
+                    it.id == playlist.id && it.source == playlist.source
+                }
+                
+                if (existsInUserList) {
+                    throw Exception("该歌单已在您的列表中")
+                }
+                
+                // 3. 添加到用户歌单列表
+                val newList = (userListData.userList.orEmpty() + playlist).take(200)
+                userRepository.saveUserList(userListData.copy(userList = newList))
+                
+                // 4. 更新 UI 状态
+                _uiState.value = _uiState.value.copy(isPlayingListAdded = true)
+                
+                onSuccess()
+            }.onFailure { e ->
+                _uiState.value = _uiState.value.copy(addToUserListLoading = false)
+                onError(e.message ?: "添加失败")
+            }
+        }
     }
 }

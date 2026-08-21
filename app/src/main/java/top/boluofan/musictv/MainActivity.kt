@@ -16,6 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -277,6 +284,16 @@ fun TvApp(
                                         source = source,
                                         cover = album.coverUrl,
                                         singer = album.singerName
+                                    )
+                                )
+                            },
+                            onPlaylistClick = { playlist ->
+                                // 搜索结果的歌单都来自服务器，需要传递 source
+                                val source = playlist.source?.takeIf { it.isNotEmpty() }
+                                push(
+                                    Screen.PlaylistDetail(
+                                        playlistId = playlist.id ?: "",
+                                        source = source
                                     )
                                 )
                             }

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.data.model.MusicInfo
@@ -55,6 +57,7 @@ import top.boluofan.musictv.ui.components.ActionChip
 import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.SimpleInfoDialog
 import top.boluofan.musictv.ui.components.SongItemFavoriteMode
 import top.boluofan.musictv.ui.components.SongListItem
 import top.boluofan.musictv.ui.components.tvFocusable
@@ -78,6 +81,8 @@ fun PlaylistDetailScreen(
     var backButtonHasFocus by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAddedDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf("") }
 
     ListBackToTopHandler(listState, topFocus, topFocusHasFocus = backButtonHasFocus)
 
@@ -191,6 +196,19 @@ fun PlaylistDetailScreen(
                                     if (uiState.songs.isNotEmpty()) onShufflePlay(uiState.songs)
                                 }
                             )
+                            if (!uiState.isUserList && !uiState.isPlayingListAdded) {
+                                ActionChip(
+                                    icon = Icons.Rounded.Add,
+                                    label = if (uiState.addToUserListLoading) "添加中..." else "添加歌单",
+                                    onClick = {
+                                        viewModel.addToUserList(
+                                            onSuccess = { showAddedDialog = true },
+                                            onError = { error -> showErrorDialog = error; showAddedDialog = false }
+                                        )
+                                    },
+                                    enabled = !uiState.addToUserListLoading
+                                )
+                            }
                         }
                     }
 
@@ -252,6 +270,26 @@ fun PlaylistDetailScreen(
                 viewModel.deletePlaylist { success -> if (success) onBack() }
             },
             onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    if (showAddedDialog) {
+        SimpleInfoDialog(
+            title = "添加成功",
+            message = "${uiState.playlist?.name ?: ""} 已添加到您的歌单列表",
+            onDismiss = { 
+                showAddedDialog = false
+                showErrorDialog = ""
+            }
+        )
+    }
+
+    if (showErrorDialog.isNotEmpty()) {
+        SimpleInfoDialog(
+            title = "添加失败",
+            message = showErrorDialog,
+            confirmText = "确定",
+            onDismiss = { showErrorDialog = "" }
         )
     }
 }
