@@ -842,16 +842,6 @@ private fun AlbumCard(
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Text(
-            text = listOfNotNull(
-                album.singerName?.takeIf { it.isNotEmpty() },
-                album.total?.takeIf { it.isNotEmpty() }?.let { "$it 首" }
-            ).joinToString(" · ").ifEmpty { album.singerName ?: "" },
-            fontSize = 12.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
     }
 }
 
@@ -949,16 +939,6 @@ private fun PlaylistCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = listOfNotNull(
-                playlist.creatorName?.takeIf { it.isNotEmpty() },
-                playlist.count.takeIf { it > 0 }?.let { "${it}首" }
-            ).joinToString(" · ").ifEmpty { playlist.count.takeIf { it > 0 }?.let { "$it 首" } ?: "" },
-            fontSize = 12.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
