@@ -49,6 +49,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,7 +63,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.collect
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
@@ -376,10 +380,16 @@ fun SearchScreen(
     }
 
     if (showKeyboard) {
-        // 全屏遮罩：点击非键盘区域关闭自定义键盘
+        // 全屏遮罩：点击非键盘区域关闭自定义键盘；返回键直接关闭（避免焦点/返回栈抢用导致需多次按键）
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.Back) {
+                        showKeyboard = false
+                        true
+                    } else false
+                }
                 .clickable { showKeyboard = false }
         ) {
             Box(

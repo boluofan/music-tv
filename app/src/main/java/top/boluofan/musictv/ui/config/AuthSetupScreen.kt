@@ -41,6 +41,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
@@ -260,10 +265,16 @@ private fun LoginForm(viewModel: AuthViewModel) {
     }
 
     if (showKeyboard) {
-        // 全屏遮罩：点击非键盘区域关闭自定义键盘
+        // 全屏遮罩：点击非键盘区域关闭自定义键盘；返回键直接关闭（避免焦点/返回栈抢用导致需多次按键）
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.Back) {
+                        activeField = ActiveField.NONE
+                        true
+                    } else false
+                }
                 .clickable { activeField = ActiveField.NONE }
         ) {
             Box(
