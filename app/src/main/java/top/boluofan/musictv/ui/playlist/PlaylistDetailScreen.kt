@@ -198,7 +198,7 @@ fun PlaylistDetailScreen(
                                     if (uiState.songs.isNotEmpty()) onShufflePlay(uiState.songs)
                                 }
                             )
-                            if (!uiState.isUserList && !uiState.isPlayingListAdded) {
+                            if (source != null && !uiState.isPlayingListAdded) {
                                 ActionChip(
                                     icon = Icons.Rounded.Add,
                                     label = if (uiState.addToUserListLoading) "添加中..." else "添加歌单",
