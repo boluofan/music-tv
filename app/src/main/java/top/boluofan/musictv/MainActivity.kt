@@ -2,7 +2,9 @@ package top.boluofan.musictv
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Process
 import android.view.KeyEvent
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -50,6 +52,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import top.boluofan.musictv.data.storage.PreferencesDataStore
 import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.domain.MappingTarget
 import top.boluofan.musictv.domain.PlayMode
@@ -91,6 +96,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var keyMappingManager: KeyMappingManager
 
+    @Inject
+    lateinit var preferencesDataStore: PreferencesDataStore
+
     /** 全局「返回顶部/返回底部」回调桥，由当前组合中的页面注册滚动实现 */
     val pageScrollBridge = PageScrollBridge()
 
@@ -120,10 +128,23 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(LocalPageScrollBridge provides pageScrollBridge) {
                         RootScreen(
                             playerController = playerController,
-                            onExit = { finishAndRemoveTask() }
+                            onExit = { exitApp() }
                         )
                     }
                 }
+            }
+        }
+    }
+
+    private fun exitApp() {
+        lifecycleScope.launch {
+            val backgroundPlayback = preferencesDataStore.backgroundPlay.first()
+            if (backgroundPlayback) {
+                finish()
+            } else {
+                stopService(Intent(this@MainActivity, MusicService::class.java))
+                finishAndRemoveTask()
+                Process.killProcess(Process.myPid())
             }
         }
     }
