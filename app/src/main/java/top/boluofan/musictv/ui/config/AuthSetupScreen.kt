@@ -277,7 +277,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
                 }
                 .clickable { activeField = ActiveField.NONE }
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .clickable { }
