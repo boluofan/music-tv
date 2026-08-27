@@ -55,7 +55,12 @@ data class PlayerUiState(
     val sfxModeSupported: List<Boolean> = emptyList(),
     val sfxSupported: Boolean = false,
     val sfxOnA2dp: Boolean = false,
-    val sfxActiveMode: String = "off"
+    val sfxActiveMode: String = "off",
+    // K 歌模式（PR1;PR2/3 替换为真实现）
+    val karaokeModeEnabled: Boolean = false,
+    val karaokeList: List<MusicInfo> = emptyList(),
+    val karaokeOrderUrl: String? = null,
+    val isAccompanimentOn: Boolean = false
 )
 
 @HiltViewModel
@@ -263,6 +268,60 @@ class PlayerViewModel @Inject constructor(
                 _uiState.update { it.copy(lyrics = parsed) }
             }
         }
+    }
+
+    // === K 歌模式（PR1 桩;PR2/3 替换为真实现）===
+    fun enterKaraokeMode() {
+        val stubUrl = "http://192.168.0.1:9089/"
+        _uiState.update {
+            it.copy(
+                karaokeModeEnabled = true,
+                karaokeOrderUrl = stubUrl
+            )
+        }
+    }
+
+    fun exitKaraokeMode() {
+        _uiState.update {
+            it.copy(
+                karaokeModeEnabled = false,
+                karaokeOrderUrl = null
+            )
+        }
+    }
+
+    fun toggleAccompaniment() {
+        _uiState.update { it.copy(isAccompanimentOn = !it.isAccompanimentOn) }
+    }
+
+    fun karaokeAdd(song: MusicInfo) {
+        if (!_uiState.value.karaokeModeEnabled) return
+        if (_uiState.value.karaokeList.any { it.songId == song.songId }) return
+        _uiState.update { it.copy(karaokeList = it.karaokeList + song) }
+    }
+
+    fun karaokeRemove(index: Int) {
+        val list = _uiState.value.karaokeList
+        if (index !in list.indices) return
+        _uiState.update { it.copy(karaokeList = list.toMutableList().apply { removeAt(index) }) }
+    }
+
+    fun karaokeMoveTop(index: Int) {
+        val list = _uiState.value.karaokeList
+        if (index !in list.indices || index == 0) return
+        _uiState.update {
+            it.copy(
+                karaokeList = list.toMutableList().apply {
+                    add(1, removeAt(index))
+                }
+            )
+        }
+    }
+
+    fun karaokePlayAt(index: Int) {
+        val list = _uiState.value.karaokeList
+        if (index !in list.indices) return
+        // PR1 桩:不真正切换 ExoPlayer 队列
     }
 }
 

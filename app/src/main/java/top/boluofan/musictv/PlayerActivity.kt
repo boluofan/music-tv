@@ -66,6 +66,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import top.boluofan.musictv.data.api.UrlHelper
 import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.karaoke.KaraokePlayerScreen
+import top.boluofan.musictv.ui.karaoke.KaraokeQueueList
 import top.boluofan.musictv.ui.player.ControlBar
 import top.boluofan.musictv.ui.player.LyricsPanel
 import top.boluofan.musictv.ui.player.SoundPanel
@@ -118,6 +120,7 @@ fun PlayerScreen(
         when {
             uiState.showQueueDrawer -> viewModel.closeQueueDrawer()
             uiState.showSoundPanel -> viewModel.closeSoundPanel()
+            uiState.karaokeModeEnabled -> viewModel.exitKaraokeMode()
             uiState.showControls -> viewModel.hideControls()
             else -> onBack()
         }
@@ -156,6 +159,14 @@ fun PlayerScreen(
 
     var didSeekDuringPress by remember { mutableStateOf(false) }
     val seekStepMs = 10_000L
+
+    // K 歌模式下的"播放队列"弹窗状态
+    var showKaraokeQueue by remember { mutableStateOf(false) }
+
+    // K 歌模式焦点管理
+    val karaokePlayPauseFocus = remember { FocusRequester() }
+    val karaokeQueueButtonFocus = remember { FocusRequester() }
+    val karaokeQueueListFocus = remember { FocusRequester() }
 
     Box(
         modifier = Modifier
@@ -242,7 +253,45 @@ fun PlayerScreen(
             }
             .focusable()
     ) {
-        if (uiState.currentSong != null) {
+        // K 歌模式分支（PR1:替换主播放 UI;QueueList 弹窗独立绘制）
+        if (uiState.karaokeModeEnabled) {
+            KaraokePlayerScreen(
+                uiState = uiState,
+                orderUrl = uiState.karaokeOrderUrl,
+                accompanimentOn = uiState.isAccompanimentOn,
+                onBack = { viewModel.exitKaraokeMode() },
+                onPlayPause = { viewModel.togglePlay() },
+                onNext = { viewModel.nextTrack() },
+                onSeek = { viewModel.seekTo(it) },
+                onSeekBy = { viewModel.seekBy(it) },
+                onCyclePlayMode = { viewModel.cyclePlayMode() },
+                onToggleFavorite = { viewModel.toggleFavorite() },
+                onReSing = {
+                    viewModel.seekTo(0L)
+                    viewModel.togglePlay()
+                },
+                onToggleAccompaniment = { viewModel.toggleAccompaniment() },
+                onToggleQueue = { showKaraokeQueue = !showKaraokeQueue },
+                playPauseFocusRequester = karaokePlayPauseFocus,
+                queueButtonFocusRequester = karaokeQueueButtonFocus,
+                onShowControls = { viewModel.showControls() }
+            )
+            if (showKaraokeQueue) {
+                KaraokeQueueList(
+                    queue = uiState.karaokeList,
+                    currentIndex = 0,
+                    onClose = { showKaraokeQueue = false },
+                    onSongClick = { viewModel.karaokePlayAt(it) },
+                    onMoveTop = { viewModel.karaokeMoveTop(it) },
+                    onRemove = { viewModel.karaokeRemove(it) },
+                    initialFocusRequester = karaokeQueueListFocus,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(400.dp)
+                        .fillMaxHeight()
+                )
+            }
+        } else if (uiState.currentSong != null) {
             UrlHelper.resolve(uiState.currentSong?.picUrl)?.let { cover ->
                 AsyncImage(
                     model = cover,
@@ -362,6 +411,7 @@ fun PlayerScreen(
                 onToggleFavorite = { viewModel.toggleFavorite() },
                 onRefreshLyrics = { viewModel.refreshLyrics() },
                 onToggleSound = if (uiState.eqEnabled || uiState.sfxEnabled) ({ viewModel.toggleSoundPanel() }) else null,
+                onEnterKaraokeMode = { viewModel.enterKaraokeMode() },
                 soundButtonFocusRequester = soundButtonFocus,
                 isLyricRefreshing = uiState.isLyricRefreshing,
                 playPauseFocusRequester = controlBarFocus,

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -67,7 +68,7 @@ import top.boluofan.musictv.ui.theme.PlayerColors
 private const val SEEK_STEP_MS = 10_000L
 
 @Composable
-private fun SeekBar(
+internal fun SeekBar(
     progress: Float,
     onSeekBy: (Long) -> Unit,
     onSeekTo: (Float) -> Unit = {},
@@ -155,6 +156,7 @@ fun ControlBar(
     onToggleFavorite: () -> Unit = {},
     onRefreshLyrics: () -> Unit = {},
     onToggleSound: (() -> Unit)? = null,
+    onEnterKaraokeMode: () -> Unit = {},
     soundButtonFocusRequester: FocusRequester? = null,
     isLyricRefreshing: Boolean = false,
     playPauseFocusRequester: FocusRequester? = null,
@@ -238,6 +240,7 @@ fun ControlBar(
                 loading = isLyricRefreshing
             )
             TransportButton(Icons.AutoMirrored.Rounded.QueueMusic, "播放队列", onToggleQueue)
+            TransportButton(Icons.Rounded.Mic, "K 歌模式", onEnterKaraokeMode)
             if (onToggleSound != null) {
                 TransportButton(
                     Icons.Rounded.GraphicEq,
@@ -306,7 +309,7 @@ internal fun TransportButton(
     }
 }
 
-private fun formatTime(millis: Long): String {
+internal fun formatTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
