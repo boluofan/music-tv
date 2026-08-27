@@ -115,6 +115,11 @@ fun PlayerScreen(
     val queueDrawerFocus = remember { FocusRequester() }
     val soundPanelFocus = remember { FocusRequester() }
     val soundButtonFocus = remember { FocusRequester() }
+    // K 歌模式焦点：进入时聚焦到 K 歌控制栏的播放/暂停键，退出时聚焦到主控制栏的麦克风按钮
+    val karaokePlayPauseFocus = remember { FocusRequester() }
+    val karaokeQueueButtonFocus = remember { FocusRequester() }
+    val karaokeQueueListFocus = remember { FocusRequester() }
+    val micButtonFocus = remember { FocusRequester() }
 
     BackHandler {
         when {
@@ -136,13 +141,14 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel) {
+    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled) {
         // 等待 AnimatedVisibility 完成组合后再请求焦点
         delay(100)
         runCatching {
             when {
                 uiState.showQueueDrawer -> queueDrawerFocus.requestFocus()
                 uiState.showSoundPanel -> soundPanelFocus.requestFocus()
+                uiState.karaokeModeEnabled -> karaokePlayPauseFocus.requestFocus()
                 uiState.showControls -> controlBarFocus.requestFocus()
             }
         }
@@ -163,10 +169,15 @@ fun PlayerScreen(
     // K 歌模式下的"播放队列"弹窗状态
     var showKaraokeQueue by remember { mutableStateOf(false) }
 
-    // K 歌模式焦点管理
-    val karaokePlayPauseFocus = remember { FocusRequester() }
-    val karaokeQueueButtonFocus = remember { FocusRequester() }
-    val karaokeQueueListFocus = remember { FocusRequester() }
+    // 退出 K 歌模式后，焦点回到主播放器控制栏的"麦克风（K 歌入口）"按钮
+    var wasKaraokeMode by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.karaokeModeEnabled) {
+        if (wasKaraokeMode && !uiState.karaokeModeEnabled) {
+            delay(120)
+            runCatching { micButtonFocus.requestFocus() }
+        }
+        wasKaraokeMode = uiState.karaokeModeEnabled
+    }
 
     Box(
         modifier = Modifier
@@ -274,6 +285,7 @@ fun PlayerScreen(
                 onToggleQueue = { showKaraokeQueue = !showKaraokeQueue },
                 playPauseFocusRequester = karaokePlayPauseFocus,
                 queueButtonFocusRequester = karaokeQueueButtonFocus,
+                backButtonFocusRequester = micButtonFocus,
                 onShowControls = { viewModel.showControls() }
             )
             if (showKaraokeQueue) {
@@ -418,6 +430,7 @@ fun PlayerScreen(
                     onToggleSound = if (uiState.eqEnabled || uiState.sfxEnabled) ({ viewModel.toggleSoundPanel() }) else null,
                     onEnterKaraokeMode = { viewModel.enterKaraokeMode() },
                     soundButtonFocusRequester = soundButtonFocus,
+                    micButtonFocusRequester = micButtonFocus,
                     isLyricRefreshing = uiState.isLyricRefreshing,
                     playPauseFocusRequester = controlBarFocus,
                     modifier = Modifier.fillMaxWidth()
