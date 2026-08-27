@@ -158,7 +158,7 @@ fun ControlBar(
     onToggleSound: (() -> Unit)? = null,
     onEnterKaraokeMode: () -> Unit = {},
     soundButtonFocusRequester: FocusRequester? = null,
-    karaokeButtonFocusRequester: FocusRequester? = null,
+    micButtonFocusRequester: FocusRequester? = null,
     isLyricRefreshing: Boolean = false,
     playPauseFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
@@ -241,7 +241,7 @@ fun ControlBar(
                 loading = isLyricRefreshing
             )
             TransportButton(Icons.AutoMirrored.Rounded.QueueMusic, "播放队列", onToggleQueue)
-            TransportButton(Icons.Rounded.Mic, "K 歌模式", onEnterKaraokeMode, focusRequester = karaokeButtonFocusRequester)
+            TransportButton(Icons.Rounded.Mic, "K 歌模式", onEnterKaraokeMode, focusRequester = micButtonFocusRequester)
             if (onToggleSound != null) {
                 TransportButton(
                     Icons.Rounded.GraphicEq,
