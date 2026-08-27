@@ -72,7 +72,13 @@ data class PlaybackState(
     val sfxModeSupported: List<Boolean> = emptyList(),
     val sfxSupported: Boolean = false,
     val sfxOnA2dp: Boolean = false,
-    val sfxActiveMode: String = "off"
+    val sfxActiveMode: String = "off",
+    // K 歌人声消除（music-tv 接口只返回单音轨，原/伴唱只走人声消除）
+    val vocalRemovalEnabled: Boolean = false,
+    val vocalRemovalSupported: Boolean = false,
+    // K 歌独立播放列表：与主页播放队列完全隔离，退出 K 歌后还原主页队列
+    val karaokeActive: Boolean = false,
+    val karaokeList: List<MusicInfo> = emptyList()
 )
 
 // 固定均衡器预设（10 段曲线与中文名）：不吃设备系统预设，名称恒定中文、听感跨设备一致
@@ -116,6 +122,12 @@ class PlayerController @Inject constructor(
     private var sfxEnabledCache: Boolean = false
     private var sfxModeCache: String = "virtualizer"
     private var sfxStrengthCache: Int = 50
+    private var vocalRemovalEnabledCache: Boolean = false
+
+    // K 歌独立列表：进入时备份主页队列，退出时还原，期间所有增删/置顶只作用于 karaokeList
+    private var mainQueueBackup: List<MusicInfo>? = null
+    private var mainIndexBackup: Int = -1
+    private var mainPosBackup: Long = 0L
 
     // 输出设备切换（HDMI/蓝牙/内置喇叭）后音效能力可能变化，主动刷新让 UI 实时感知
     private val audioDeviceCallback = object : AudioDeviceCallback() {
@@ -185,14 +197,36 @@ class PlayerController @Inject constructor(
     private val listener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val previousSong = _state.value.currentSong
-            val song = _state.value.queue.firstOrNull { mediaKey(it) == mediaItem?.mediaId }
-            countDownSleepAfterSongs(previousSong, song, reason)
+            val wasKaraoke = _state.value.karaokeActive
+            val activeList = if (wasKaraoke) _state.value.karaokeList else _state.value.queue
+            val oldIndex = _state.value.currentIndex
+            val song = activeList.firstOrNull { mediaKey(it) == mediaItem?.mediaId }
+            val newIndex = controller?.currentMediaItemIndex ?: -1
+
             _state.update {
                 it.copy(
                     currentSong = song,
                     currentIndex = controller?.currentMediaItemIndex ?: -1,
                     duration = (song?.interval?.toLongOrNull() ?: 0L) * 1000
                 )
+            }
+            // 新歌默认重置人声消除（原唱）；K 歌模式下不重置（用户已在伴唱模式）
+            if (song != null && song.songId != previousSong?.songId && !wasKaraoke
+                && _state.value.vocalRemovalEnabled
+            ) {
+                setVocalRemovalEnabled(false)
+            }
+
+            // K 歌：仅当上一首"自然播放结束"（唱完）才从独立列表中移除，列表始终只保留未唱歌曲；
+            // 切歌/跳过不视为唱过，保留在列表中。移除后当前曲前移一位。该操作只影响 karaokeList，
+            // 不会改动主播放器 queue。
+            if (wasKaraoke && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
+                && previousSong != null && song != null && song.songId != previousSong.songId
+                && oldIndex in _state.value.karaokeList.indices && oldIndex < newIndex
+            ) {
+                val newList = _state.value.karaokeList.toMutableList().apply { removeAt(oldIndex) }
+                _state.update { it.copy(karaokeList = newList, currentIndex = newIndex - 1) }
+                withController { c -> if (oldIndex in 0 until c.mediaItemCount) c.removeMediaItem(oldIndex) }
             }
         }
 
@@ -212,6 +246,7 @@ class PlayerController @Inject constructor(
             if (playbackState == Player.STATE_READY) {
                 if (_state.value.eqBandFrequencies.isEmpty()) retryEqSetup()
                 if (_state.value.sfxModeSupported.isEmpty()) retrySfxSetup()
+                controller?.let { checkVocalRemovalSupport(it) }
             }
         }
     }
@@ -237,6 +272,8 @@ class PlayerController @Inject constructor(
                     sendSfxApply(sfxEnabledCache, sfxModeCache, sfxStrengthCache)
                     checkSfxSupport(c)
                     querySfxInfo(c)
+                    sendVocalRemovalApply(vocalRemovalEnabledCache)
+                    checkVocalRemovalSupport(c)
                 }
                 action(c)
             }
@@ -693,6 +730,160 @@ class PlayerController @Inject constructor(
             controller?.pause()
             _state.update { it.copy(sleepAfterSongs = 0) }
         }
+    }
+
+    // ===== 人声消除（K 歌原/伴唱）=====
+    // music-tv 接口只返回单音轨资源，原/伴唱切换只走人声消除 processor，不做轨道切换
+
+    fun setVocalRemovalEnabled(enabled: Boolean) {
+        _state.update { it.copy(vocalRemovalEnabled = enabled) }
+        vocalRemovalEnabledCache = enabled
+        withController { c ->
+            val args = Bundle().apply { putBoolean(MusicService.EXTRA_ENABLED, enabled) }
+            c.sendCustomCommand(SessionCommand(MusicService.VOCAL_REMOVE_APPLY, Bundle.EMPTY), args)
+        }
+    }
+
+    /** 切换原/伴唱：music-tv 端只走人声消除 processor */
+    fun setAccompanimentMode(accompaniment: Boolean) {
+        setVocalRemovalEnabled(accompaniment)
+    }
+
+    /** 当前是否处于"伴唱" */
+    fun isAccompanimentOn(): Boolean = _state.value.vocalRemovalEnabled
+
+    // ===== K 歌独立播放列表（与主页队列隔离）=====
+    // 进入时备份主页队列并在引擎中载入同一份副本，退出时还原主页队列与进度，
+    // 因此期间所有增删/置顶只影响 karaokeList，不会改动主页播放队列。
+
+    /** 进入 K 歌：备份主页队列，载入 K 歌独立列表（初始为当前主页队列副本） */
+    fun enterKaraoke() {
+        if (_state.value.karaokeActive) return
+        val backup = _state.value.queue
+        mainQueueBackup = backup
+        mainIndexBackup = _state.value.currentIndex
+        mainPosBackup = controller?.currentPosition ?: 0L
+        // K 歌只关注未唱过的歌曲：从当前播放曲开始截取（丢弃其之前已播放过的曲目），
+        // 并保证当前曲位于列表首位（index 0），置顶才能精确落到"下一首"位置。
+        val startIndex = _state.value.currentIndex.coerceIn(0, (backup.size - 1).coerceAtLeast(0))
+        val list = backup.drop(startIndex)
+        _state.update { it.copy(karaokeActive = true, karaokeList = list, currentIndex = 0) }
+        loadIntoEngine(list, 0, mainPosBackup)
+    }
+
+    /** 退出 K 歌：还原主页队列与播放进度，清空 K 歌列表 */
+    fun exitKaraoke() {
+        if (!_state.value.karaokeActive) return
+        val backup = mainQueueBackup ?: emptyList()
+        val idx = mainIndexBackup.coerceIn(0, (backup.size - 1).coerceAtLeast(0))
+        val pos = mainPosBackup
+        mainQueueBackup = null
+        _state.update {
+            it.copy(
+                karaokeActive = false,
+                karaokeList = emptyList(),
+                queue = backup,
+                currentIndex = idx
+            )
+        }
+        loadIntoEngine(backup, idx, pos)
+    }
+
+    /** 仅操作播放引擎媒体项，不触碰主页队列状态（供 K 歌进入/退出时整体替换播放列表） */
+    private fun loadIntoEngine(list: List<MusicInfo>, index: Int, posMs: Long) {
+        withController { c ->
+            val start = index.coerceIn(0, (list.size - 1).coerceAtLeast(0))
+            c.setMediaItems(list.map { buildMediaItem(it) }, start, posMs)
+            applyPlayMode(c, _state.value.playMode)
+            c.prepare()
+            c.play()
+        }
+    }
+
+    /** K 歌点歌：追加到独立列表末尾（与扫码点歌共用） */
+    fun karaokeAdd(song: MusicInfo) {
+        // NanoHTTPD 工作线程回调，整个函数体切到主线程，避免 MediaController 跨线程异常
+        scope.launch {
+            if (!_state.value.karaokeActive) return@launch
+            if (_state.value.karaokeList.any { it.songId == song.songId }) return@launch
+            val newList = _state.value.karaokeList + song
+            _state.update { it.copy(karaokeList = newList) }
+            withController { c ->
+                runCatching { c.addMediaItem(buildMediaItem(song)) }
+            }
+        }
+    }
+
+    /** K 歌置顶：移动到当前演唱曲的下一首（下一个演唱） */
+    fun karaokeMoveTop(index: Int) {
+        // NanoHTTPD 工作线程回调，整个函数体切到主线程，避免 MediaController 跨线程异常
+        scope.launch {
+            if (!_state.value.karaokeActive) return@launch
+            val list = _state.value.karaokeList
+            val cur = _state.value.currentIndex
+            if (index !in list.indices || index == cur) return@launch
+            val song = list[index]
+            val newList = list.toMutableList().apply {
+                removeAt(index)
+                add((cur + 1).coerceIn(0, size), song)
+            }
+            _state.update { it.copy(karaokeList = newList, currentIndex = cur) }
+            withController { c ->
+                val target = (cur + 1).coerceIn(0, c.mediaItemCount)
+                runCatching { c.moveMediaItem(index, target) }
+            }
+        }
+    }
+
+    /** K 歌删除：从独立列表移除（不允许删除正在演唱的曲目） */
+    fun karaokeRemove(index: Int) {
+        // NanoHTTPD 工作线程回调，整个函数体切到主线程，避免 MediaController 跨线程异常
+        scope.launch {
+            if (!_state.value.karaokeActive) return@launch
+            val list = _state.value.karaokeList
+            if (index !in list.indices || index == _state.value.currentIndex) return@launch
+            val newList = list.toMutableList().apply { removeAt(index) }
+            _state.update { it.copy(karaokeList = newList) }
+            withController { c ->
+                if (index in 0 until c.mediaItemCount) runCatching { c.removeMediaItem(index) }
+                _state.update { it.copy(currentIndex = c.currentMediaItemIndex) }
+            }
+        }
+    }
+
+    /** K 歌指定演唱某曲 */
+    fun karaokePlayAt(index: Int) {
+        if (!_state.value.karaokeActive) return
+        withController { c -> if (index in 0 until c.mediaItemCount) c.seekToDefaultPosition(index) }
+    }
+
+    /** K 歌独立列表快照（供扫码点歌页读取） */
+    fun getKaraokeList(): List<MusicInfo> = _state.value.karaokeList
+
+    private fun sendVocalRemovalApply(enabled: Boolean) {
+        val c = controller ?: return
+        val args = Bundle().apply { putBoolean(MusicService.EXTRA_ENABLED, enabled) }
+        c.sendCustomCommand(SessionCommand(MusicService.VOCAL_REMOVE_APPLY, Bundle.EMPTY), args)
+    }
+
+    private fun checkVocalRemovalSupport(c: MediaController) {
+        val future = c.sendCustomCommand(
+            SessionCommand(MusicService.VOCAL_REMOVE_CHECK, Bundle.EMPTY), Bundle.EMPTY
+        )
+        future.addListener({
+            runCatching {
+                val r = future.get()
+                val supported = r.resultCode == SessionResult.RESULT_SUCCESS &&
+                    r.extras?.getBoolean(MusicService.EXTRA_SUPPORTED, false) == true
+                val enabled = r.extras?.getBoolean(MusicService.EXTRA_ENABLED, false) == true
+                _state.update {
+                    it.copy(
+                        vocalRemovalSupported = supported,
+                        vocalRemovalEnabled = enabled
+                    )
+                }
+            }
+        }, ContextCompat.getMainExecutor(context))
     }
 
     companion object {

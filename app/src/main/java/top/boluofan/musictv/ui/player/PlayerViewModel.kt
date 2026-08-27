@@ -5,12 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import top.boluofan.musictv.data.api.ApiClient
+import top.boluofan.musictv.data.config.KaraokeOrderWebServer
 import top.boluofan.musictv.data.model.LyricLine
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.repository.UserRepository
@@ -56,7 +59,10 @@ data class PlayerUiState(
     val sfxSupported: Boolean = false,
     val sfxOnA2dp: Boolean = false,
     val sfxActiveMode: String = "off",
-    // K 歌模式（PR1;PR2/3 替换为真实现）
+    // K 歌人声消除
+    val vocalRemovalEnabled: Boolean = false,
+    val vocalRemovalSupported: Boolean = false,
+    // K 歌模式
     val karaokeModeEnabled: Boolean = false,
     val karaokeList: List<MusicInfo> = emptyList(),
     val karaokeOrderUrl: String? = null,
@@ -110,7 +116,12 @@ class PlayerViewModel @Inject constructor(
                         sfxModeSupported = s.sfxModeSupported,
                         sfxSupported = s.sfxSupported,
                         sfxOnA2dp = s.sfxOnA2dp,
-                        sfxActiveMode = s.sfxActiveMode
+                        sfxActiveMode = s.sfxActiveMode,
+                        vocalRemovalEnabled = s.vocalRemovalEnabled,
+                        vocalRemovalSupported = s.vocalRemovalSupported,
+                        karaokeList = s.karaokeList,
+                        karaokeModeEnabled = s.karaokeActive,
+                        isAccompanimentOn = s.vocalRemovalEnabled
                     )
                 }
                 val songId = s.currentSong?.songId
@@ -270,59 +281,111 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    // === K 歌模式（PR1 桩;PR2/3 替换为真实现）===
+    // === K 歌模式（PR2 + PR3 真实实现）===
+
+    private var karaokeOrderServer: KaraokeOrderWebServer? = null
+
     fun enterKaraokeMode() {
-        val stubUrl = "http://192.168.0.1:9089/"
-        _uiState.update {
-            it.copy(
-                karaokeModeEnabled = true,
-                karaokeOrderUrl = stubUrl
-            )
-        }
+        if (_uiState.value.karaokeModeEnabled) return
+        playerController.enterKaraoke()
+        startKaraokeOrderServer()
     }
 
     fun exitKaraokeMode() {
-        _uiState.update {
-            it.copy(
-                karaokeModeEnabled = false,
-                karaokeOrderUrl = null
-            )
+        if (!_uiState.value.karaokeModeEnabled) return
+        stopKaraokeOrderServer()
+        playerController.exitKaraoke()
+        // 退出 K 歌强制切回原唱（关闭人声消除），保证主播放器始终为原唱
+        if (playerController.isAccompanimentOn()) {
+            playerController.setAccompanimentMode(false)
         }
     }
 
+    /** 切换原/伴唱：music-tv 端只走人声消除 processor（无双音轨资源） */
     fun toggleAccompaniment() {
-        _uiState.update { it.copy(isAccompanimentOn = !it.isAccompanimentOn) }
+        val next = !playerController.isAccompanimentOn()
+        playerController.setAccompanimentMode(next)
     }
 
     fun karaokeAdd(song: MusicInfo) {
         if (!_uiState.value.karaokeModeEnabled) return
-        if (_uiState.value.karaokeList.any { it.songId == song.songId }) return
-        _uiState.update { it.copy(karaokeList = it.karaokeList + song) }
+        playerController.karaokeAdd(song)
     }
 
     fun karaokeRemove(index: Int) {
-        val list = _uiState.value.karaokeList
-        if (index !in list.indices) return
-        _uiState.update { it.copy(karaokeList = list.toMutableList().apply { removeAt(index) }) }
+        if (!_uiState.value.karaokeModeEnabled) return
+        playerController.karaokeRemove(index)
     }
 
     fun karaokeMoveTop(index: Int) {
-        val list = _uiState.value.karaokeList
-        if (index !in list.indices || index == 0) return
-        _uiState.update {
-            it.copy(
-                karaokeList = list.toMutableList().apply {
-                    add(1, removeAt(index))
-                }
-            )
-        }
+        if (!_uiState.value.karaokeModeEnabled) return
+        playerController.karaokeMoveTop(index)
     }
 
     fun karaokePlayAt(index: Int) {
-        val list = _uiState.value.karaokeList
-        if (index !in list.indices) return
-        // PR1 桩:不真正切换 ExoPlayer 队列
+        if (!_uiState.value.karaokeModeEnabled) return
+        playerController.karaokePlayAt(index)
+    }
+
+    /**
+     * 启动扫码点歌服务：
+     * - 默认端口 9089；占用则扫描 9080-9099 找空端口
+     * - 搜索走 music-tv 现有 LxMusicApi.search（歌曲类型），错误兜底空列表
+     * - 二维码地址写入 karaokeOrderUrl，KaraokeQrCode 立即可见
+     */
+    private fun startKaraokeOrderServer() {
+        if (karaokeOrderServer != null) return
+        val ip = top.boluofan.musictv.ui.config.ConfigWebServer.localIpAddress() ?: run {
+            Log.w(TAG, "扫码点歌：未获取到局域网 IP，server 启动跳过")
+            return
+        }
+        val ports = (KaraokeOrderWebServer.PORT_SCAN_START..KaraokeOrderWebServer.PORT_SCAN_END).toList()
+        for (port in ports) {
+            val server = KaraokeOrderWebServer(
+                port = port,
+                onOrderSearch = { keyword, source -> searchSongsForOrder(keyword, source) },
+                onOrderAdd = { song -> karaokeAdd(song) },
+                onOrderTop = { index -> karaokeMoveTop(index) },
+                onOrderRemove = { index -> karaokeRemove(index) },
+                onOrderQueue = { playerController.getKaraokeList() }
+            )
+            if (runCatching { server.start() }.isSuccess) {
+                karaokeOrderServer = server
+                val url = "http://$ip:$port/"
+                _uiState.update { it.copy(karaokeOrderUrl = url) }
+                Log.i(TAG, "扫码点歌已启动：$url")
+                return
+            }
+        }
+        Log.e(TAG, "扫码点歌：9080-9099 全部端口被占用，server 启动失败")
+    }
+
+    private fun stopKaraokeOrderServer() {
+        karaokeOrderServer?.let { runCatching { it.stop() } }
+        karaokeOrderServer = null
+        _uiState.update { it.copy(karaokeOrderUrl = null) }
+    }
+
+    /**
+     * 扫码点歌搜索：复用 music-tv 现有 LxMusicApi.search（歌曲类型，limit=20）。
+     * 网络异常/未登录等所有错误一律兜底返回空列表（design §6 风险表）。
+     * 用 runBlocking 桥接 suspend → 同步回调（NanoHTTPD 工作线程已是后台线程，OK）。
+     */
+    private fun searchSongsForOrder(keyword: String, source: String): List<MusicInfo> {
+        return runCatching {
+            runBlocking {
+                ApiClient.getMusicApi().search(
+                    name = keyword,
+                    source = source,
+                    page = 1,
+                    limit = 20,
+                    type = "song"
+                )
+            }
+        }.getOrDefault(emptyList())
     }
 }
 
 private fun MusicInfo.key(): String = "${source}:${songId}"
+
+private const val TAG = "PlayerViewModel"

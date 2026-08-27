@@ -377,46 +377,77 @@ fun PlayerScreen(
         }
 
         // 左上角返回按钮：与控制栏同显同隐（10s 无操作自动隐藏、点击空白/返回键先关控制栏）
-        AnimatedVisibility(
-            visible = uiState.showControls,
-            enter = fadeIn() + slideInVertically { -it },
-            exit = fadeOut() + slideOutVertically { -it },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
-        ) {
-            TransportButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "返回",
-                onClick = onBack
-            )
+        // K 歌模式下不显示返回按钮（已内置在 K 歌控制栏）
+        if (!uiState.karaokeModeEnabled) {
+            AnimatedVisibility(
+                visible = uiState.showControls,
+                enter = fadeIn() + slideInVertically { -it },
+                exit = fadeOut() + slideOutVertically { -it },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+            ) {
+                TransportButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "返回",
+                    onClick = onBack
+                )
+            }
         }
 
-        AnimatedVisibility(
-            visible = uiState.showControls,
-            enter = fadeIn() + slideInVertically { it },
-            exit = fadeOut() + slideOutVertically { it },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .pointerInput(Unit) { detectTapGestures { } } // 消费控制栏区域点击，避免触发外部关闭
-        ) {
-            ControlBar(
-                uiState = uiState,
-                onPlayPause = { viewModel.togglePlay() },
-                onNext = { viewModel.nextTrack() },
-                onPrevious = { viewModel.previousTrack() },
-                onSeek = { viewModel.seekTo(it) },
-                onCyclePlayMode = { viewModel.cyclePlayMode() },
-                onToggleQueue = { viewModel.toggleQueueDrawer() },
-                onToggleFavorite = { viewModel.toggleFavorite() },
-                onRefreshLyrics = { viewModel.refreshLyrics() },
-                onToggleSound = if (uiState.eqEnabled || uiState.sfxEnabled) ({ viewModel.toggleSoundPanel() }) else null,
-                onEnterKaraokeMode = { viewModel.enterKaraokeMode() },
-                soundButtonFocusRequester = soundButtonFocus,
-                isLyricRefreshing = uiState.isLyricRefreshing,
-                playPauseFocusRequester = controlBarFocus,
-                modifier = Modifier.fillMaxWidth()
-            )
+        // 主控制栏 + 触屏小箭头：K 歌模式下不显示（K 歌有独立的 KaraokeControlBar）
+        if (!uiState.karaokeModeEnabled) {
+            AnimatedVisibility(
+                visible = uiState.showControls,
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .pointerInput(Unit) { detectTapGestures { } } // 消费控制栏区域点击，避免触发外部关闭
+            ) {
+                ControlBar(
+                    uiState = uiState,
+                    onPlayPause = { viewModel.togglePlay() },
+                    onNext = { viewModel.nextTrack() },
+                    onPrevious = { viewModel.previousTrack() },
+                    onSeek = { viewModel.seekTo(it) },
+                    onCyclePlayMode = { viewModel.cyclePlayMode() },
+                    onToggleQueue = { viewModel.toggleQueueDrawer() },
+                    onToggleFavorite = { viewModel.toggleFavorite() },
+                    onRefreshLyrics = { viewModel.refreshLyrics() },
+                    onToggleSound = if (uiState.eqEnabled || uiState.sfxEnabled) ({ viewModel.toggleSoundPanel() }) else null,
+                    onEnterKaraokeMode = { viewModel.enterKaraokeMode() },
+                    soundButtonFocusRequester = soundButtonFocus,
+                    isLyricRefreshing = uiState.isLyricRefreshing,
+                    playPauseFocusRequester = controlBarFocus,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            AnimatedVisibility(
+                visible = !uiState.showControls && !uiState.showQueueDrawer && !uiState.showSoundPanel,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(PlayerColors.TouchEntryBg)
+                        .pointerInput(Unit) { detectTapGestures { viewModel.showControls() } },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowUp,
+                        contentDescription = "显示控制栏",
+                        tint = PlayerColors.TouchEntryIcon,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -450,31 +481,6 @@ fun PlayerScreen(
                 initialFocusRequester = soundPanelFocus,
                 modifier = Modifier.fillMaxHeight().width(440.dp)
             )
-        }
-
-        AnimatedVisibility(
-            visible = !uiState.showControls && !uiState.showQueueDrawer,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(PlayerColors.TouchEntryBg)
-                    .pointerInput(Unit) { detectTapGestures { viewModel.showControls() } },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowUp,
-                    contentDescription = "显示控制栏",
-                    tint = PlayerColors.TouchEntryIcon,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
         }
 
         AnimatedVisibility(
