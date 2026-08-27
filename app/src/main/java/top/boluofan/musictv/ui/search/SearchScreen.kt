@@ -260,27 +260,6 @@ fun SearchScreen(
             )
         }
 
-        // 联想词 (仅在输入框聚焦且键盘打开时显示)
-        if (uiState.query.isNotEmpty() && uiState.tips.isNotEmpty() && showKeyboard) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "联想词",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(uiState.tips) { tip ->
-                    TagChip(tip) {
-                        viewModel.onQueryChanged(tip)
-                        viewModel.search()
-                        showKeyboard = false
-                    }
-                }
-            }
-        }
-
         Spacer(Modifier.height(12.dp))
 
         // 结果区
@@ -392,11 +371,31 @@ fun SearchScreen(
                 }
                 .clickable { showKeyboard = false }
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .clickable { }
             ) {
+                if (uiState.query.isNotEmpty() && uiState.tips.isNotEmpty()) {
+                    Text(
+                        text = "联想词",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(uiState.tips) { tip ->
+                            TagChip(tip) {
+                                viewModel.onQueryChanged(tip)
+                                viewModel.search()
+                                showKeyboard = false
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+
                 TvKeyboard(
                     firstKeyFocusRequester = keyboardFocus,
                     onKeyPress = { key ->
