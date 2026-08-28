@@ -72,16 +72,14 @@ internal fun SeekBar(
     progress: Float,
     onSeekBy: (Long) -> Unit,
     onSeekTo: (Float) -> Unit = {},
+    interactive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var trackWidth by remember { mutableIntStateOf(0) }
 
-    Box(
-        modifier = modifier
-            .height(20.dp)
-            .padding(horizontal = 12.dp)
-            .onSizeChanged { trackWidth = it.width }
+    val interactionModifiers = if (interactive) {
+        Modifier
             .onFocusChanged { isFocused = it.isFocused }
             .onKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
@@ -109,7 +107,17 @@ internal fun SeekBar(
                         if (trackWidth > 0) onSeekTo((change.position.x / trackWidth).coerceIn(0f, 1f))
                     }
                 )
-            },
+            }
+    } else {
+        Modifier
+    }
+
+    Box(
+        modifier = modifier
+            .height(20.dp)
+            .padding(horizontal = 12.dp)
+            .onSizeChanged { trackWidth = it.width }
+            .then(interactionModifiers),
         contentAlignment = Alignment.CenterStart
     ) {
         Box(

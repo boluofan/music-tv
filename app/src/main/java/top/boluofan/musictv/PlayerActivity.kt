@@ -152,11 +152,13 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled, showKaraokeQueue, karaokeQueueJustClosed, uiState.showExitKaraokeConfirm) {
+    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled, showKaraokeQueue, uiState.showExitKaraokeConfirm) {
         // 等待 AnimatedVisibility 完成组合后再请求焦点
         delay(100)
         runCatching {
             when {
+                // 退出确认弹窗打开时焦点交给弹窗自身，关闭时再走下方分支恢复
+                uiState.showExitKaraokeConfirm -> Unit
                 showKaraokeQueue -> karaokeQueueListFocus.requestFocus()
                 uiState.showQueueDrawer -> queueDrawerFocus.requestFocus()
                 uiState.showSoundPanel -> soundPanelFocus.requestFocus()
@@ -186,6 +188,8 @@ fun PlayerScreen(
             karaokeQueueJustClosed = true
             delay(150)
             runCatching { karaokeQueueButtonFocus.requestFocus() }
+            // 焦点已交回歌单按钮，立即复位标志，避免后续焦点恢复被永久跳过
+            karaokeQueueJustClosed = false
         }
         karaokeQueueWasOpen = showKaraokeQueue
     }

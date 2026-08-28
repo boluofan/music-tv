@@ -106,6 +106,7 @@ fun KaraokeControlBar(
                         .coerceIn(0L, uiState.duration.coerceAtLeast(0L))
                     onSeek(target)
                 },
+                interactive = false,
                 modifier = Modifier
                     .weight(1f)
                     .onPreviewKeyEvent { event ->
