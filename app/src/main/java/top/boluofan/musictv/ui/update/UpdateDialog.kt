@@ -154,7 +154,9 @@ private fun AvailablePanel(
                         when (event.nativeKeyEvent.keyCode) {
                             KeyEvent.KEYCODE_DPAD_DOWN -> {
                                 if (listState.canScrollForward) {
-                                    scope.launch { listState.animateScrollToItem(listState.firstVisibleItemIndex + 1) }
+                                    scope.launch {
+                                        listState.animateScrollToItem((listState.firstVisibleItemIndex + 1).coerceAtMost(notes.lastIndex))
+                                    }
                                     true
                                 } else {
                                     buttonFocus.requestFocus()
@@ -163,7 +165,9 @@ private fun AvailablePanel(
                             }
                             KeyEvent.KEYCODE_DPAD_UP -> {
                                 if (listState.canScrollBackward) {
-                                    scope.launch { listState.animateScrollToItem(listState.firstVisibleItemIndex - 1) }
+                                    scope.launch {
+                                        listState.animateScrollToItem((listState.firstVisibleItemIndex - 1).coerceAtLeast(0))
+                                    }
                                     true
                                 } else false
                             }

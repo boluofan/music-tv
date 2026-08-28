@@ -41,6 +41,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 
+private const val HELP_ITEM_COUNT = 5
+
 /** 操作说明弹窗：内容可滚动，滚动到底后按「下」跳转关闭按钮；任意返回键/关闭即退出 */
 @Composable
 fun HelpDialog(onDismiss: () -> Unit) {
@@ -81,7 +83,9 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             when (event.nativeKeyEvent.keyCode) {
                                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                                     if (listState.canScrollForward) {
-                                        scope.launch { listState.animateScrollToItem(listState.firstVisibleItemIndex + 1) }
+                                        scope.launch {
+                                            listState.animateScrollToItem((listState.firstVisibleItemIndex + 1).coerceAtMost(HELP_ITEM_COUNT - 1))
+                                        }
                                         true
                                     } else {
                                         closeFocus.requestFocus()
@@ -90,7 +94,9 @@ fun HelpDialog(onDismiss: () -> Unit) {
                                 }
                                 KeyEvent.KEYCODE_DPAD_UP -> {
                                     if (listState.canScrollBackward) {
-                                        scope.launch { listState.animateScrollToItem(listState.firstVisibleItemIndex - 1) }
+                                        scope.launch {
+                                            listState.animateScrollToItem((listState.firstVisibleItemIndex - 1).coerceAtLeast(0))
+                                        }
                                         true
                                     } else false
                                 }
