@@ -185,7 +185,11 @@ private fun SmoothWordHighlightLine(
                                 val frac = take - base
                                 val boundaryOffset = lineStart + base
                                 val x1 = lr.getHorizontalPosition(boundaryOffset, usePrimaryDirection = true)
-                                val x2 = lr.getHorizontalPosition(boundaryOffset + 1, usePrimaryDirection = true)
+                                val x2 = if (boundaryOffset + 1 >= lineEnd) {
+                                    lr.getLineRight(lineIdx)
+                                } else {
+                                    lr.getHorizontalPosition(boundaryOffset + 1, usePrimaryDirection = true)
+                                }
                                 x1 + (x2 - x1) * frac
                             }
 
