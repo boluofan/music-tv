@@ -27,6 +27,7 @@ class PreferencesDataStore @Inject constructor(
     val token: Flow<String?> = context.dataStore.data.map { it[TOKEN] }
     val quality: Flow<String> = context.dataStore.data.map { it[QUALITY] ?: "320k" }
     val backgroundPlay: Flow<Boolean> = context.dataStore.data.map { it[BACKGROUND_PLAY] ?: true }
+    val autoResumeOnLaunch: Flow<Boolean> = context.dataStore.data.map { it[AUTO_RESUME_ON_LAUNCH] ?: false }
     val playMode: Flow<String> = context.dataStore.data.map { it[PLAY_MODE] ?: "ORDER" }
     val ignoredVersionCode: Flow<Int> = context.dataStore.data.map { it[IGNORED_VERSION_CODE] ?: 0 }
     val keyMapping: Flow<KeyMapping> = context.dataStore.data.map {
@@ -88,6 +89,10 @@ class PreferencesDataStore @Inject constructor(
 
     suspend fun setBackgroundPlay(enabled: Boolean) {
         context.dataStore.edit { it[BACKGROUND_PLAY] = enabled }
+    }
+
+    suspend fun setAutoResumeOnLaunch(enabled: Boolean) {
+        context.dataStore.edit { it[AUTO_RESUME_ON_LAUNCH] = enabled }
     }
 
     suspend fun setPlayMode(mode: String) {
@@ -159,6 +164,7 @@ class PreferencesDataStore @Inject constructor(
         private val TOKEN = stringPreferencesKey("token")
         private val QUALITY = stringPreferencesKey("quality")
         private val BACKGROUND_PLAY = booleanPreferencesKey("background_play")
+        private val AUTO_RESUME_ON_LAUNCH = booleanPreferencesKey("auto_resume_on_launch")
         private val PLAY_MODE = stringPreferencesKey("play_mode")
         private val IGNORED_VERSION_CODE = intPreferencesKey("ignored_version_code")
         private val KEY_MAPPING_UP = intPreferencesKey("key_mapping_up")

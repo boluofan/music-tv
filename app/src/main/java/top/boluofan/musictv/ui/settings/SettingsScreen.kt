@@ -210,6 +210,15 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
 
+        SettingsSection("开机自动续播（启动后接着上次进度播放）") {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip("是", uiState.autoResumeOnLaunch) { viewModel.setAutoResumeOnLaunch(true) }
+                OptionChip("否", !uiState.autoResumeOnLaunch) { viewModel.setAutoResumeOnLaunch(false) }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         SettingsSection("音效开关（音效 + 均衡器，开启后可在播放器界面调节）") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OptionChip("开启", uiState.eqEnabled || uiState.sfxEnabled) { viewModel.setSoundEnabled(true) }

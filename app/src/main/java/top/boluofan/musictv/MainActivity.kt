@@ -55,6 +55,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.storage.PreferencesDataStore
+import top.boluofan.musictv.data.storage.ResumeSnapshotStore
 import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.domain.MappingTarget
 import top.boluofan.musictv.domain.PlayMode
@@ -99,6 +100,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var preferencesDataStore: PreferencesDataStore
 
+    @Inject
+    lateinit var resumeSnapshotStore: ResumeSnapshotStore
+
     /** 全局「返回顶部/返回底部」回调桥，由当前组合中的页面注册滚动实现 */
     val pageScrollBridge = PageScrollBridge()
 
@@ -128,6 +132,8 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(LocalPageScrollBridge provides pageScrollBridge) {
                         RootScreen(
                             playerController = playerController,
+                            resumeSnapshotStore = resumeSnapshotStore,
+                            preferencesDataStore = preferencesDataStore,
                             onExit = { exitApp() }
                         )
                     }
@@ -153,6 +159,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun RootScreen(
     playerController: PlayerController,
+    resumeSnapshotStore: ResumeSnapshotStore,
+    preferencesDataStore: PreferencesDataStore,
     onExit: () -> Unit
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
@@ -161,6 +169,8 @@ fun RootScreen(
     when (authState) {
         is AuthState.LoggedIn -> TvApp(
             playerController = playerController,
+            resumeSnapshotStore = resumeSnapshotStore,
+            preferencesDataStore = preferencesDataStore,
             onExit = onExit
         )
         else -> AuthSetupScreen(authViewModel)
@@ -170,6 +180,8 @@ fun RootScreen(
 @Composable
 fun TvApp(
     playerController: PlayerController,
+    resumeSnapshotStore: ResumeSnapshotStore,
+    preferencesDataStore: PreferencesDataStore,
     onExit: () -> Unit
 ) {
     val backStack = remember { mutableStateListOf<Screen>(Screen.Home) }
@@ -214,6 +226,16 @@ fun TvApp(
     val updateViewModel: UpdateViewModel = hiltViewModel()
     val updateState by updateViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { updateViewModel.autoCheckOnLaunch() }
+
+    // 开机自动续播：登录完成即恢复上次队列与进度开始播放，悬浮播放器条随之出现；
+    // 已有播放队列时跳过（后台播放存活的重启场景，或防止重复恢复）
+    LaunchedEffect(Unit) {
+        if (!preferencesDataStore.autoResumeOnLaunch.first()) return@LaunchedEffect
+        if (playerController.state.value.queue.isNotEmpty()) return@LaunchedEffect
+        resumeSnapshotStore.snapshot.first()?.let { snapshot ->
+            playerController.resumePlayback(snapshot)
+        }
+    }
     UpdateDialog(
         state = updateState,
         onStartDownload = updateViewModel::startDownload,

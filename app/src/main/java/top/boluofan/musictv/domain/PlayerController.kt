@@ -28,8 +28,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -38,6 +43,8 @@ import kotlin.math.round
 import top.boluofan.musictv.MusicService
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.storage.PreferencesDataStore
+import top.boluofan.musictv.data.storage.ResumeSnapshot
+import top.boluofan.musictv.data.storage.ResumeSnapshotStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -111,7 +118,8 @@ private val SFX_MODE_NAMES = SFX_MODES.values.toList()
 @Singleton
 class PlayerController @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val dataStore: PreferencesDataStore
+    private val dataStore: PreferencesDataStore,
+    private val resumeSnapshotStore: ResumeSnapshotStore
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -186,10 +194,48 @@ class PlayerController @Inject constructor(
                     .registerAudioDeviceCallback(audioDeviceCallback, null)
             }
         }
+
+        // 进程退出（含设置页重启的 Runtime.exit）前兜底落盘最后进度
+        runCatching {
+            Runtime.getRuntime().addShutdownHook(Thread {
+                runCatching {
+                    val snapshot = currentSnapshot()
+                    if (snapshot != null) runBlocking { resumeSnapshotStore.save(snapshot) }
+                }
+            })
+        }
+        startSnapshotPersistence()
     }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
+
+    // 播放报错自动跳过失效曲目（典型为续播快照中的歌曲已被服务端删除）
+    private var autoSkipOnError = false
+    private var consecutiveErrors = 0
+    private val failedSongIds = mutableSetOf<String>()
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    private fun startSnapshotPersistence() {
+        // 队列/下标变化时防抖保存
+        scope.launch {
+            _state
+                .filter { !it.karaokeActive && it.queue.isNotEmpty() && it.currentIndex in it.queue.indices }
+                .map { Pair(it.queue, it.currentIndex) }
+                .distinctUntilChanged()
+                .debounce(SNAPSHOT_QUEUE_DEBOUNCE_MS)
+                .collect { saveCurrentSnapshot() }
+        }
+        // 播放中周期采样进度
+        scope.launch {
+            while (true) {
+                delay(SNAPSHOT_SAVE_INTERVAL_MS)
+                if (_state.value.isPlaying && !_state.value.karaokeActive) {
+                    saveCurrentSnapshot()
+                }
+            }
+        }
+    }
 
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
@@ -211,10 +257,14 @@ class PlayerController @Inject constructor(
                 )
             }
             // 新歌默认重置人声消除（原唱）；K 歌模式下不重置（用户已在伴唱模式）
-            if (song != null && song.songId != previousSong?.songId && !wasKaraoke
-                && _state.value.vocalRemovalEnabled
-            ) {
-                setVocalRemovalEnabled(false)
+            if (song != null && song.songId != previousSong?.songId && !wasKaraoke) {
+                consecutiveErrors = 0
+                failedSongIds.clear()
+                if (_state.value.vocalRemovalEnabled) {
+                    setVocalRemovalEnabled(false)
+                }
+                // 切歌即保存一次快照，兜底短促播放（不足采样间隔）后进程被杀的情况
+                if (!_state.value.karaokeActive) saveCurrentSnapshot()
             }
 
             // K 歌：仅当上一首"自然播放结束"（唱完）才从独立列表中移除，列表始终只保留未唱歌曲；
@@ -232,6 +282,12 @@ class PlayerController @Inject constructor(
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _state.update { it.copy(isPlaying = isPlaying) }
+            if (isPlaying) {
+                consecutiveErrors = 0
+            } else {
+                // 暂停时立即落盘：此时进度仍有效，避免暂停后进程被杀丢失位置
+                saveCurrentSnapshot()
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -248,6 +304,11 @@ class PlayerController @Inject constructor(
                 if (_state.value.sfxModeSupported.isEmpty()) retrySfxSetup()
                 controller?.let { checkVocalRemovalSupport(it) }
             }
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Log.e(TAG, "onPlayerError: ${error.errorCodeName} | ${error.message}", error)
+            skipFailedSongIfResuming()
         }
     }
 
@@ -280,8 +341,15 @@ class PlayerController @Inject constructor(
         }, ContextCompat.getMainExecutor(context))
     }
 
-    fun play(queue: List<MusicInfo>, index: Int) {
+    fun play(
+        queue: List<MusicInfo>,
+        index: Int,
+        startPositionMs: Long = 0L
+    ) {
         val song = queue.getOrNull(index) ?: return
+        consecutiveErrors = 0
+        failedSongIds.clear()
+        autoSkipOnError = true
         _state.update {
             it.copy(
                 queue = queue,
@@ -291,11 +359,19 @@ class PlayerController @Inject constructor(
             )
         }
         withController { c ->
-            c.setMediaItems(queue.map { buildMediaItem(it) }, index, 0L)
+            c.setMediaItems(queue.map { buildMediaItem(it) }, index, startPositionMs)
             applyPlayMode(c, _state.value.playMode)
             c.prepare()
             c.play()
         }
+    }
+
+    /** 续播：恢复快照中的队列与进度并开始播放 */
+    fun resumePlayback(snapshot: ResumeSnapshot) {
+        val queue = snapshot.queue
+        val index = snapshot.index.coerceIn(0, queue.size - 1)
+        val position = snapshot.positionMs.coerceAtLeast(0L)
+        play(queue, index, startPositionMs = position)
     }
 
     fun togglePlay() = withController { c ->
@@ -888,7 +964,47 @@ class PlayerController @Inject constructor(
         }, ContextCompat.getMainExecutor(context))
     }
 
+    /** 计算当前续播快照（队列、曲下标、进度）；K 歌期间或队列为空返回 null */
+    private fun currentSnapshot(): ResumeSnapshot? {
+        val s = _state.value
+        if (s.karaokeActive) return null
+        val index = s.currentIndex
+        if (s.queue.isEmpty() || index !in s.queue.indices) return null
+        val position = currentPosition()
+        return ResumeSnapshot(s.queue, index, position, System.currentTimeMillis())
+    }
+
+    /** 异步落盘当前快照（K 歌期间跳过） */
+    private fun saveCurrentSnapshot() {
+        val snapshot = currentSnapshot() ?: return
+        scope.launch { runCatching { resumeSnapshotStore.save(snapshot) } }
+    }
+
+    /** 当前曲播放报错时自动跳下一首 */
+    private fun skipFailedSongIfResuming() {
+        if (!autoSkipOnError) return
+        consecutiveErrors++
+        val s = _state.value
+        val song = s.currentSong
+        val songKey = song?.let { mediaKey(it) } ?: return
+        if (!failedSongIds.add(songKey)) return
+        if (consecutiveErrors > MAX_CONSECUTIVE_SKIP) return
+        val c = controller ?: return
+        Log.w(TAG, "续播跳过失效曲目: ${song.name}(${song.songId})")
+        if (c.currentMediaItemIndex < c.mediaItemCount - 1) {
+            c.seekToNextMediaItem()
+            c.play()
+        } else if (c.hasPreviousMediaItem()) {
+            c.seekToPreviousMediaItem()
+            c.play()
+        }
+    }
+
     companion object {
         private const val TAG = "PlayerController"
+        // 续播快照：播放中进度采样间隔 / 队列变化后防抖落盘时长 / 报错自动跳过的连续上限
+        private const val SNAPSHOT_SAVE_INTERVAL_MS = 10_000L
+        private const val SNAPSHOT_QUEUE_DEBOUNCE_MS = 1_000L
+        private const val MAX_CONSECUTIVE_SKIP = 10
     }
 }
