@@ -48,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -66,6 +68,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import top.boluofan.musictv.data.api.UrlHelper
 import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.karaoke.KaraokePlayerScreen
 import top.boluofan.musictv.ui.karaoke.KaraokeQueueList
 import top.boluofan.musictv.ui.player.ControlBar
@@ -130,9 +133,10 @@ fun PlayerScreen(
     BackHandler {
         when {
             showKaraokeQueue -> showKaraokeQueue = false
+            uiState.showExitKaraokeConfirm -> viewModel.dismissExitKaraokeConfirm()
             uiState.showQueueDrawer -> viewModel.closeQueueDrawer()
             uiState.showSoundPanel -> viewModel.closeSoundPanel()
-            uiState.karaokeModeEnabled -> viewModel.exitKaraokeMode()
+            uiState.karaokeModeEnabled -> viewModel.requestExitKaraoke()
             uiState.showControls -> viewModel.hideControls()
             else -> onBack()
         }
@@ -148,7 +152,7 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled, showKaraokeQueue, karaokeQueueJustClosed) {
+    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled, showKaraokeQueue, karaokeQueueJustClosed, uiState.showExitKaraokeConfirm) {
         // 等待 AnimatedVisibility 完成组合后再请求焦点
         delay(100)
         runCatching {
@@ -291,7 +295,7 @@ fun PlayerScreen(
                 uiState = uiState,
                 orderUrl = uiState.karaokeOrderUrl,
                 accompanimentOn = uiState.isAccompanimentOn,
-                onBack = { viewModel.exitKaraokeMode() },
+                onBack = { viewModel.requestExitKaraoke() },
                 onPlayPause = { viewModel.togglePlay() },
                 onNext = { viewModel.nextTrack() },
                 onSeek = { viewModel.seekTo(it) },
@@ -532,5 +536,74 @@ fun PlayerScreen(
                 modifier = Modifier.fillMaxHeight().width(400.dp)
             )
         }
+
+        if (uiState.showExitKaraokeConfirm) {
+            ExitKaraokeConfirmDialog(
+                onConfirm = { viewModel.exitKaraokeMode() },
+                onDismiss = { viewModel.dismissExitKaraokeConfirm() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExitKaraokeConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val cancelFocus = remember { FocusRequester() }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 40.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "确定退出 K 歌吗？",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(24.dp))
+            Row {
+                ExitKaraokeDialogButton(
+                    text = "取消",
+                    onClick = onDismiss,
+                    modifier = Modifier.focusRequester(cancelFocus)
+                )
+                Spacer(Modifier.width(16.dp))
+                ExitKaraokeDialogButton(
+                    text = "退出",
+                    onClick = onConfirm
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { runCatching { cancelFocus.requestFocus() } }
+}
+
+@Composable
+private fun ExitKaraokeDialogButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .tvFocusable(cornerRadius = 8.dp, onClick = onClick)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 28.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

@@ -66,7 +66,8 @@ data class PlayerUiState(
     val karaokeModeEnabled: Boolean = false,
     val karaokeList: List<MusicInfo> = emptyList(),
     val karaokeOrderUrl: String? = null,
-    val isAccompanimentOn: Boolean = false
+    val isAccompanimentOn: Boolean = false,
+    val showExitKaraokeConfirm: Boolean = false
 )
 
 @HiltViewModel
@@ -299,6 +300,18 @@ class PlayerViewModel @Inject constructor(
         if (playerController.isAccompanimentOn()) {
             playerController.setAccompanimentMode(false)
         }
+        // 从 K 歌回到主播放器时默认暂停，由用户主动继续播放
+        playerController.pause()
+        _uiState.update { it.copy(showExitKaraokeConfirm = false) }
+    }
+
+    fun requestExitKaraoke() {
+        if (!_uiState.value.karaokeModeEnabled) return
+        _uiState.update { it.copy(showExitKaraokeConfirm = true) }
+    }
+
+    fun dismissExitKaraokeConfirm() {
+        _uiState.update { it.copy(showExitKaraokeConfirm = false) }
     }
 
     /** 切换原/伴唱：music-tv 端只走人声消除 processor（无双音轨资源） */
