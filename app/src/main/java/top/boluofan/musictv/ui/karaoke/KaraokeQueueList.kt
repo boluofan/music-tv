@@ -52,6 +52,8 @@ import top.boluofan.musictv.ui.theme.PlayerColors
  *
  * - 当前演唱中的歌曲固定置顶展示，不可置顶/删除；
  * - 其余未唱歌曲均可通过「置顶」移动到下一首演唱，或通过「删除」移出列表。
+ *
+ * 使用 Dialog 承载，独立模态窗口，焦点锁定在弹窗内、不会跳到主播放界面。
  */
 @Composable
 fun KaraokeQueueList(
@@ -63,6 +65,34 @@ fun KaraokeQueueList(
     onRemove: (Int) -> Unit,
     initialFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
+) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        KaraokeQueueListContent(
+            queue = queue,
+            currentIndex = currentIndex,
+            onClose = onClose,
+            onSongClick = onSongClick,
+            onMoveTop = onMoveTop,
+            onRemove = onRemove,
+            initialFocusRequester = initialFocusRequester,
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+private fun KaraokeQueueListContent(
+    queue: List<MusicInfo>,
+    currentIndex: Int,
+    onClose: () -> Unit,
+    onSongClick: (Int) -> Unit,
+    onMoveTop: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+    initialFocusRequester: FocusRequester?,
+    modifier: Modifier
 ) {
     val listState = rememberLazyListState()
     var pendingRemoveIndex by remember { mutableStateOf<Int?>(null) }
@@ -94,6 +124,7 @@ fun KaraokeQueueList(
                         else Color.Transparent
                     )
                     .onFocusChanged { closeFocused = it.isFocused }
+                    .focusable()
                     .clickable { onClose() }
                     .padding(8.dp)
             )

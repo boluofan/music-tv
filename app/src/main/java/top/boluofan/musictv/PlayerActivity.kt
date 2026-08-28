@@ -121,8 +121,15 @@ fun PlayerScreen(
     val karaokeQueueListFocus = remember { FocusRequester() }
     val micButtonFocus = remember { FocusRequester() }
 
+    // K 歌模式下的"播放队列"弹窗状态
+    var showKaraokeQueue by remember { mutableStateOf(false) }
+    var karaokeQueueWasOpen by remember { mutableStateOf(false) }
+    // K 歌歌单刚从打开→关闭的瞬间标记，主焦点 effect 据此跳过 karaoke 播放/暂停分支，让出焦点
+    var karaokeQueueJustClosed by remember { mutableStateOf(false) }
+
     BackHandler {
         when {
+            showKaraokeQueue -> showKaraokeQueue = false
             uiState.showQueueDrawer -> viewModel.closeQueueDrawer()
             uiState.showSoundPanel -> viewModel.closeSoundPanel()
             uiState.karaokeModeEnabled -> viewModel.exitKaraokeMode()
@@ -141,14 +148,15 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled) {
+    LaunchedEffect(uiState.showControls, uiState.showQueueDrawer, uiState.showSoundPanel, uiState.karaokeModeEnabled, showKaraokeQueue, karaokeQueueJustClosed) {
         // 等待 AnimatedVisibility 完成组合后再请求焦点
         delay(100)
         runCatching {
             when {
+                showKaraokeQueue -> karaokeQueueListFocus.requestFocus()
                 uiState.showQueueDrawer -> queueDrawerFocus.requestFocus()
                 uiState.showSoundPanel -> soundPanelFocus.requestFocus()
-                uiState.karaokeModeEnabled -> karaokePlayPauseFocus.requestFocus()
+                uiState.karaokeModeEnabled && !karaokeQueueJustClosed -> karaokePlayPauseFocus.requestFocus()
                 uiState.showControls -> controlBarFocus.requestFocus()
             }
         }
@@ -166,8 +174,17 @@ fun PlayerScreen(
     var didSeekDuringPress by remember { mutableStateOf(false) }
     val seekStepMs = 10_000L
 
-    // K 歌模式下的"播放队列"弹窗状态
-    var showKaraokeQueue by remember { mutableStateOf(false) }
+    // K 歌歌单弹窗关闭后，焦点回到 K 歌控制栏的"歌单"按钮
+    LaunchedEffect(showKaraokeQueue) {
+        if (showKaraokeQueue) {
+            karaokeQueueJustClosed = false
+        } else if (karaokeQueueWasOpen) {
+            karaokeQueueJustClosed = true
+            delay(150)
+            runCatching { karaokeQueueButtonFocus.requestFocus() }
+        }
+        karaokeQueueWasOpen = showKaraokeQueue
+    }
 
     // 退出 K 歌模式后，焦点回到主播放器控制栏的"麦克风（K 歌入口）"按钮
     var wasKaraokeMode by remember { mutableStateOf(false) }
@@ -200,6 +217,10 @@ fun PlayerScreen(
                             // 优先于焦点链处理，保证抽屉/控制栏一次返回即关闭
                             Key.Back -> {
                                 when {
+                                    showKaraokeQueue -> {
+                                        showKaraokeQueue = false
+                                        true
+                                    }
                                     uiState.showQueueDrawer -> {
                                         viewModel.closeQueueDrawer()
                                         true
