@@ -249,6 +249,7 @@ class PlayerController @Inject constructor(
             val song = activeList.firstOrNull { mediaKey(it) == mediaItem?.mediaId }
             val newIndex = controller?.currentMediaItemIndex ?: -1
 
+            countDownSleepAfterSongs(previousSong, song, reason)
             _state.update {
                 it.copy(
                     currentSong = song,
