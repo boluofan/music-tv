@@ -245,9 +245,7 @@ class PlayerController @Inject constructor(
             val previousSong = _state.value.currentSong
             val wasKaraoke = _state.value.karaokeActive
             val activeList = if (wasKaraoke) _state.value.karaokeList else _state.value.queue
-            val oldIndex = _state.value.currentIndex
             val song = activeList.firstOrNull { mediaKey(it) == mediaItem?.mediaId }
-            val newIndex = controller?.currentMediaItemIndex ?: -1
 
             countDownSleepAfterSongs(previousSong, song, reason)
             _state.update {
@@ -268,16 +266,12 @@ class PlayerController @Inject constructor(
                 if (!_state.value.karaokeActive) saveCurrentSnapshot()
             }
 
-            // K 歌：仅当上一首"自然播放结束"（唱完）才从独立列表中移除，列表始终只保留未唱歌曲；
-            // 切歌/跳过不视为唱过，保留在列表中。移除后当前曲前移一位。该操作只影响 karaokeList，
-            // 不会改动主播放器 queue。
-            if (wasKaraoke && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
-                && previousSong != null && song != null && song.songId != previousSong.songId
-                && oldIndex in _state.value.karaokeList.indices && oldIndex < newIndex
+            // K 歌：离开上一首即视为唱完（含手动切歌），从独立列表中移除；
+            // 同曲重建（如进入 K 歌重载列表）不处理。按歌曲身份定位，容忍状态与引擎的短暂错位。
+            if (wasKaraoke && previousSong != null && song != null
+                && song.songId != previousSong.songId
             ) {
-                val newList = _state.value.karaokeList.toMutableList().apply { removeAt(oldIndex) }
-                _state.update { it.copy(karaokeList = newList, currentIndex = newIndex - 1) }
-                withController { c -> if (oldIndex in 0 until c.mediaItemCount) c.removeMediaItem(oldIndex) }
+                removeSungKaraokeSong(previousSong, next = song)
             }
         }
 
@@ -304,6 +298,10 @@ class PlayerController @Inject constructor(
                 if (_state.value.eqBandFrequencies.isEmpty()) retryEqSetup()
                 if (_state.value.sfxModeSupported.isEmpty()) retrySfxSetup()
                 controller?.let { checkVocalRemovalSupport(it) }
+            }
+            // K 歌：顺序播放下列表尾唱完进入 ENDED 时没有切歌回调，最后一首也要移出列表
+            if (playbackState == Player.STATE_ENDED && _state.value.karaokeActive) {
+                _state.value.currentSong?.let { removeSungKaraokeSong(it, next = null) }
             }
         }
 
@@ -902,15 +900,34 @@ class PlayerController @Inject constructor(
             val cur = _state.value.currentIndex
             if (index !in list.indices || index == cur) return@launch
             val song = list[index]
-            val newList = list.toMutableList().apply {
-                removeAt(index)
-                add((cur + 1).coerceIn(0, size), song)
-            }
-            _state.update { it.copy(karaokeList = newList, currentIndex = cur) }
+            // 先移除再定位：被移动曲在当前曲之前时，移除后当前曲下标前移一位
+            val working = list.toMutableList().apply { removeAt(index) }
+            val adjustedCur = if (index < cur) cur - 1 else cur
+            val insertAt = (adjustedCur + 1).coerceIn(0, working.size)
+            working.add(insertAt, song)
+            _state.update { it.copy(karaokeList = working, currentIndex = adjustedCur) }
             withController { c ->
-                val target = (cur + 1).coerceIn(0, c.mediaItemCount)
-                runCatching { c.moveMediaItem(index, target) }
+                if (index in 0 until c.mediaItemCount) runCatching { c.moveMediaItem(index, insertAt) }
             }
+        }
+    }
+
+    /** K 歌：已唱歌曲移出独立列表与播放引擎；next 为 null 表示顺序播放到列表尾（ENDED） */
+    private fun removeSungKaraokeSong(sung: MusicInfo, next: MusicInfo?) {
+        val kList = _state.value.karaokeList
+        val removedIndex = kList.indexOfFirst { mediaKey(it) == mediaKey(sung) }
+        if (removedIndex < 0) return
+        val newList = kList.toMutableList().apply { removeAt(removedIndex) }
+        val newCur = if (next != null) {
+            newList.indexOfFirst { mediaKey(it) == mediaKey(next) }
+        } else if (newList.isEmpty()) {
+            -1
+        } else {
+            removedIndex.coerceAtMost(newList.size - 1)
+        }
+        _state.update { it.copy(karaokeList = newList, currentIndex = newCur) }
+        withController { c ->
+            if (removedIndex in 0 until c.mediaItemCount) runCatching { c.removeMediaItem(removedIndex) }
         }
     }
 

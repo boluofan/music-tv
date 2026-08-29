@@ -320,7 +320,7 @@ fun PlayerScreen(
             if (showKaraokeQueue) {
                 KaraokeQueueList(
                     queue = uiState.karaokeList,
-                    currentIndex = 0,
+                    currentIndex = uiState.currentIndex,
                     onClose = { showKaraokeQueue = false },
                     onSongClick = { viewModel.karaokePlayAt(it) },
                     onMoveTop = { viewModel.karaokeMoveTop(it) },

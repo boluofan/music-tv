@@ -26,13 +26,15 @@ class KaraokeOrderWebServer(
     private val gson = Gson()
 
     override fun serve(session: IHTTPSession): Response {
-        // 当前 K 歌歌单
-        if (session.method == Method.GET && session.uri == "/order/queue") {
+        // 当前 K 歌歌单（禁用缓存：手机端 5 秒轮询需实时反映已唱移除/置顶变化）
+        if (session.method == Method.GET && session.uri.startsWith("/order/queue")) {
             val queue = onOrderQueue?.invoke().orEmpty()
             val json = queue.mapIndexed { index, song ->
                 """{"index":$index,"title":${esc(song.name)},"artist":${esc(song.singer)},"id":${esc(song.songId)},"source":${esc(song.source)}}"""
             }.joinToString(",", "[", "]")
-            return json(Response.Status.OK, json)
+            return json(Response.Status.OK, json).apply {
+                addHeader("Cache-Control", "no-store")
+            }
         }
         // 搜索（POST /order/search 接收 keyword + source，返回候选 List<MusicInfo> JSON）
         if (session.method == Method.POST && session.uri == "/order/search") {
@@ -215,7 +217,7 @@ class KaraokeOrderWebServer(
                 .catch(function(){loadOrder();});
             };
             function loadOrder(){
-              fetch('/order/queue').then(function(r){return r.json();}).then(function(list){
+              fetch('/order/queue?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(list){
                 var el=document.getElementById('orderQueue');
                 if(!list.length){el.innerHTML='<div class="order-hint">队列为空</div>';return;}
                 el.innerHTML=list.map(function(s){
