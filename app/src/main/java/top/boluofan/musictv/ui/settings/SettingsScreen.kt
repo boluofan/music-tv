@@ -219,6 +219,15 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
 
+        SettingsSection("自动进入播放器（启动时存在播放中歌曲直接进入全屏播放器）") {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip("是", uiState.autoOpenPlayerOnLaunch) { viewModel.setAutoOpenPlayerOnLaunch(true) }
+                OptionChip("否", !uiState.autoOpenPlayerOnLaunch) { viewModel.setAutoOpenPlayerOnLaunch(false) }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         SettingsSection("音效开关（音效 + 均衡器，开启后可在播放器界面调节）") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OptionChip("开启", uiState.eqEnabled || uiState.sfxEnabled) { viewModel.setSoundEnabled(true) }

@@ -236,6 +236,18 @@ fun TvApp(
             playerController.resumePlayback(snapshot)
         }
     }
+
+    // 自动进入播放器：开关开启且启动时存在播放中歌曲（后台播放存活，或续播即将恢复）时，
+    // 等待 MediaController 连接同步出当前歌曲后直接进入全屏播放器
+    LaunchedEffect(Unit) {
+        if (!preferencesDataStore.autoOpenPlayerOnLaunch.first()) return@LaunchedEffect
+        val hasPlayback = playerController.state.value.currentSong != null ||
+            (preferencesDataStore.autoResumeOnLaunch.first() &&
+                resumeSnapshotStore.snapshot.first() != null)
+        if (!hasPlayback) return@LaunchedEffect
+        playerController.state.first { it.currentSong != null }
+        openPlayer()
+    }
     UpdateDialog(
         state = updateState,
         onStartDownload = updateViewModel::startDownload,
