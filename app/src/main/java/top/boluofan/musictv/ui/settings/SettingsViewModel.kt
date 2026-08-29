@@ -33,6 +33,7 @@ data class SettingsUiState(
     val backgroundPlayback: Boolean = true,
     val autoResumeOnLaunch: Boolean = false,
     val autoOpenPlayerOnLaunch: Boolean = false,
+    val playerControlsPersistent: Boolean = false,
     val sleepTimerMinutes: Int = 0,
     val sleepTimerRemaining: Int = 0,
     val sleepAfterSongs: Int = 0,
@@ -91,6 +92,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            dataStore.playerControlsPersistent.collect { enabled ->
+                _uiState.value = _uiState.value.copy(playerControlsPersistent = enabled)
+            }
+        }
+        viewModelScope.launch {
             dataStore.keyMapping.collect { mapping ->
                 _uiState.value = _uiState.value.copy(keyMapping = mapping)
             }
@@ -139,6 +145,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoOpenPlayerOnLaunch(enabled: Boolean) {
         viewModelScope.launch { dataStore.setAutoOpenPlayerOnLaunch(enabled) }
+    }
+
+    fun setPlayerControlsPersistent(enabled: Boolean) {
+        viewModelScope.launch { dataStore.setPlayerControlsPersistent(enabled) }
     }
 
     // 音效总开关：开启时分别校验设备能力，均衡器与音效任一支持即可；都不支持则提示

@@ -29,6 +29,7 @@ class PreferencesDataStore @Inject constructor(
     val backgroundPlay: Flow<Boolean> = context.dataStore.data.map { it[BACKGROUND_PLAY] ?: true }
     val autoResumeOnLaunch: Flow<Boolean> = context.dataStore.data.map { it[AUTO_RESUME_ON_LAUNCH] ?: false }
     val autoOpenPlayerOnLaunch: Flow<Boolean> = context.dataStore.data.map { it[AUTO_OPEN_PLAYER_ON_LAUNCH] ?: false }
+    val playerControlsPersistent: Flow<Boolean> = context.dataStore.data.map { it[PLAYER_CONTROLS_PERSISTENT] ?: false }
     val playMode: Flow<String> = context.dataStore.data.map { it[PLAY_MODE] ?: "ORDER" }
     val ignoredVersionCode: Flow<Int> = context.dataStore.data.map { it[IGNORED_VERSION_CODE] ?: 0 }
     val keyMapping: Flow<KeyMapping> = context.dataStore.data.map {
@@ -98,6 +99,10 @@ class PreferencesDataStore @Inject constructor(
 
     suspend fun setAutoOpenPlayerOnLaunch(enabled: Boolean) {
         context.dataStore.edit { it[AUTO_OPEN_PLAYER_ON_LAUNCH] = enabled }
+    }
+
+    suspend fun setPlayerControlsPersistent(enabled: Boolean) {
+        context.dataStore.edit { it[PLAYER_CONTROLS_PERSISTENT] = enabled }
     }
 
     suspend fun setPlayMode(mode: String) {
@@ -171,6 +176,7 @@ class PreferencesDataStore @Inject constructor(
         private val BACKGROUND_PLAY = booleanPreferencesKey("background_play")
         private val AUTO_RESUME_ON_LAUNCH = booleanPreferencesKey("auto_resume_on_launch")
         private val AUTO_OPEN_PLAYER_ON_LAUNCH = booleanPreferencesKey("auto_open_player_on_launch")
+        private val PLAYER_CONTROLS_PERSISTENT = booleanPreferencesKey("player_controls_persistent")
         private val PLAY_MODE = stringPreferencesKey("play_mode")
         private val IGNORED_VERSION_CODE = intPreferencesKey("ignored_version_code")
         private val KEY_MAPPING_UP = intPreferencesKey("key_mapping_up")

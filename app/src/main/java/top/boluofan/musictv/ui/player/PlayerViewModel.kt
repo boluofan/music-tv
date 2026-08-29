@@ -32,6 +32,7 @@ data class PlayerUiState(
     val lyrics: List<LyricLine> = emptyList(),
     val currentLyricIndex: Int = -1,
     val showControls: Boolean = true,
+    val controlsPersistent: Boolean = false,
     val queue: List<MusicInfo> = emptyList(),
     val currentIndex: Int = -1,
     val showQueueDrawer: Boolean = false,
@@ -88,6 +89,11 @@ class PlayerViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             refreshFavoriteKeys()
+        }
+        viewModelScope.launch {
+            dataStore.playerControlsPersistent.collect { enabled ->
+                _uiState.update { it.copy(controlsPersistent = enabled) }
+            }
         }
         viewModelScope.launch {
             playerController.state.collect { s ->

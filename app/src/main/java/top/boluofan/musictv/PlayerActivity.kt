@@ -142,11 +142,11 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(uiState.isPlaying, uiState.showControls, uiState.showSoundPanel, interactionCount) {
+    LaunchedEffect(uiState.isPlaying, uiState.showControls, uiState.showSoundPanel, interactionCount, uiState.controlsPersistent) {
         if (uiState.isPlaying && uiState.showSoundPanel) {
             delay(10_000)
             viewModel.closeSoundPanel()
-        } else if (uiState.isPlaying && uiState.showControls) {
+        } else if (uiState.isPlaying && uiState.showControls && !uiState.controlsPersistent) {
             delay(10_000)
             viewModel.hideControls()
         }

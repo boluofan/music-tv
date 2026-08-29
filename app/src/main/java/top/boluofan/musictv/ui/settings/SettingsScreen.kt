@@ -228,6 +228,15 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
 
+        SettingsSection("播放器控制栏常驻（开启后底部功能菜单不自动隐藏）") {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip("是", uiState.playerControlsPersistent) { viewModel.setPlayerControlsPersistent(true) }
+                OptionChip("否", !uiState.playerControlsPersistent) { viewModel.setPlayerControlsPersistent(false) }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         SettingsSection("音效开关（音效 + 均衡器，开启后可在播放器界面调节）") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OptionChip("开启", uiState.eqEnabled || uiState.sfxEnabled) { viewModel.setSoundEnabled(true) }
