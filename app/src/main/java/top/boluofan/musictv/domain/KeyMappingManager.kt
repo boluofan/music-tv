@@ -12,8 +12,8 @@ import top.boluofan.musictv.data.storage.PreferencesDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** 应用所需的 8 个功能键，standardKeyCode 为分发到 Compose 层的标准 keycode；
- *  TOP/BOTTOM 是特殊业务键（快速滚动到顶部/底部），无标准键，在 Activity 层拦截处理 */
+/** 应用所需的 9 个功能键，standardKeyCode 为分发到 Compose 层的标准 keycode；
+ *  TOP/BOTTOM/ACCOMPANIMENT 是特殊业务键（快速滚动到顶部/底部、K 歌原伴唱切换），无标准键，在 Activity 层拦截处理 */
 enum class MappingTarget(val standardKeyCode: Int, val displayName: String) {
     UP(KeyEvent.KEYCODE_DPAD_UP, "上"),
     DOWN(KeyEvent.KEYCODE_DPAD_DOWN, "下"),
@@ -22,7 +22,8 @@ enum class MappingTarget(val standardKeyCode: Int, val displayName: String) {
     BACK(KeyEvent.KEYCODE_BACK, "返回"),
     CONFIRM(KeyEvent.KEYCODE_DPAD_CENTER, "确认"),
     TOP(-1, "返回顶部"),
-    BOTTOM(-1, "返回底部")
+    BOTTOM(-1, "返回底部"),
+    ACCOMPANIMENT(-1, "原伴唱切换")
 }
 
 /** 每个字段是用户物理按键的原始 keycode，0 = 未自定义（跟随系统默认键） */
@@ -34,7 +35,8 @@ data class KeyMapping(
     val back: Int = 0,
     val confirm: Int = 0,
     val top: Int = 0,
-    val bottom: Int = 0
+    val bottom: Int = 0,
+    val accompaniment: Int = 0
 ) {
     fun valueFor(target: MappingTarget): Int = when (target) {
         MappingTarget.UP -> up
@@ -45,6 +47,7 @@ data class KeyMapping(
         MappingTarget.CONFIRM -> confirm
         MappingTarget.TOP -> top
         MappingTarget.BOTTOM -> bottom
+        MappingTarget.ACCOMPANIMENT -> accompaniment
     }
 }
 
@@ -79,13 +82,14 @@ class KeyMappingManager @Inject constructor(
         }
     }
 
-    /** 命中「返回顶部/返回底部」映射返回对应功能键，未命中返回 null；0 不参与映射 */
+    /** 命中「返回顶部/返回底部/原伴唱切换」映射返回对应功能键，未命中返回 null；0 不参与映射 */
     fun matchSpecialKey(raw: Int): MappingTarget? {
         if (raw == 0) return null
         val m = _keyMapping.value
         return when (raw) {
             m.top -> MappingTarget.TOP
             m.bottom -> MappingTarget.BOTTOM
+            m.accompaniment -> MappingTarget.ACCOMPANIMENT
             else -> null
         }
     }

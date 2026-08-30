@@ -65,10 +65,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import dagger.hilt.android.AndroidEntryPoint
 import top.boluofan.musictv.data.api.UrlHelper
 import top.boluofan.musictv.domain.KeyMappingManager
+import top.boluofan.musictv.domain.MappingTarget
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.karaoke.KaraokePlayerScreen
@@ -90,17 +92,29 @@ class PlayerActivity : ComponentActivity() {
     @Inject
     lateinit var keyMappingManager: KeyMappingManager
 
-    /** 用户自定义按键映射：命中映射表的 keycode 翻译成标准功能键后继续分发 */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
-        super.dispatchKeyEvent(keyMappingManager.translateEvent(event))
+    private lateinit var viewModel: PlayerViewModel
+
+    /** 用户自定义按键映射：原伴唱切换键（K 歌模式下）拦截处理，其余命中映射表的 keycode 翻译成标准功能键后继续分发 */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (keyMappingManager.matchSpecialKey(event.keyCode) == MappingTarget.ACCOMPANIMENT &&
+            viewModel.uiState.value.karaokeModeEnabled
+        ) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                viewModel.toggleAccompaniment()
+            }
+            return true
+        }
+        return super.dispatchKeyEvent(keyMappingManager.translateEvent(event))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewModel = ViewModelProvider(this)[PlayerViewModel::class.java]
 
         setContent {
             TvTheme {
                 PlayerScreen(
-                    viewModel = hiltViewModel(),
+                    viewModel = viewModel,
                     onBack = { finish() }
                 )
             }

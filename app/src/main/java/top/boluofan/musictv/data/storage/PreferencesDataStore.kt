@@ -41,7 +41,8 @@ class PreferencesDataStore @Inject constructor(
             back = it[KEY_MAPPING_BACK] ?: 0,
             confirm = it[KEY_MAPPING_CONFIRM] ?: 0,
             top = it[KEY_MAPPING_TOP] ?: 0,
-            bottom = it[KEY_MAPPING_BOTTOM] ?: 0
+            bottom = it[KEY_MAPPING_BOTTOM] ?: 0,
+            accompaniment = it[KEY_MAPPING_ACCOMPANIMENT] ?: 0
         )
     }
 
@@ -123,6 +124,7 @@ class PreferencesDataStore @Inject constructor(
             it[KEY_MAPPING_CONFIRM] = mapping.confirm
             it[KEY_MAPPING_TOP] = mapping.top
             it[KEY_MAPPING_BOTTOM] = mapping.bottom
+            it[KEY_MAPPING_ACCOMPANIMENT] = mapping.accompaniment
         }
     }
 
@@ -187,6 +189,7 @@ class PreferencesDataStore @Inject constructor(
         private val KEY_MAPPING_CONFIRM = intPreferencesKey("key_mapping_confirm")
         private val KEY_MAPPING_TOP = intPreferencesKey("key_mapping_top")
         private val KEY_MAPPING_BOTTOM = intPreferencesKey("key_mapping_bottom")
+        private val KEY_MAPPING_ACCOMPANIMENT = intPreferencesKey("key_mapping_accompaniment")
 
         private val EQ_ENABLED = booleanPreferencesKey("eq_enabled")
         private val EQ_PRESET = stringPreferencesKey("eq_preset")
