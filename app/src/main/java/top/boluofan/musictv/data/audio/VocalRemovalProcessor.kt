@@ -18,7 +18,8 @@ import kotlin.math.sin
  *    提取 vocal 频段后**深度衰减（保留 15%）而非完全挖空** —— 消除居中，同时避免
  *    与主旋律、吉他等居中乐器同频段的伴奏一起消失（Audacity 官方建议：伴奏变薄就降低处理强度）
  * 3. 对 Side 信号同样分频，将其 vocal 频段保留 50%（仅轻度削减，保住立体声宽度/混响伴奏）
- * 4. 重组：L_out = newMid + newSide, R_out = newMid - newSide，再乘 1.25x 补偿增益
+ * 4. 重组：L_out = newMid + newSide, R_out = newMid - newSide，再乘 1.5x 补偿增益
+ *    （消人声会削减整体能量，补偿后伴唱音量与原唱接近；切回原唱处理器旁路，增益自动还原）
  *
  * 说明：
  * - 男声基频约 85~180Hz，低通必须压到 ~120Hz 以下才能有效消除人声的基频分量。
@@ -38,7 +39,7 @@ class VocalRemovalProcessor : AudioProcessor {
         private const val FILTER_Q = 0.707
         private const val MID_VOCAL_KEEP = 0.15f
         private const val SIDE_VOCAL_KEEP = 1.25f
-        private const val MAKEUP_GAIN = 1.25f
+        private const val MAKEUP_GAIN = 1.5f
         private val EMPTY_BUFFER: ByteBuffer =
             ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder())
     }
