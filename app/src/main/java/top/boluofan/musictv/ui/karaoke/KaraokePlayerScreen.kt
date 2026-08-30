@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -28,8 +30,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -69,6 +72,10 @@ fun KaraokePlayerScreen(
 ) {
     val showControls = uiState.showControls
     val backFocusRequester = backButtonFocusRequester ?: remember { FocusRequester() }
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    // 右上角扫码点歌二维码占位（96dp 尺寸 + 16dp 边距 + 聚焦放大余量），左右对称预留保证标题仍视觉居中
+    val qrReserved = if (orderUrl != null) 132.dp else 0.dp
+    val titleMaxWidth = (screenWidth - qrReserved * 2).coerceAtLeast(0.dp)
 
     Box(modifier = Modifier.fillMaxSize().background(PlayerColors.Background)) {
         // 背景：放大封面模糊（同主播放器音乐模式）
@@ -97,7 +104,10 @@ fun KaraokePlayerScreen(
                     fontWeight = FontWeight.Bold,
                     color = PlayerColors.TextPrimary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier
+                        .widthIn(max = titleMaxWidth)
+                        .basicMarquee(),
+                    textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -105,7 +115,10 @@ fun KaraokePlayerScreen(
                     fontSize = 22.sp,
                     color = PlayerColors.TextSecondary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier
+                        .widthIn(max = titleMaxWidth)
+                        .basicMarquee(),
+                    textAlign = TextAlign.Center
                 )
             }
 
