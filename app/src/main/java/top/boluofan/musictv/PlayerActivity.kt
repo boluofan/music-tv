@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,6 +59,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -112,6 +114,13 @@ fun PlayerScreen(
     onBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // K 歌模式常亮：唱歌时长时间不按遥控器，防止熄屏/屏保（View.keepScreenOn 即 FLAG_KEEP_SCREEN_ON）
+    val view = LocalView.current
+    DisposableEffect(uiState.karaokeModeEnabled) {
+        view.keepScreenOn = uiState.karaokeModeEnabled
+        onDispose { view.keepScreenOn = false }
+    }
 
     var interactionCount by remember { mutableIntStateOf(0) }
     val controlBarFocus = remember { FocusRequester() }
