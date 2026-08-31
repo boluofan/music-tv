@@ -34,6 +34,8 @@ class PreferencesDataStore @Inject constructor(
     val screensaverTimeoutMinutes: Flow<Int> = context.dataStore.data.map { it[SCREENSAVER_TIMEOUT_MINUTES] ?: 3 }
     val playMode: Flow<String> = context.dataStore.data.map { it[PLAY_MODE] ?: "ORDER" }
     val ignoredVersionCode: Flow<Int> = context.dataStore.data.map { it[IGNORED_VERSION_CODE] ?: 0 }
+    // 首次启动已展示版权/免责声明（任意方式关闭即视为已展示，不再弹出）
+    val disclaimerShown: Flow<Boolean> = context.dataStore.data.map { it[DISCLAIMER_SHOWN] ?: false }
     val keyMapping: Flow<KeyMapping> = context.dataStore.data.map {
         KeyMapping(
             up = it[KEY_MAPPING_UP] ?: 0,
@@ -124,6 +126,10 @@ class PreferencesDataStore @Inject constructor(
         context.dataStore.edit { it[IGNORED_VERSION_CODE] = code }
     }
 
+    suspend fun setDisclaimerShown() {
+        context.dataStore.edit { it[DISCLAIMER_SHOWN] = true }
+    }
+
     suspend fun setKeyMapping(mapping: KeyMapping) {
         context.dataStore.edit {
             it[KEY_MAPPING_UP] = mapping.up
@@ -193,6 +199,7 @@ class PreferencesDataStore @Inject constructor(
         private val SCREENSAVER_TIMEOUT_MINUTES = intPreferencesKey("screensaver_timeout_minutes")
         private val PLAY_MODE = stringPreferencesKey("play_mode")
         private val IGNORED_VERSION_CODE = intPreferencesKey("ignored_version_code")
+        private val DISCLAIMER_SHOWN = booleanPreferencesKey("disclaimer_shown")
         private val KEY_MAPPING_UP = intPreferencesKey("key_mapping_up")
         private val KEY_MAPPING_DOWN = intPreferencesKey("key_mapping_down")
         private val KEY_MAPPING_LEFT = intPreferencesKey("key_mapping_left")

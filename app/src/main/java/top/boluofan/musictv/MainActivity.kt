@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,7 +65,9 @@ import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.domain.MappingTarget
 import top.boluofan.musictv.domain.PlayMode
 import top.boluofan.musictv.domain.PlayerController
+import top.boluofan.musictv.ui.components.DisclaimerDialog
 import top.boluofan.musictv.ui.components.FloatingPlayerBar
+import top.boluofan.musictv.ui.components.HelpDialog
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.config.AuthSetupScreen
 import top.boluofan.musictv.ui.config.AuthState
@@ -231,6 +234,9 @@ fun TvApp(
     val playerBarBridge = remember { PlayerBarBridge() }
     val pageScrollBridge = remember { PageScrollBridge() }
     var showExitDialog by remember { mutableStateOf(false) }
+    var showDisclaimer by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val playbackState by playerController.state.collectAsStateWithLifecycle()
     val homeViewModel: HomeViewModel = hiltViewModel()
@@ -245,6 +251,11 @@ fun TvApp(
 
     fun openPlayer() {
         runCatching { context.startActivity(Intent(context, PlayerActivity::class.java)) }
+    }
+
+    // 首次启动（未展示过版权/免责声明）进入主界面时弹窗；任意方式关闭即标记已展示
+    LaunchedEffect(Unit) {
+        showDisclaimer = !preferencesDataStore.disclaimerShown.first()
     }
 
     BackHandler {
@@ -295,6 +306,25 @@ fun TvApp(
         onRetryCheck = updateViewModel::manualCheck,
         onDismiss = updateViewModel::dismiss
     )
+
+    // 「操作说明」按钮：先关闭免责声明并标记已展示，再打开帮助弹窗，返回键只会回到主界面
+    if (showDisclaimer) {
+        DisclaimerDialog(
+            onOpenHelp = {
+                showDisclaimer = false
+                showHelpDialog = true
+                scope.launch { preferencesDataStore.setDisclaimerShown() }
+            },
+            onDismiss = {
+                showDisclaimer = false
+                scope.launch { preferencesDataStore.setDisclaimerShown() }
+            }
+        )
+    }
+
+    if (showHelpDialog) {
+        HelpDialog(onDismiss = { showHelpDialog = false })
+    }
 
     CompositionLocalProvider(
         LocalTabBarBridge provides tabBarBridge,
