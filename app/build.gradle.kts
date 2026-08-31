@@ -27,6 +27,8 @@ android {
             "\"${LocalDateTime.now(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss"))}\""
         )
+        // TV 端仅中文界面，剔除 androidx 等库附带的其他语言翻译资源
+        resConfigs("zh")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
@@ -47,8 +49,9 @@ android {
             isMinifyEnabled = false
         }
         release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -56,6 +59,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    packaging {
+        resources.excludes += setOf(
+            "DebugProbesKt.bin",
+            "META-INF/*.kotlin_module",
+        )
     }
 
     lint {
@@ -107,9 +117,7 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.datasource)
-    implementation(libs.media3.database)
     implementation(libs.media3.session)
-    implementation(libs.media3.ui)
     implementation(libs.media3.common)
     implementation(libs.zxing.core)
     implementation(libs.nanohttpd)
