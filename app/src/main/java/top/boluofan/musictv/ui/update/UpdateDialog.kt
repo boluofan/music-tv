@@ -44,6 +44,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.BuildConfig
+import top.boluofan.musictv.data.model.UpdateInfo
 import top.boluofan.musictv.util.ApkInstaller
 import java.util.Locale
 
@@ -82,6 +83,9 @@ fun UpdateDialog(
         }
     }
 }
+
+/** 更新版本的展示名：dev 预览版不加 "v" 前缀，稳定版为 "v版本名" */
+private fun UpdateInfo.displayName(): String = if (isDev) "dev 预览版" else "v$versionName"
 
 @Composable
 private fun CheckingPanel() {
@@ -126,9 +130,14 @@ private fun AvailablePanel(
 ) {
     val listFocus = remember { FocusRequester() }
     val buttonFocus = remember { FocusRequester() }
-    DialogTitle("发现新版本 v${state.info.versionName}")
+    val info = state.info
+    DialogTitle(if (info.isDev) "发现新 dev 预览版" else "发现新版本 ${info.displayName()}")
     Spacer(Modifier.height(12.dp))
-    DialogBody("当前版本 v${BuildConfig.VERSION_NAME} → 新版本 v${state.info.versionName}")
+    DialogBody(
+        if (info.isDev) "当前版本 v${BuildConfig.VERSION_NAME} → ${info.displayName()}" +
+            (info.buildTime?.let { "（构建于 $it）" } ?: "")
+        else "当前版本 v${BuildConfig.VERSION_NAME} → 新版本 ${info.displayName()}"
+    )
 
     val notes = remember(state.info.releaseNotes) { parseNotes(state.info.releaseNotes.orEmpty()) }
     if (notes.isNotEmpty()) {
@@ -213,7 +222,7 @@ private fun AvailablePanel(
 @Composable
 private fun DownloadingPanel(state: UpdateUiState.Downloading, onCancel: () -> Unit) {
     val focus = remember { FocusRequester() }
-    DialogTitle("正在下载 v${state.info.versionName}")
+    DialogTitle("正在下载 ${state.info.displayName()}")
     Spacer(Modifier.height(16.dp))
     if (state.totalBytes > 0) {
         val fraction = (state.bytesRead.toFloat() / state.totalBytes).coerceIn(0f, 1f)
@@ -260,7 +269,7 @@ private fun ReadyToInstallPanel(state: UpdateUiState.ReadyToInstall, onDismiss: 
     Spacer(Modifier.height(12.dp))
     DialogBody(
         if (installFailed) "无法调起系统安装器，请在设置中允许安装未知应用后重试，或到项目主页手动下载"
-        else "即将调起系统安装器安装 v${state.info.versionName}"
+        else "即将调起系统安装器安装 ${state.info.displayName()}"
     )
     Spacer(Modifier.height(24.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

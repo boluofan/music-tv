@@ -36,6 +36,9 @@ sealed interface UpdateCheckResult {
     data class Failed(val message: String) : UpdateCheckResult
 }
 
+/** 更新渠道：STABLE 只查 latest 稳定版，DEV 查滚动预发布（tag=dev） */
+enum class UpdateChannel { STABLE, DEV }
+
 sealed interface DownloadState {
     data class Downloading(
         val bytesRead: Long,
@@ -53,10 +56,15 @@ class UpdateRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "UpdateRepository"
-        private const val VERSION_JSON_URL =
+        private const val STABLE_VERSION_JSON_URL =
             "https://github.com/boluofan/music-tv/releases/latest/download/version.json"
-        private const val APK_URL =
+        private const val STABLE_APK_URL =
             "https://github.com/boluofan/music-tv/releases/latest/download/music-tv.apk"
+        // CI push main 滚动发布的预发布（先删后建，运行期间可能短暂 404）
+        private const val DEV_VERSION_JSON_URL =
+            "https://github.com/boluofan/music-tv/releases/download/dev/version.json"
+        private const val DEV_APK_URL =
+            "https://github.com/boluofan/music-tv/releases/download/dev/music-tv.apk"
 
         // 前缀代理池，空串 = 直连；检查并发请求、下载先测速排序，不再按固定顺序回退
         private val MIRRORS = listOf(
@@ -116,61 +124,94 @@ class UpdateRepository @Inject constructor(
         if (total >= MIN_STABILITY_SAMPLES) stat.success.toDouble() / total else 1.0
     }
 
-    private sealed interface CheckOutcome {
-        data class Ok(val json: VersionJson, val latencyMs: Long, val label: String) : CheckOutcome
-        data object AllFailed : CheckOutcome
+    private sealed interface MirrorResult {
+        data class Ok(val json: VersionJson, val latencyMs: Long, val label: String) : MirrorResult
+        data object NotFound : MirrorResult
+        data object Failed : MirrorResult
     }
 
-    suspend fun checkUpdate(): UpdateCheckResult = withContext(Dispatchers.IO) {
-        // 并发请求全部镜像，取延迟最低的成功结果（每个请求有 10s 总超时上限，总耗时≈最慢请求）
-        val outcome = coroutineScope {
-            val deferreds = MIRRORS.map { (prefix, label) -> async { checkMirror(prefix, label) } }
-            val results = deferreds.awaitAll().filterNotNull()
-            ensureActive()
-            results.minByOrNull { it.latencyMs } ?: CheckOutcome.AllFailed
+    suspend fun checkUpdate(vararg channels: UpdateChannel): UpdateCheckResult = withContext(Dispatchers.IO) {
+        // 各渠道并发检查，有更新时按传入顺序优先（如手动检查 latest 与 dev 都有更新时先更稳定版）
+        val results = coroutineScope {
+            channels.map { channel -> async { channel to checkChannel(channel) } }.awaitAll()
         }
-        when (outcome) {
-            is CheckOutcome.Ok -> {
+        for ((channel, outcome) in results) {
+            if (outcome is MirrorResult.Ok) {
                 Log.i(TAG, "更新检查命中镜像（${outcome.label}）${outcome.latencyMs}ms")
-                evaluate(outcome.json)
+                val result = evaluate(outcome.json, channel)
+                if (result is UpdateCheckResult.UpdateAvailable) return@withContext result
             }
-            CheckOutcome.AllFailed -> UpdateCheckResult.Failed("检查更新失败，网络不可用！")
+        }
+        when {
+            results.any { it.second is MirrorResult.Failed } ->
+                UpdateCheckResult.Failed("检查更新失败，网络不可用！")
+            results.any { it.second is MirrorResult.Ok } ->
+                UpdateCheckResult.UpToDate
+            else -> UpdateCheckResult.Failed("暂无 dev 预览版，请稍后再试")
         }
     }
 
-    private suspend fun checkMirror(prefix: String, label: String): CheckOutcome.Ok? {
+    private suspend fun checkChannel(channel: UpdateChannel): MirrorResult = coroutineScope {
+        // 并发请求全部镜像，取延迟最低的成功结果（每个请求有 10s 总超时上限，总耗时≈最慢请求）
+        val results = MIRRORS.map { (prefix, label) -> async { checkMirror(prefix, label, channel) } }
+            .awaitAll()
+        ensureActive()
+        results.filterIsInstance<MirrorResult.Ok>().minByOrNull { it.latencyMs }
+            // 全部 404 = dev 预发布暂不存在（滚动发布删除重建窗口），其余按网络错误
+            ?: if (results.all { it is MirrorResult.NotFound }) MirrorResult.NotFound
+            else MirrorResult.Failed
+    }
+
+    private suspend fun checkMirror(prefix: String, label: String, channel: UpdateChannel): MirrorResult {
         val start = SystemClock.elapsedRealtime()
-        val call = checkClient.newCall(Request.Builder().url(prefix + VERSION_JSON_URL).build())
+        val url = prefix + when (channel) {
+            UpdateChannel.STABLE -> STABLE_VERSION_JSON_URL
+            UpdateChannel.DEV -> DEV_VERSION_JSON_URL
+        }
+        val call = checkClient.newCall(Request.Builder().url(url).build())
         val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
         return try {
-            Log.i(TAG, "检查更新: ${prefix + VERSION_JSON_URL}")
+            Log.i(TAG, "检查更新: $url")
             call.execute().use { response ->
+                if (response.code == 404) return MirrorResult.NotFound
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                 val json = gson.fromJson(response.body!!.string(), VersionJson::class.java)
                 recordSuccess(label)
-                CheckOutcome.Ok(json, SystemClock.elapsedRealtime() - start, label)
+                MirrorResult.Ok(json, SystemClock.elapsedRealtime() - start, label)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "检查更新失败（$label）", e)
             recordFailure(label)
-            null
+            MirrorResult.Failed
         } finally {
             handle.dispose()
         }
     }
 
-    private fun evaluate(json: VersionJson): UpdateCheckResult {
+    private fun evaluate(json: VersionJson, channel: UpdateChannel): UpdateCheckResult {
+        val apkUrl = when (channel) {
+            UpdateChannel.STABLE -> STABLE_APK_URL
+            UpdateChannel.DEV -> DEV_APK_URL
+        }
         val remoteCode = json.versionCode
         if (remoteCode != null) {
-            return if (remoteCode > BuildConfig.VERSION_CODE) {
+            // STABLE 只在 versionCode 前进时提示；DEV 的 versionCode 在两次发版之间不递增，
+            // 相等时回退比较 build_time，避免已装最新 dev 被重复提示
+            val newer = remoteCode > BuildConfig.VERSION_CODE ||
+                (channel == UpdateChannel.DEV &&
+                    remoteCode == BuildConfig.VERSION_CODE &&
+                    (json.buildTime ?: "") > BuildConfig.BUILD_TIME)
+            return if (newer) {
                 UpdateCheckResult.UpdateAvailable(
                     UpdateInfo(
                         versionCode = remoteCode,
                         versionName = json.version ?: remoteCode.toString(),
-                        apkUrl = APK_URL,
-                        releaseNotes = json.releaseNotes
+                        apkUrl = apkUrl,
+                        releaseNotes = json.releaseNotes,
+                        buildTime = json.buildTime,
+                        isDev = channel == UpdateChannel.DEV
                     )
                 )
             } else {
@@ -188,7 +229,7 @@ class UpdateRepository @Inject constructor(
                     // 合成版本号，保证忽略过滤与缓存文件命名可用
                     versionCode = remote[0] * 1_000_000 + remote[1] * 1_000 + remote[2],
                     versionName = remoteName,
-                    apkUrl = APK_URL,
+                    apkUrl = apkUrl,
                     releaseNotes = json.releaseNotes
                 )
             )
@@ -213,7 +254,10 @@ class UpdateRepository @Inject constructor(
 
     fun downloadApk(info: UpdateInfo): Flow<DownloadState> = flow {
         val dir = File(context.cacheDir, "updates")
-        val target = File(dir, "music-tv-${info.versionCode}.apk")
+        // dev 与稳定版可能同 versionCode，文件名区分渠道避免缓存互相覆盖
+        val fileName = if (info.isDev) "music-tv-dev-${info.versionCode}.apk"
+        else "music-tv-${info.versionCode}.apk"
+        val target = File(dir, fileName)
 
         // 并发探测各镜像网速，按（网速、历史稳定度、延迟）排序后整包下载；
         // 探测全部失败则退回原顺序逐个尝试

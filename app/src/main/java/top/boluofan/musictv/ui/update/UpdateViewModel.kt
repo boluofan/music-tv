@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.model.UpdateInfo
 import top.boluofan.musictv.data.repository.DownloadState
 import top.boluofan.musictv.data.repository.UpdateCheckResult
+import top.boluofan.musictv.data.repository.UpdateChannel
 import top.boluofan.musictv.data.repository.UpdateRepository
 import top.boluofan.musictv.data.storage.PreferencesDataStore
 import java.io.File
@@ -52,7 +53,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             // 等首屏加载/焦点安置完成再静默检查
             delay(3000)
-            val result = repository.checkUpdate()
+            val result = repository.checkUpdate(UpdateChannel.STABLE)
             if (result is UpdateCheckResult.UpdateAvailable) {
                 val ignored = preferencesDataStore.ignoredVersionCode.first()
                 if (result.info.versionCode > ignored && _uiState.value == UpdateUiState.Idle) {
@@ -66,7 +67,9 @@ class UpdateViewModel @Inject constructor(
         checkJob?.cancel()
         _uiState.value = UpdateUiState.Checking
         checkJob = viewModelScope.launch {
-            _uiState.value = when (val result = repository.checkUpdate()) {
+            // 手动检查同时覆盖稳定版与 dev 预览版；两者都有更新时优先稳定版
+            val result = repository.checkUpdate(UpdateChannel.STABLE, UpdateChannel.DEV)
+            _uiState.value = when (result) {
                 is UpdateCheckResult.UpdateAvailable ->
                     UpdateUiState.UpdateAvailable(result.info, fromAutoCheck = false)
                 UpdateCheckResult.UpToDate -> UpdateUiState.UpToDate

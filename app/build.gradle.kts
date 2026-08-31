@@ -1,3 +1,7 @@
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,6 +20,13 @@ android {
         targetSdk = 36
         versionCode = 12
         versionName = "2.0.2"
+        // 与 CI 的 date -u '+%Y-%m-%d_%H:%M:%S' 同格式，dev 更新检查按字典序比较构建时间
+        buildConfigField(
+            "String",
+            "BUILD_TIME",
+            "\"${LocalDateTime.now(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss"))}\""
+        )
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"

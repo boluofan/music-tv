@@ -14,5 +14,7 @@ data class UpdateInfo(
     val versionCode: Int,
     val versionName: String,
     val apkUrl: String,
-    val releaseNotes: String? = null
+    val releaseNotes: String? = null,
+    val buildTime: String? = null,
+    val isDev: Boolean = false
 )
