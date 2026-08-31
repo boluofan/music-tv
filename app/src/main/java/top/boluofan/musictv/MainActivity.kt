@@ -170,8 +170,9 @@ class MainActivity : ComponentActivity() {
                     if (!s.isPlaying || s.karaokeActive || s.currentSong == null) continue
                     val idleMs = SystemClock.uptimeMillis() - lastUserInteractionMs
                     if (idleMs < 60_000L) continue
-                    if (!preferencesDataStore.screensaverEnabled.first()) continue
-                    val timeoutMs = preferencesDataStore.screensaverTimeoutMinutes.first() * 60_000L
+                    val timeoutMinutes = preferencesDataStore.screensaverTimeoutMinutes.first()
+                    if (timeoutMinutes <= 0) continue
+                    val timeoutMs = timeoutMinutes * 60_000L
                     if (idleMs < timeoutMs) continue
                     lastUserInteractionMs = SystemClock.uptimeMillis()
                     runCatching {

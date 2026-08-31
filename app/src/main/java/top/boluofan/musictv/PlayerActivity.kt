@@ -199,12 +199,12 @@ fun PlayerScreen(
         }
     }
 
-    // 空闲屏保：播放中超过设定时长无任何按键操作时进入歌词屏保（K 歌模式不触发）
+    // 空闲屏保：播放中超过设定时长无任何按键操作时进入歌词屏保（关闭或 K 歌模式不触发）
     LaunchedEffect(
-        uiState.isPlaying, uiState.karaokeModeEnabled, uiState.screensaverEnabled,
+        uiState.isPlaying, uiState.karaokeModeEnabled,
         uiState.screensaverTimeoutMs, uiState.screensaverActive, interactionCount
     ) {
-        if (uiState.screensaverActive || !uiState.screensaverEnabled ||
+        if (uiState.screensaverActive || uiState.screensaverTimeoutMs <= 0L ||
             uiState.karaokeModeEnabled || !uiState.isPlaying
         ) return@LaunchedEffect
         delay(uiState.screensaverTimeoutMs)

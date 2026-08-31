@@ -239,15 +239,7 @@ fun SettingsScreen(
 
         SettingsSection("熄屏屏保（播放中长时间无操作时，以歌词画面保持显示）") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OptionChip("开启", uiState.screensaverEnabled) { viewModel.setScreensaverEnabled(true) }
-                OptionChip("关闭", !uiState.screensaverEnabled) { viewModel.setScreensaverEnabled(false) }
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        SettingsSection("屏保等待时间（无操作多久后进入屏保）") {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip("关闭", uiState.screensaverTimeoutMinutes == 0) { viewModel.setScreensaverTimeoutMinutes(0) }
                 OptionChip("3 分钟", uiState.screensaverTimeoutMinutes == 3) { viewModel.setScreensaverTimeoutMinutes(3) }
                 OptionChip("5 分钟", uiState.screensaverTimeoutMinutes == 5) { viewModel.setScreensaverTimeoutMinutes(5) }
                 OptionChip("10 分钟", uiState.screensaverTimeoutMinutes == 10) { viewModel.setScreensaverTimeoutMinutes(10) }

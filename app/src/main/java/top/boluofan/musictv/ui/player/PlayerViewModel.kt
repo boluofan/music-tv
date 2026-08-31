@@ -33,8 +33,7 @@ data class PlayerUiState(
     val currentLyricIndex: Int = -1,
     val showControls: Boolean = true,
     val controlsPersistent: Boolean = false,
-    val screensaverEnabled: Boolean = true,
-    val screensaverTimeoutMs: Long = 3 * 60_000L,
+    val screensaverTimeoutMs: Long = 0L,
     val screensaverActive: Boolean = false,
     val queue: List<MusicInfo> = emptyList(),
     val currentIndex: Int = -1,
@@ -91,7 +90,9 @@ class PlayerViewModel @Inject constructor(
 
     fun activateScreensaver() {
         val s = _uiState.value
-        if (s.screensaverActive || !s.isPlaying || s.karaokeModeEnabled || s.currentSong == null) return
+        if (s.screensaverActive || s.screensaverTimeoutMs <= 0L || !s.isPlaying ||
+            s.karaokeModeEnabled || s.currentSong == null
+        ) return
         _uiState.update {
             it.copy(
                 screensaverActive = true,
@@ -126,13 +127,8 @@ class PlayerViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            dataStore.screensaverEnabled.collect { enabled ->
-                _uiState.update { it.copy(screensaverEnabled = enabled, screensaverActive = it.screensaverActive && enabled) }
-            }
-        }
-        viewModelScope.launch {
             dataStore.screensaverTimeoutMinutes.collect { minutes ->
-                _uiState.update { it.copy(screensaverTimeoutMs = minutes * 60_000L) }
+                _uiState.update { it.copy(screensaverTimeoutMs = minutes * 60_000L, screensaverActive = it.screensaverActive && minutes > 0) }
             }
         }
         viewModelScope.launch {
