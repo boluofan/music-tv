@@ -34,6 +34,8 @@ data class SettingsUiState(
     val autoResumeOnLaunch: Boolean = false,
     val autoOpenPlayerOnLaunch: Boolean = false,
     val playerControlsPersistent: Boolean = false,
+    val screensaverEnabled: Boolean = true,
+    val screensaverTimeoutMinutes: Int = 3,
     val sleepTimerMinutes: Int = 0,
     val sleepTimerRemaining: Int = 0,
     val sleepAfterSongs: Int = 0,
@@ -97,6 +99,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            dataStore.screensaverEnabled.collect { enabled ->
+                _uiState.value = _uiState.value.copy(screensaverEnabled = enabled)
+            }
+        }
+        viewModelScope.launch {
+            dataStore.screensaverTimeoutMinutes.collect { minutes ->
+                _uiState.value = _uiState.value.copy(screensaverTimeoutMinutes = minutes)
+            }
+        }
+        viewModelScope.launch {
             dataStore.keyMapping.collect { mapping ->
                 _uiState.value = _uiState.value.copy(keyMapping = mapping)
             }
@@ -149,6 +161,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setPlayerControlsPersistent(enabled: Boolean) {
         viewModelScope.launch { dataStore.setPlayerControlsPersistent(enabled) }
+    }
+
+    fun setScreensaverEnabled(enabled: Boolean) {
+        viewModelScope.launch { dataStore.setScreensaverEnabled(enabled) }
+    }
+
+    fun setScreensaverTimeoutMinutes(minutes: Int) {
+        viewModelScope.launch { dataStore.setScreensaverTimeoutMinutes(minutes) }
     }
 
     // 音效总开关：开启时分别校验设备能力，均衡器与音效任一支持即可；都不支持则提示

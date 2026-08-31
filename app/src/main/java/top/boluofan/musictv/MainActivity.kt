@@ -3,8 +3,11 @@ package top.boluofan.musictv
 import android.content.Intent
 import android.os.Bundle
 import android.os.Process
+import android.os.SystemClock
 import android.view.KeyEvent
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -52,6 +55,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.storage.PreferencesDataStore
@@ -106,6 +110,19 @@ class MainActivity : ComponentActivity() {
     /** 全局「返回顶部/返回底部」回调桥，由当前组合中的页面注册滚动实现 */
     val pageScrollBridge = PageScrollBridge()
 
+    private var lastUserInteractionMs = SystemClock.uptimeMillis()
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        lastUserInteractionMs = SystemClock.uptimeMillis()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从屏保/播放器退回主页时重置，避免陈旧时间戳导致立刻再次拉起屏保
+        lastUserInteractionMs = SystemClock.uptimeMillis()
+    }
+
     /** 用户自定义按键映射：特殊功能键（返回顶部/底部）拦截处理，其余命中映射表的 keycode 翻译成标准功能键后继续分发 */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
@@ -135,6 +152,29 @@ class MainActivity : ComponentActivity() {
                             resumeSnapshotStore = resumeSnapshotStore,
                             preferencesDataStore = preferencesDataStore,
                             onExit = { exitApp() }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 屏保轮询：主页前台播放中且长时间无操作时，跳转播放器界面作为屏保
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    delay(5_000L)
+                    val s = playerController.state.value
+                    if (!s.isPlaying || s.karaokeActive || s.currentSong == null) continue
+                    val idleMs = SystemClock.uptimeMillis() - lastUserInteractionMs
+                    if (idleMs < 60_000L) continue
+                    if (!preferencesDataStore.screensaverEnabled.first()) continue
+                    val timeoutMs = preferencesDataStore.screensaverTimeoutMinutes.first() * 60_000L
+                    if (idleMs < timeoutMs) continue
+                    lastUserInteractionMs = SystemClock.uptimeMillis()
+                    runCatching {
+                        startActivity(
+                            Intent(this@MainActivity, PlayerActivity::class.java)
+                                .putExtra(PlayerActivity.EXTRA_SCREENSAVER, true)
                         )
                     }
                 }

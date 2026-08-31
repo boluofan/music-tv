@@ -30,6 +30,8 @@ class PreferencesDataStore @Inject constructor(
     val autoResumeOnLaunch: Flow<Boolean> = context.dataStore.data.map { it[AUTO_RESUME_ON_LAUNCH] ?: false }
     val autoOpenPlayerOnLaunch: Flow<Boolean> = context.dataStore.data.map { it[AUTO_OPEN_PLAYER_ON_LAUNCH] ?: false }
     val playerControlsPersistent: Flow<Boolean> = context.dataStore.data.map { it[PLAYER_CONTROLS_PERSISTENT] ?: false }
+    val screensaverEnabled: Flow<Boolean> = context.dataStore.data.map { it[SCREENSAVER_ENABLED] ?: true }
+    val screensaverTimeoutMinutes: Flow<Int> = context.dataStore.data.map { it[SCREENSAVER_TIMEOUT_MINUTES] ?: 3 }
     val playMode: Flow<String> = context.dataStore.data.map { it[PLAY_MODE] ?: "ORDER" }
     val ignoredVersionCode: Flow<Int> = context.dataStore.data.map { it[IGNORED_VERSION_CODE] ?: 0 }
     val keyMapping: Flow<KeyMapping> = context.dataStore.data.map {
@@ -106,6 +108,14 @@ class PreferencesDataStore @Inject constructor(
         context.dataStore.edit { it[PLAYER_CONTROLS_PERSISTENT] = enabled }
     }
 
+    suspend fun setScreensaverEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SCREENSAVER_ENABLED] = enabled }
+    }
+
+    suspend fun setScreensaverTimeoutMinutes(minutes: Int) {
+        context.dataStore.edit { it[SCREENSAVER_TIMEOUT_MINUTES] = minutes }
+    }
+
     suspend fun setPlayMode(mode: String) {
         context.dataStore.edit { it[PLAY_MODE] = mode }
     }
@@ -179,6 +189,8 @@ class PreferencesDataStore @Inject constructor(
         private val AUTO_RESUME_ON_LAUNCH = booleanPreferencesKey("auto_resume_on_launch")
         private val AUTO_OPEN_PLAYER_ON_LAUNCH = booleanPreferencesKey("auto_open_player_on_launch")
         private val PLAYER_CONTROLS_PERSISTENT = booleanPreferencesKey("player_controls_persistent")
+        private val SCREENSAVER_ENABLED = booleanPreferencesKey("screensaver_enabled")
+        private val SCREENSAVER_TIMEOUT_MINUTES = intPreferencesKey("screensaver_timeout_minutes")
         private val PLAY_MODE = stringPreferencesKey("play_mode")
         private val IGNORED_VERSION_CODE = intPreferencesKey("ignored_version_code")
         private val KEY_MAPPING_UP = intPreferencesKey("key_mapping_up")

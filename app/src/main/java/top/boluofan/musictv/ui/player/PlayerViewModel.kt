@@ -33,6 +33,9 @@ data class PlayerUiState(
     val currentLyricIndex: Int = -1,
     val showControls: Boolean = true,
     val controlsPersistent: Boolean = false,
+    val screensaverEnabled: Boolean = true,
+    val screensaverTimeoutMs: Long = 3 * 60_000L,
+    val screensaverActive: Boolean = false,
     val queue: List<MusicInfo> = emptyList(),
     val currentIndex: Int = -1,
     val showQueueDrawer: Boolean = false,
@@ -83,6 +86,33 @@ class PlayerViewModel @Inject constructor(
 
     private var lyricSongId: String? = null
 
+    // 主页空闲跳转进入时的挂起标志：MediaController 未连接前 isPlaying 还是 false，等首次同步出歌曲再激活
+    private var screensaverPending = false
+
+    fun activateScreensaver() {
+        val s = _uiState.value
+        if (s.screensaverActive || !s.isPlaying || s.karaokeModeEnabled || s.currentSong == null) return
+        _uiState.update {
+            it.copy(
+                screensaverActive = true,
+                showControls = false,
+                showQueueDrawer = false,
+                showSoundPanel = false
+            )
+        }
+    }
+
+    fun wakeScreensaver() {
+        if (!_uiState.value.screensaverActive) return
+        _uiState.update { it.copy(screensaverActive = false) }
+        if (_uiState.value.controlsPersistent) showControls()
+    }
+
+    fun requestScreensaver() {
+        screensaverPending = true
+        activateScreensaver()
+    }
+
     // 我的收藏（loveList）歌曲 key 集合，key = source:songId
     private var favoriteKeys: Set<String> = emptySet()
 
@@ -93,6 +123,16 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             dataStore.playerControlsPersistent.collect { enabled ->
                 _uiState.update { it.copy(controlsPersistent = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.screensaverEnabled.collect { enabled ->
+                _uiState.update { it.copy(screensaverEnabled = enabled, screensaverActive = it.screensaverActive && enabled) }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.screensaverTimeoutMinutes.collect { minutes ->
+                _uiState.update { it.copy(screensaverTimeoutMs = minutes * 60_000L) }
             }
         }
         viewModelScope.launch {
@@ -128,8 +168,13 @@ class PlayerViewModel @Inject constructor(
                         vocalRemovalSupported = s.vocalRemovalSupported,
                         karaokeList = s.karaokeList,
                         karaokeModeEnabled = s.karaokeActive,
-                        isAccompanimentOn = s.vocalRemovalEnabled
+                        isAccompanimentOn = s.vocalRemovalEnabled,
+                        screensaverActive = it.screensaverActive && (s.isPlaying || s.isBuffering) && s.currentSong != null
                     )
+                }
+                if (screensaverPending && s.currentSong != null) {
+                    screensaverPending = false
+                    activateScreensaver()
                 }
                 val songId = s.currentSong?.songId
                 if (songId != null && songId != lyricSongId) {
