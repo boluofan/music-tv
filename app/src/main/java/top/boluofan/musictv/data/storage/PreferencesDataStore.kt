@@ -58,6 +58,10 @@ class PreferencesDataStore @Inject constructor(
     val sfxMode: Flow<String> = context.dataStore.data.map { it[SFX_MODE] ?: "virtualizer" }
     val sfxStrength: Flow<Int> = context.dataStore.data.map { it[SFX_STRENGTH] ?: 50 }
 
+    // 记住登录开关（默认关闭）/ 密码存储（仅勾选时写入）
+    val rememberMe: Flow<Boolean> = context.dataStore.data.map { it[REMEMBER_ME] ?: false }
+    val password: Flow<String?> = context.dataStore.data.map { it[PASSWORD] }
+
     suspend fun setThemeMode(mode: Int) {
         context.dataStore.edit { it[THEME_MODE] = mode }
     }
@@ -66,27 +70,43 @@ class PreferencesDataStore @Inject constructor(
         context.dataStore.edit { it[THEME_COLOR] = name }
     }
 
-    suspend fun setAuth(serverUrl: String, username: String, token: String) {
+    suspend fun setAuth(serverUrl: String, username: String, token: String, rememberMe: Boolean = false, password: String? = null) {
         context.dataStore.edit {
             it[SERVER_URL] = serverUrl
             it[USERNAME] = username
             it[TOKEN] = token
+            it[REMEMBER_ME] = rememberMe
+            if (password != null) {
+                it[PASSWORD] = password
+            }
         }
     }
 
+    /** 清除登录凭证（退出登录：清username/token/密码），保留服务器地址和记住登录标记 */
     suspend fun clearAuth() {
         context.dataStore.edit {
             it.remove(USERNAME)
             it.remove(TOKEN)
+            it.remove(PASSWORD)
         }
     }
 
-    /** 清除服务器配置与登录状态（设置页「清除配置」） */
-    suspend fun clearServerConfig() {
+    /** 清除「记住登录」开关及关联的账号、密码 */
+    suspend fun clearRememberMe() {
+        context.dataStore.edit {
+            it.remove(REMEMBER_ME)
+            it.remove(PASSWORD)
+        }
+    }
+
+    /** 完全清除认证相关数据（含服务器地址、记住登录、密码） */
+    suspend fun clearAllAuth() {
         context.dataStore.edit {
             it.remove(SERVER_URL)
             it.remove(USERNAME)
             it.remove(TOKEN)
+            it.remove(REMEMBER_ME)
+            it.remove(PASSWORD)
         }
     }
 
@@ -170,14 +190,18 @@ class PreferencesDataStore @Inject constructor(
         return AuthSnapshot(
             serverUrl = data[SERVER_URL],
             username = data[USERNAME],
-            token = data[TOKEN]
+            token = data[TOKEN],
+            rememberMe = data[REMEMBER_ME] ?: false,
+            password = data[PASSWORD]
         )
     }
 
     data class AuthSnapshot(
         val serverUrl: String?,
         val username: String?,
-        val token: String?
+        val token: String?,
+        val rememberMe: Boolean,
+        val password: String?
     )
 
     companion object {
@@ -211,5 +235,7 @@ class PreferencesDataStore @Inject constructor(
         private val SFX_ENABLED = booleanPreferencesKey("sfx_enabled")
         private val SFX_MODE = stringPreferencesKey("sfx_mode")
         private val SFX_STRENGTH = intPreferencesKey("sfx_strength")
+        private val REMEMBER_ME = booleanPreferencesKey("remember_me")
+        private val PASSWORD = stringPreferencesKey("password")
     }
 }

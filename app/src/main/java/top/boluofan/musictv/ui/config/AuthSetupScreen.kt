@@ -228,6 +228,35 @@ private fun LoginForm(viewModel: AuthViewModel) {
                 Spacer(Modifier.height(12.dp))
             }
 
+            // 记住登录开关
+            var rememberMeFocus by remember { mutableStateOf(false) }
+            val rememberMe by viewModel.rememberMe.collectAsStateWithLifecycle()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (rememberMeFocus) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
+                    .onFocusChanged { rememberMeFocus = it.isFocused }
+                    .clickable { viewModel.setRememberMe(!rememberMe) }
+                    .padding(horizontal = 56.dp, vertical = 10.dp),
+            ) {
+                val checkMark = "\u25A0"
+                Text(
+                    text = " $checkMark  ",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (rememberMe) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+                Text(
+                    text = "记住账号密码",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
             var btnFocused by remember { mutableStateOf(false) }
             Box(
                 modifier = Modifier

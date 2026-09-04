@@ -14,7 +14,7 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     private val dataStore: PreferencesDataStore
 ) {
-    suspend fun login(serverUrl: String, username: String, password: String): Result<String> =
+    suspend fun login(serverUrl: String, username: String, password: String, rememberMe: Boolean = false): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 ApiClient.initialize(serverUrl)
@@ -25,7 +25,7 @@ class AuthRepository @Inject constructor(
                 if (!response.success || response.token.isNullOrEmpty()) {
                     throw IllegalStateException(response.message ?: "登录失败")
                 }
-                applyAuth(serverUrl, response.username ?: username, response.token)
+                applyAuth(serverUrl, response.username ?: username, response.token, rememberMe, if (rememberMe) password else null)
                 response.username ?: username
             }.mapLoginFailure()
         }
@@ -52,10 +52,17 @@ class AuthRepository @Inject constructor(
         ApiClient.authInterceptor.token = null
     }
 
-    private suspend fun applyAuth(serverUrl: String, username: String, token: String) {
+    private suspend fun applyAuth(serverUrl: String, username: String, token: String, rememberMe: Boolean = false, password: String? = null) {
         ApiClient.authInterceptor.username = username
         ApiClient.authInterceptor.token = token
-        dataStore.setAuth(serverUrl, username, token)
+        dataStore.setAuth(serverUrl, username, token, rememberMe, password)
+    }
+
+    /** 清除服务器配置与登录状态（设置页「清除配置」） */
+    suspend fun clearAllAuth() {
+        dataStore.clearAllAuth()
+        ApiClient.authInterceptor.username = null
+        ApiClient.authInterceptor.token = null
     }
 
     /**

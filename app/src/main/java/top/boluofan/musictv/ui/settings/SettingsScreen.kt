@@ -434,7 +434,7 @@ fun SettingsScreen(
                 message = "将清除服务器地址、账号信息等全部配置，并回到配置服务器页面。此操作不可撤销，确定继续吗？",
                 onConfirm = {
                     pendingDanger = null
-                    viewModel.clearServerConfig()
+                    viewModel.clearAllAuth()
                     onConfigureServer()
                 },
                 onDismiss = { pendingDanger = null }

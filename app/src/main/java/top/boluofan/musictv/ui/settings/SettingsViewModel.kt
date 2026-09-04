@@ -219,9 +219,10 @@ class SettingsViewModel @Inject constructor(
         Runtime.getRuntime().exit(0)
     }
 
-    fun clearServerConfig() {
+    /** 清除全部认证数据（设置页「清除配置」） */
+    fun clearAllAuth() {
         viewModelScope.launch {
-            dataStore.clearServerConfig()
+            dataStore.clearAllAuth()
             ApiClient.authInterceptor.username = null
             ApiClient.authInterceptor.token = null
         }

@@ -47,17 +47,21 @@ class AuthViewModel @Inject constructor(
     private val _configUrl = MutableStateFlow<String?>(null)
     val configUrl: StateFlow<String?> = _configUrl.asStateFlow()
 
+    private val _rememberMe = MutableStateFlow(false)
+    val rememberMe: StateFlow<Boolean> = _rememberMe.asStateFlow()
+
     private var configServer: ConfigWebServer? = null
 
     fun startConfigServer() {
         if (configServer != null) return
         val ip = ConfigWebServer.localIpAddress() ?: return
         for (port in CONFIG_PORTS) {
-            val server = ConfigWebServer(port) { serverUrl, username, password ->
+            val server = ConfigWebServer(port) { serverUrl, username, password, rememberMe ->
                 viewModelScope.launch {
                     _serverUrl.value = serverUrl
                     _username.value = username
                     _password.value = password
+                    _rememberMe.value = rememberMe
                     login()
                 }
             }
@@ -85,6 +89,11 @@ class AuthViewModel @Inject constructor(
             val storedUrl = dataStore.serverUrl.first()
             if (!storedUrl.isNullOrEmpty()) {
                 _serverUrl.value = storedUrl
+                if (dataStore.rememberMe.first()) {
+                    // 勾选了记住登录：回填账号和密码
+                    _username.value = dataStore.username.first() ?: ""
+                    _password.value = dataStore.password.first() ?: ""
+                }
                 if (authRepository.tryAutoLogin()) {
                     val name = dataStore.username.first()
                     _authState.value = AuthState.LoggedIn(name ?: "admin")
@@ -127,7 +136,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             var lastError: Throwable? = null
             for (candidate in candidateUrls(url)) {
-                val result = authRepository.login(candidate, username, password)
+                val result = authRepository.login(candidate, username, password, _rememberMe.value)
                 if (result.isSuccess) {
                     _serverUrl.value = candidate
                     _isLoggingIn.value = false
@@ -154,14 +163,17 @@ class AuthViewModel @Inject constructor(
     /** 清除服务器配置与登录状态（设置页「清除配置」），回到配置服务器页 */
     fun resetToConfig() {
         viewModelScope.launch {
-            dataStore.clearServerConfig()
-            ApiClient.authInterceptor.username = null
-            ApiClient.authInterceptor.token = null
+            authRepository.clearAllAuth()
             _serverUrl.value = ""
             _username.value = ""
             _password.value = ""
+            _rememberMe.value = false
             _authState.value = AuthState.NotConfigured
         }
+    }
+
+    fun setRememberMe(checked: Boolean) {
+        _rememberMe.value = checked
     }
 
     override fun onCleared() {
