@@ -18,8 +18,8 @@ android {
         applicationId = "top.boluofan.musictv"
         minSdk = 21
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.0.2"
+        versionCode = 13
+        versionName = "2.0.3"
         // 与 CI 的 date -u '+%Y-%m-%d_%H:%M:%S' 同格式，dev 更新检查按字典序比较构建时间
         buildConfigField(
             "String",
