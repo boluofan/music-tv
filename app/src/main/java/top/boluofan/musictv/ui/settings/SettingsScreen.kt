@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,6 +56,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -310,11 +312,30 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
 
+        var showCrashLogDialog by remember { mutableStateOf(false) }
         SettingsSection("日志") {
             SettingsItem(
                 label = "导出日志",
                 value = uiState.logExportStatus.ifEmpty { "导出运行日志用于排查问题" },
                 onClick = { viewModel.exportLogs() }
+            )
+            SettingsItem(
+                label = "崩溃日志",
+                value = if (uiState.crashLogFileNames.isNotEmpty()) "共 ${uiState.crashLogFileNames.size} 条" else "暂无崩溃日志",
+                onClick = { viewModel.openCrashLogDialog(); showCrashLogDialog = true }
+            )
+        }
+        if (showCrashLogDialog) {
+            CrashLogDialog(
+                fileNames = uiState.crashLogFileNames,
+                content = uiState.crashDialogContent,
+                status = uiState.crashLogStatus,
+                onFileSelect = viewModel::selectCrashLog,
+                onExport = viewModel::exportLatestCrash,
+                onCopy = viewModel::copyLatestCrash,
+                onClear = viewModel::clearAllCrashLogs,
+                onDismiss = { showCrashLogDialog = false; viewModel.dismissCrashStatus() },
+                statusOnDismiss = viewModel::dismissCrashStatus
             )
         }
         val logDownloadUrl by viewModel.logDownloadUrl.collectAsStateWithLifecycle()
@@ -1033,3 +1054,91 @@ private fun OptionChip(label: String, isSelected: Boolean, modifier: Modifier = 
 }
 
 private const val KEY_MAPPING_DIALOG_LIST_HEIGHT = 320
+
+@Composable
+private fun CrashLogDialog(
+    fileNames: List<String>,
+    content: String,
+    status: String,
+    onFileSelect: (Int) -> Unit,
+    onExport: () -> Unit,
+    onCopy: () -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+    statusOnDismiss: () -> Unit
+) {
+    val closeFocus = remember { FocusRequester() }
+    var closeFocused by remember { mutableStateOf(false) }
+    val statusFocus = remember { FocusRequester() }
+    var selectedFileIndex by remember { mutableIntStateOf(if (fileNames.isNotEmpty()) 0 else -1) }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            modifier = Modifier.fillMaxWidth(0.75f).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surface).padding(horizontal = 36.dp, vertical = 28.dp)
+        ) {
+            Text(text = "崩溃日志", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Spacer(Modifier.height(16.dp))
+            if (status.isNotBlank()) {
+                Text(text = status, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.focusRequester(statusFocus).onFocusChanged { if (it.isFocused) statusOnDismiss() })
+                Spacer(Modifier.height(8.dp))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                ActionButton("导出", onExport, MaterialTheme.colorScheme.primary)
+                ActionButton("复制", onCopy, MaterialTheme.colorScheme.primary)
+                ActionButton("清空", onClear, MaterialTheme.colorScheme.error, isDanger = true)
+            }
+            Spacer(Modifier.height(16.dp))
+            Column(modifier = Modifier.heightIn(max = 360.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)).verticalScroll(rememberScrollState()).padding(8.dp)) {
+                if (fileNames.isEmpty()) {
+                    Text(text = "暂无崩溃日志", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
+                } else {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        fileNames.forEachIndexed { index, fileName ->
+                            val isSelected = index == selectedFileIndex
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent).clickable { selectedFileIndex = index; onFileSelect(index) }.padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = fileName, fontSize = 13.sp, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), modifier = Modifier.weight(1f))
+                                    if (isSelected) { Spacer(Modifier.width(8.dp)); Text(text = "\u25BC", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary) }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)))
+                    Spacer(Modifier.height(8.dp))
+                    Text(text = content.ifEmpty { "未选择崩溃日志" }, fontSize = 12.sp, lineHeight = 16.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(8.dp))
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(
+                text = "关闭", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                color = if (closeFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(8.dp)).background(if (closeFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent).then(if (closeFocused) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier).focusRequester(closeFocus).onFocusChanged { closeFocused = it.isFocused }.clickable { onDismiss() }.padding(horizontal = 28.dp, vertical = 10.dp)
+            )
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { closeFocus.requestFocus() } }
+}
+
+@Composable
+private fun ActionButton(label: String, onClick: () -> Unit, color: Color, isDanger: Boolean = false) {
+    var isFocused by remember { mutableStateOf(false) }
+    val displayColor = if (isDanger) {
+        if (isFocused) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+    } else {
+        if (isFocused) color else color.copy(alpha = 0.7f)
+    }
+    val bgColor = when {
+        isDanger && isFocused -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+        isDanger -> Color.Transparent
+        isFocused -> color.copy(alpha = 0.1f)
+        else -> Color.Transparent
+    }
+    val borderPresent = (isDanger && isFocused) || (!isDanger && isFocused)
+    Text(
+        text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = displayColor,
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(bgColor).then(if (borderPresent) Modifier.border(2.dp, color, RoundedCornerShape(8.dp)) else Modifier).clickable { onClick() }.onFocusChanged { isFocused = it.isFocused }.padding(horizontal = 16.dp, vertical = 6.dp)
+    )
+}

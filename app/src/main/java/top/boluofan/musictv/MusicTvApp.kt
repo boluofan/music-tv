@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import dagger.hilt.android.HiltAndroidApp
 import top.boluofan.musictv.data.api.TlsCompat
+import top.boluofan.musictv.ui.settings.CrashHandler
 
 @HiltAndroidApp
 class MusicTvApp : Application() {

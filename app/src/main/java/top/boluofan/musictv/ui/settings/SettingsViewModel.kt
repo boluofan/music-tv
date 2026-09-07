@@ -43,7 +43,11 @@ data class SettingsUiState(
     val keyMapping: KeyMapping = KeyMapping(),
     val eqEnabled: Boolean = false,
     val sfxEnabled: Boolean = false,
-    val soundUnsupportedNotice: Boolean = false
+    val soundUnsupportedNotice: Boolean = false,
+    // 崩溃日志
+    val crashLogFileNames: List<String> = emptyList(),
+    val crashDialogContent: String = "",
+    val crashLogStatus: String = ""
 )
 
 @HiltViewModel
@@ -289,6 +293,79 @@ class SettingsViewModel @Inject constructor(
         // URL 参数或 key=value 形式的 token / password
         s = s.replace(SENSITIVE_PARAM_REGEX, "$1***")
         // 裸 JWT
+        s = s.replace(JWT_REGEX, "***.***.***")
+        return s
+    }
+
+    // === 崩溃日志功能 ===
+
+    fun openCrashLogDialog() {
+        val files = CrashReporter.getRecentCrashes(context)
+        val fileNames = files.map { it.name }
+        _uiState.update { it.copy(crashLogFileNames = fileNames) }
+        if (files.isNotEmpty()) {
+            val content = CrashReporter.loadCrashContent(files[0]) ?: ""
+            _uiState.update { it.copy(crashDialogContent = sanitizeCrashContent(content)) }
+        } else {
+            _uiState.update { it.copy(crashDialogContent = "暂无崩溃日志") }
+        }
+    }
+
+    fun selectCrashLog(index: Int) {
+        val files = CrashReporter.getRecentCrashes(context)
+        if (index in files.indices) {
+            val content = CrashReporter.loadCrashContent(files[index]) ?: ""
+            _uiState.update { it.copy(crashDialogContent = sanitizeCrashContent(content)) }
+        }
+    }
+
+    fun exportLatestCrash() {
+        val files = CrashReporter.getRecentCrashes(context)
+        if (files.isEmpty()) {
+            _uiState.update { it.copy(crashLogStatus = "暂无崩溃日志") }
+            return
+        }
+        val content = CrashReporter.loadCrashContent(files[0]) ?: ""
+        val intent = CrashReporter.createShareIntent(context, sanitizeCrashContent(content), files[0].name)
+        if (intent != null) {
+            context.startActivity(Intent.createChooser(intent, "分享崩溃日志"))
+            _uiState.update { it.copy(crashLogStatus = "正在分享...") }
+        } else {
+            _uiState.update { it.copy(crashLogStatus = "导出失败") }
+        }
+    }
+
+    fun copyLatestCrash() {
+        val files = CrashReporter.getRecentCrashes(context)
+        if (files.isEmpty()) {
+            _uiState.update { it.copy(crashLogStatus = "暂无崩溃日志") }
+            return
+        }
+        val content = CrashReporter.loadCrashContent(files[0]) ?: ""
+        CrashReporter.copyToClipboard(context, sanitizeCrashContent(content))
+        _uiState.update { it.copy(crashLogStatus = "已复制到剪贴板") }
+    }
+
+    fun clearAllCrashLogs() {
+        val count = CrashReporter.clearCrashes(context)
+        _uiState.update {
+            it.copy(
+                crashLogStatus = "已删除 $count 条崩溃日志",
+                crashDialogContent = "",
+                crashLogFileNames = emptyList()
+            )
+        }
+    }
+
+    fun dismissCrashStatus() {
+        _uiState.value = _uiState.value.copy(crashLogStatus = "")
+    }
+
+    private fun sanitizeCrashContent(content: String): String {
+        var s = content
+        s = s.replace(SENSITIVE_HEADER_REGEX, "$1: ***")
+        s = s.replace(SENSITIVE_JSON_REGEX, "$1***$2")
+        s = s.replace(SENSITIVE_PARAM_REGEX, "$1***")
         s = s.replace(JWT_REGEX, "***.***.***")
         return s
     }
