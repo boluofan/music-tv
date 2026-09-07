@@ -25,11 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import top.boluofan.musictv.data.api.UrlHelper
+import top.boluofan.musictv.ui.components.AdaptiveCoverBackground
 import top.boluofan.musictv.ui.player.PlayerUiState
 import top.boluofan.musictv.ui.player.TransportButton
 import top.boluofan.musictv.ui.theme.PlayerColors
@@ -78,16 +77,13 @@ fun KaraokePlayerScreen(
     val titleMaxWidth = (screenWidth - qrReserved * 2).coerceAtLeast(0.dp)
 
     Box(modifier = Modifier.fillMaxSize().background(PlayerColors.Background)) {
-        // 背景：放大封面模糊（同主播放器音乐模式）
-        UrlHelper.resolve(uiState.currentSong?.img)?.let { cover ->
-            AsyncImage(
-                model = cover,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().blur(60.dp),
-                contentScale = ContentScale.Crop
-            )
-            Box(modifier = Modifier.fillMaxSize().background(PlayerColors.Scrim))
-        }
+        // 背景：自适应封面模糊 + 动态遮罩
+        AdaptiveCoverBackground(
+            url = uiState.currentSong?.img,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            blurRadiusDp = 60
+        )
 
         // 中部：歌词 + 歌曲信息
         Column(

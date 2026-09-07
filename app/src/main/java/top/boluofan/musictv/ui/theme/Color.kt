@@ -40,9 +40,15 @@ val SelectedFocusBorder = Color.White
 object PlayerColors {
     // 背景
     val Background = Color.Black
-    val Scrim = Color.Black.copy(alpha = 0.6f)
     val BarBackground = Color.Black.copy(alpha = 0.8f)
     val QueueBackground = Color(0xE6111827)
+
+    /** Scrim alpha 范围：[min, max] 用于自适应遮罩 */
+    const val ScrimAlphaMin = 0.4f
+    const val ScrimAlphaMax = 0.9f
+
+    fun scrimForBrightness(brightnessNorm: Float): Color =
+        Color.Black.copy(alpha = ScrimAlphaMin + (ScrimAlphaMax - ScrimAlphaMin) * (1f - brightnessNorm).coerceIn(0f, 1f))
 
     // 文字
     val TextPrimary = Color.White

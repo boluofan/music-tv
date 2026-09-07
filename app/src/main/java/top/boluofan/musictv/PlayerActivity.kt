@@ -46,7 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -58,7 +57,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,11 +64,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelProvider
-import coil.compose.AsyncImage
 import dagger.hilt.android.AndroidEntryPoint
-import top.boluofan.musictv.data.api.UrlHelper
 import top.boluofan.musictv.domain.KeyMappingManager
 import top.boluofan.musictv.domain.MappingTarget
+import top.boluofan.musictv.ui.components.AdaptiveCoverBackground
 import top.boluofan.musictv.ui.components.CoverImage
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.karaoke.KaraokePlayerScreen
@@ -394,69 +391,54 @@ fun PlayerScreen(
                 )
             }
         } else if (uiState.screensaverActive) {
-            uiState.currentSong?.let { song ->
-                UrlHelper.resolve(song.picUrl)?.let { cover ->
-                    AsyncImage(
-                        model = cover,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize().blur(60.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(PlayerColors.Scrim)
-                    )
-                }
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (uiState.lyrics.isEmpty()) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            top.boluofan.musictv.util.AppText(
-                                text = song.name ?: "",
-                                fontSize = 34.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = PlayerColors.TextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            top.boluofan.musictv.util.AppText(
-                                text = song.singer ?: "",
-                                fontSize = 20.sp,
-                                color = PlayerColors.TextSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    } else {
-                        LyricsPanel(
-                            lyrics = uiState.lyrics,
-                            currentIndex = uiState.currentLyricIndex,
-                            currentPosition = uiState.currentPosition,
-                            highlightColor = MaterialTheme.colorScheme.primary,
-                            fontSize = uiState.lyricFontSize,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 96.dp)
+            val song = uiState.currentSong
+            AdaptiveCoverBackground(
+                url = song?.picUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                blurRadiusDp = 60
+            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (song == null || uiState.lyrics.isEmpty()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        top.boluofan.musictv.util.AppText(
+                            text = song?.name ?: "",
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PlayerColors.TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        top.boluofan.musictv.util.AppText(
+                            text = song?.singer ?: "",
+                            fontSize = 20.sp,
+                            color = PlayerColors.TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+                } else {
+                    LyricsPanel(
+                        lyrics = uiState.lyrics,
+                        currentIndex = uiState.currentLyricIndex,
+                        currentPosition = uiState.currentPosition,
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        fontSize = uiState.lyricFontSize,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 96.dp)
+                    )
                 }
             }
         } else if (uiState.currentSong != null) {
-            UrlHelper.resolve(uiState.currentSong?.picUrl)?.let { cover ->
-                AsyncImage(
-                    model = cover,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().blur(60.dp),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(PlayerColors.Scrim)
-                )
-            }
+            AdaptiveCoverBackground(
+                url = uiState.currentSong?.picUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                blurRadiusDp = 60
+            )
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
