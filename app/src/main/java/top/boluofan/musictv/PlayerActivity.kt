@@ -83,6 +83,7 @@ import top.boluofan.musictv.ui.player.QueueDrawer
 import top.boluofan.musictv.ui.player.TransportButton
 import top.boluofan.musictv.ui.theme.PlayerColors
 import top.boluofan.musictv.ui.theme.TvTheme
+import top.boluofan.musictv.util.AppText
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 
@@ -413,7 +414,7 @@ fun PlayerScreen(
                 ) {
                     if (uiState.lyrics.isEmpty()) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
+                            top.boluofan.musictv.util.AppText(
                                 text = song.name ?: "",
                                 fontSize = 34.sp,
                                 fontWeight = FontWeight.Bold,
@@ -422,7 +423,7 @@ fun PlayerScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(Modifier.height(12.dp))
-                            Text(
+                            top.boluofan.musictv.util.AppText(
                                 text = song.singer ?: "",
                                 fontSize = 20.sp,
                                 color = PlayerColors.TextSecondary,
@@ -436,7 +437,7 @@ fun PlayerScreen(
                             currentIndex = uiState.currentLyricIndex,
                             currentPosition = uiState.currentPosition,
                             highlightColor = MaterialTheme.colorScheme.primary,
-                            fontSize = 46,
+                            fontSize = uiState.lyricFontSize,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 96.dp)
                         )
                     }
@@ -482,7 +483,7 @@ fun PlayerScreen(
 
                         Spacer(Modifier.height(16.dp))
 
-                        Text(
+                        top.boluofan.musictv.util.AppText(
                             text = uiState.currentSong?.name ?: "",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
@@ -493,7 +494,7 @@ fun PlayerScreen(
 
                         Spacer(Modifier.height(4.dp))
 
-                        Text(
+                        top.boluofan.musictv.util.AppText(
                             text = uiState.currentSong?.singer ?: "",
                             fontSize = 14.sp,
                             color = PlayerColors.TextSecondary,
@@ -514,7 +515,8 @@ fun PlayerScreen(
                         lyrics = uiState.lyrics,
                         currentIndex = uiState.currentLyricIndex,
                         currentPosition = uiState.currentPosition,
-                        highlightColor = MaterialTheme.colorScheme.primary
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        fontSize = uiState.lyricFontSize
                     )
                 }
             }

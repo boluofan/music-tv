@@ -62,6 +62,8 @@ data class PlayerUiState(
     val sfxSupported: Boolean = false,
     val sfxOnA2dp: Boolean = false,
     val sfxActiveMode: String = "off",
+    // 歌词字号（sp）
+    val lyricFontSize: Int = 30,
     // K 歌人声消除
     val vocalRemovalEnabled: Boolean = false,
     val vocalRemovalSupported: Boolean = false,
@@ -129,6 +131,11 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             dataStore.screensaverTimeoutMinutes.collect { minutes ->
                 _uiState.update { it.copy(screensaverTimeoutMs = minutes * 60_000L, screensaverActive = it.screensaverActive && minutes > 0) }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.lyricFontSize.collect { size ->
+                _uiState.update { it.copy(lyricFontSize = size) }
             }
         }
         viewModelScope.launch {

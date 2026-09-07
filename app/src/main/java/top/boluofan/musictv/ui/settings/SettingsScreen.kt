@@ -51,6 +51,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -77,6 +78,7 @@ import top.boluofan.musictv.ui.navigation.LocalTabBarBridge
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 import top.boluofan.musictv.ui.theme.seedColorFor
 import top.boluofan.musictv.ui.update.UpdateViewModel
+import top.boluofan.musictv.util.FontScalePreset
 
 @Composable
 fun SettingsScreen(
@@ -312,6 +314,35 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
 
+        // 全局字体大小
+        SettingsSection("字体大小（全局文字、标题等缩放）") {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val scale = uiState.fontSizeScale
+                FontScalePreset.Values.forEachIndexed { index, label ->
+                    OptionChip(label, scale == index) { viewModel.setFontSizeScale(index) }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            FontSizePreview(uiState.fontSizeScale)
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // 歌词字号
+        SettingsSection("歌词字号") {
+            LyricSizeRow(
+                fontSize = uiState.lyricFontSize,
+                onStep = { delta ->
+                    viewModel.setLyricFontSize((uiState.lyricFontSize + delta).coerceIn(LYRIC_SIZE_MIN, LYRIC_SIZE_MAX))
+                },
+                onReset = { viewModel.setLyricFontSize(LYRIC_SIZE_DEFAULT) }
+            )
+            Spacer(Modifier.height(8.dp))
+            LyricSizePreview(fontSize = uiState.lyricFontSize)
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         var showCrashLogDialog by remember { mutableStateOf(false) }
         SettingsSection("日志") {
             SettingsItem(
@@ -319,6 +350,7 @@ fun SettingsScreen(
                 value = uiState.logExportStatus.ifEmpty { "导出运行日志用于排查问题" },
                 onClick = { viewModel.exportLogs() }
             )
+            Spacer(Modifier.height(8.dp))
             SettingsItem(
                 label = "崩溃日志",
                 value = if (uiState.crashLogFileNames.isNotEmpty()) "共 ${uiState.crashLogFileNames.size} 条" else "暂无崩溃日志",
@@ -1141,4 +1173,231 @@ private fun ActionButton(label: String, onClick: () -> Unit, color: Color, isDan
         text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = displayColor,
         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(bgColor).then(if (borderPresent) Modifier.border(2.dp, color, RoundedCornerShape(8.dp)) else Modifier).clickable { onClick() }.onFocusChanged { isFocused = it.isFocused }.padding(horizontal = 16.dp, vertical = 6.dp)
     )
+}
+
+// === 歌词字号常量 & 控件 ===
+
+private const val LYRIC_SIZE_MIN = 20
+private const val LYRIC_SIZE_MAX = 48
+private const val LYRIC_SIZE_STEP = 2
+private const val LYRIC_SIZE_DEFAULT = 30
+
+/** 歌词字号 +/- 步进控件：支持 D-Pad 方向键调节 */
+@Composable
+private fun LyricSizeRow(
+    fontSize: Int,
+    onStep: (Int) -> Unit,
+    onReset: () -> Unit
+) {
+    val stepFocus = remember { FocusRequester() }
+    var stepFocused by remember { mutableStateOf(false) }
+    val resetFocus = remember { FocusRequester() }
+    var resetFocused by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // - 按钮
+            val minusBtnFocus = remember { FocusRequester() }
+            var minusFocused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (minusFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    .then(if (minusFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier)
+                    .focusRequester(minusBtnFocus)
+                    .onFocusChanged { minusFocused = it.isFocused }
+                    .focusable()
+                    .onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.DirectionLeft, Key.DirectionDown -> { onStep(-LYRIC_SIZE_STEP); true }
+                                Key.DirectionRight, Key.DirectionUp -> { minusBtnFocus.requestFocus(); true }
+                                Key.DirectionCenter, Key.Enter -> { onStep(-LYRIC_SIZE_STEP); true }
+                                else -> false
+                            }
+                        } else false
+                    }
+                    .clickable { onStep(-LYRIC_SIZE_STEP) }
+            ) {
+                Text("-", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.align(Alignment.Center))
+            }
+
+            // 当前字号显示（支持触摸横滑快速调节）
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .focusRequester(stepFocus)
+                    .onFocusChanged { stepFocused = it.isFocused }
+                    .focusable()
+                    .onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.DirectionLeft, Key.DirectionDown -> { onStep(-LYRIC_SIZE_STEP); true }
+                                Key.DirectionRight, Key.DirectionUp -> { onStep(LYRIC_SIZE_STEP); true }
+                                Key.DirectionCenter, Key.Enter -> { onStep(LYRIC_SIZE_STEP.coerceIn(-99, 99)); true }
+                                else -> false
+                            }
+                        } else false
+                    }
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = "${fontSize} sp",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            // + 按钮
+            val plusBtnFocus = remember { FocusRequester() }
+            var plusFocused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (plusFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    .then(if (plusFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier)
+                    .focusRequester(plusBtnFocus)
+                    .onFocusChanged { plusFocused = it.isFocused }
+                    .focusable()
+                    .onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.DirectionRight, Key.DirectionUp -> { onStep(LYRIC_SIZE_STEP); true }
+                                Key.DirectionLeft, Key.DirectionDown -> { plusBtnFocus.requestFocus(); true }
+                                Key.DirectionCenter, Key.Enter -> { onStep(LYRIC_SIZE_STEP); true }
+                                else -> false
+                            }
+                        } else false
+                    }
+                    .clickable { onStep(LYRIC_SIZE_STEP) }
+            ) {
+                Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.align(Alignment.Center))
+            }
+
+            // 恢复默认
+            Text(
+                text = "恢复默认",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (resetFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (resetFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
+                    .then(if (resetFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier)
+                    .focusRequester(resetFocus)
+                    .onFocusChanged { resetFocused = it.isFocused }
+                    .clickable { onReset() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "方向键左右调节",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        )
+    }
+
+    LaunchedEffect(Unit) { runCatching { stepFocus.requestFocus() } }
+}
+
+/** 字体大小实时预览框 */
+@Composable
+private fun FontSizePreview(scaleIndex: Int) {
+    val previewFocus = remember { FocusRequester() }
+    val scale = FontScalePreset.scaleForIndex(scaleIndex)
+    val baseTitleSize = 18.sp
+    val baseBodySize = 14.sp
+    val scaledTitleSize = baseTitleSize * scale
+    val scaledBodySize = baseBodySize * scale
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            top.boluofan.musictv.util.AppText(
+                text = "Aa",
+                fontSize = 36.sp * scale,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.focusRequester(previewFocus)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                top.boluofan.musictv.util.AppText(
+                    text = "标题示例文字",
+                    fontSize = scaledTitleSize,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(4.dp))
+                top.boluofan.musictv.util.AppText(
+                    text = "这是一段正文预览，展示当前字体大小下的实际显示效果。",
+                    fontSize = scaledBodySize,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    lineHeight = 20.sp * scale
+                )
+            }
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { previewFocus.requestFocus() } }
+}
+
+/** 歌词字号实时预览框 */
+@Composable
+private fun LyricSizePreview(fontSize: Int) {
+    val previewFocus = remember { FocusRequester() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "这是当前正在播放的一行歌词",
+            fontSize = (fontSize * 120 / 100).sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            lineHeight = (fontSize * 42 / 30).sp,
+            modifier = Modifier.focusRequester(previewFocus)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "这是下面的翻译文字",
+            fontSize = (fontSize * 16 / 30).sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "这还未播放的歌词预览",
+            fontSize = (fontSize * 22 / 30).sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            lineHeight = (fontSize * 30 / 30).sp
+        )
+    }
+    LaunchedEffect(Unit) { runCatching { previewFocus.requestFocus() } }
 }

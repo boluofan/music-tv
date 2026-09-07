@@ -62,6 +62,19 @@ class PreferencesDataStore @Inject constructor(
     val rememberMe: Flow<Boolean> = context.dataStore.data.map { it[REMEMBER_ME] ?: false }
     val password: Flow<String?> = context.dataStore.data.map { it[PASSWORD] }
 
+    // 全局字体缩放：0=小, 1=中(默认), 2=大, 3=特大
+    val fontSizeScale: Flow<Int> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: 1 }
+    // 歌词字号（sp），范围 20-48，默认 30
+    val lyricFontSize: Flow<Int> = context.dataStore.data.map { it[LYRIC_FONT_SIZE] ?: 30 }
+
+    suspend fun setFontSizeScale(scale: Int) {
+        context.dataStore.edit { it[FONT_SIZE_SCALE] = scale }
+    }
+
+    suspend fun setLyricFontSize(size: Int) {
+        context.dataStore.edit { it[LYRIC_FONT_SIZE] = size }
+    }
+
     suspend fun setThemeMode(mode: Int) {
         context.dataStore.edit { it[THEME_MODE] = mode }
     }
@@ -237,5 +250,7 @@ class PreferencesDataStore @Inject constructor(
         private val SFX_STRENGTH = intPreferencesKey("sfx_strength")
         private val REMEMBER_ME = booleanPreferencesKey("remember_me")
         private val PASSWORD = stringPreferencesKey("password")
+        val FONT_SIZE_SCALE = intPreferencesKey("font_size_scale")
+        val LYRIC_FONT_SIZE = intPreferencesKey("lyric_font_size")
     }
 }

@@ -44,6 +44,10 @@ data class SettingsUiState(
     val eqEnabled: Boolean = false,
     val sfxEnabled: Boolean = false,
     val soundUnsupportedNotice: Boolean = false,
+    // 全局字体缩放（0=小, 1=中, 2=大, 3=特大）
+    val fontSizeScale: Int = 1,
+    // 歌词字号（sp），范围 20~48，默认 30
+    val lyricFontSize: Int = 30,
     // 崩溃日志
     val crashLogFileNames: List<String> = emptyList(),
     val crashDialogContent: String = "",
@@ -112,6 +116,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            dataStore.fontSizeScale.collect { scale ->
+                _uiState.value = _uiState.value.copy(fontSizeScale = scale)
+            }
+        }
+        viewModelScope.launch {
+            dataStore.lyricFontSize.collect { size ->
+                _uiState.value = _uiState.value.copy(lyricFontSize = size)
+            }
+        }
+        viewModelScope.launch {
             playerController.state.collect { s ->
                 _uiState.value = _uiState.value.copy(
                     sleepTimerMinutes = s.sleepTimerMinutes,
@@ -163,6 +177,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setScreensaverTimeoutMinutes(minutes: Int) {
         viewModelScope.launch { dataStore.setScreensaverTimeoutMinutes(minutes) }
+    }
+
+    fun setFontSizeScale(scale: Int) {
+        viewModelScope.launch { dataStore.setFontSizeScale(scale) }
+    }
+
+    fun setLyricFontSize(size: Int) {
+        viewModelScope.launch { dataStore.setLyricFontSize(size) }
     }
 
     // 音效总开关：开启时分别校验设备能力，均衡器与音效任一支持即可；都不支持则提示

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
+import top.boluofan.musictv.util.AppText
 
 @Composable
 fun TvBottomNav(
@@ -90,7 +91,7 @@ fun TvBottomNav(
                     .padding(horizontal = 32.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
+                top.boluofan.musictv.util.AppText(
                     text = screen.label,
                     color = when {
                         isSelected -> MaterialTheme.colorScheme.primary
