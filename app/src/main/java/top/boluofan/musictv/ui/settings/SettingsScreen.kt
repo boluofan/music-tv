@@ -51,10 +51,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontFamily
@@ -322,7 +319,7 @@ fun SettingsScreen(
                     OptionChip(label, scale == index) { viewModel.setFontSizeScale(index) }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
             FontSizePreview(uiState.fontSizeScale)
         }
 
@@ -337,7 +334,7 @@ fun SettingsScreen(
                 },
                 onReset = { viewModel.setLyricFontSize(LYRIC_SIZE_DEFAULT) }
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
             LyricSizePreview(fontSize = uiState.lyricFontSize)
         }
 
@@ -1182,72 +1179,52 @@ private const val LYRIC_SIZE_MAX = 48
 private const val LYRIC_SIZE_STEP = 2
 private const val LYRIC_SIZE_DEFAULT = 30
 
-/** 歌词字号 +/- 步进控件：支持 D-Pad 方向键调节 */
+/** 歌词字号 +/- 步进控件 */
 @Composable
 private fun LyricSizeRow(
     fontSize: Int,
     onStep: (Int) -> Unit,
     onReset: () -> Unit
 ) {
-    val stepFocus = remember { FocusRequester() }
-    var stepFocused by remember { mutableStateOf(false) }
     val resetFocus = remember { FocusRequester() }
-    var resetFocused by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // - 按钮
-            val minusBtnFocus = remember { FocusRequester() }
+            // - 按钮（OptionChip 风格）
             var minusFocused by remember { mutableStateOf(false) }
-            Box(
+            val minusScale by animateFloatAsState(
+                targetValue = if (minusFocused) 1.1f else 1f,
+                animationSpec = tween(120),
+                label = "minusScale"
+            )
+            Text(
+                text = "-",
+                fontSize = 14.sp,
+                fontWeight = if (minusFocused) FontWeight.Bold else FontWeight.Normal,
+                color = if (minusFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (minusFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant
+                    .scale(minusScale)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (minusFocused) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
+                    .then(
+                        if (minusFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                        ) else Modifier
                     )
-                    .then(if (minusFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier)
-                    .focusRequester(minusBtnFocus)
                     .onFocusChanged { minusFocused = it.isFocused }
-                    .focusable()
-                    .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown) {
-                            when (event.key) {
-                                Key.DirectionLeft, Key.DirectionDown -> { onStep(-LYRIC_SIZE_STEP); true }
-                                Key.DirectionRight, Key.DirectionUp -> { minusBtnFocus.requestFocus(); true }
-                                Key.DirectionCenter, Key.Enter -> { onStep(-LYRIC_SIZE_STEP); true }
-                                else -> false
-                            }
-                        } else false
-                    }
                     .clickable { onStep(-LYRIC_SIZE_STEP) }
-            ) {
-                Text("-", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.align(Alignment.Center))
-            }
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            )
 
-            // 当前字号显示（支持触摸横滑快速调节）
+            // 当前字号显示（纯展示）
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .focusRequester(stepFocus)
-                    .onFocusChanged { stepFocused = it.isFocused }
-                    .focusable()
-                    .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown) {
-                            when (event.key) {
-                                Key.DirectionLeft, Key.DirectionDown -> { onStep(-LYRIC_SIZE_STEP); true }
-                                Key.DirectionRight, Key.DirectionUp -> { onStep(LYRIC_SIZE_STEP); true }
-                                Key.DirectionCenter, Key.Enter -> { onStep(LYRIC_SIZE_STEP.coerceIn(-99, 99)); true }
-                                else -> false
-                            }
-                        } else false
-                    }
                     .padding(horizontal = 24.dp, vertical = 12.dp)
             ) {
                 Text(
@@ -1260,62 +1237,60 @@ private fun LyricSizeRow(
                 )
             }
 
-            // + 按钮
-            val plusBtnFocus = remember { FocusRequester() }
+            // + 按钮（OptionChip 风格）
             var plusFocused by remember { mutableStateOf(false) }
-            Box(
+            val plusScale by animateFloatAsState(
+                targetValue = if (plusFocused) 1.1f else 1f,
+                animationSpec = tween(120),
+                label = "plusScale"
+            )
+            Text(
+                text = "+",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (plusFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant
+                    .scale(plusScale)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (plusFocused) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
+                    .then(
+                        if (plusFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                        ) else Modifier
                     )
-                    .then(if (plusFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier)
-                    .focusRequester(plusBtnFocus)
                     .onFocusChanged { plusFocused = it.isFocused }
-                    .focusable()
-                    .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown) {
-                            when (event.key) {
-                                Key.DirectionRight, Key.DirectionUp -> { onStep(LYRIC_SIZE_STEP); true }
-                                Key.DirectionLeft, Key.DirectionDown -> { plusBtnFocus.requestFocus(); true }
-                                Key.DirectionCenter, Key.Enter -> { onStep(LYRIC_SIZE_STEP); true }
-                                else -> false
-                            }
-                        } else false
-                    }
                     .clickable { onStep(LYRIC_SIZE_STEP) }
-            ) {
-                Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.align(Alignment.Center))
-            }
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            )
 
-            // 恢复默认
+            // 恢复默认（OptionChip 风格）
+            var resetFocused by remember { mutableStateOf(false) }
+            val resetScale by animateFloatAsState(
+                targetValue = if (resetFocused) 1.1f else 1f,
+                animationSpec = tween(120),
+                label = "resetScale"
+            )
             Text(
                 text = "恢复默认",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (resetFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (resetFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
-                    .then(if (resetFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)) else Modifier)
-                    .focusRequester(resetFocus)
+                    .scale(resetScale)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (resetFocused) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
+                    .then(
+                        if (resetFocused) Modifier.border(
+                            3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)
+                        ) else Modifier
+                    )
                     .onFocusChanged { resetFocused = it.isFocused }
+                    .focusRequester(resetFocus)
                     .clickable { onReset() }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
             )
         }
-
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "方向键左右调节",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
     }
-
-    LaunchedEffect(Unit) { runCatching { stepFocus.requestFocus() } }
 }
 
 /** 字体大小实时预览框 */
@@ -1346,14 +1321,14 @@ private fun FontSizePreview(scaleIndex: Int) {
             Spacer(Modifier.width(12.dp))
             Column {
                 top.boluofan.musictv.util.AppText(
-                    text = "标题示例文字",
+                    text = "我的收藏",
                     fontSize = scaledTitleSize,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(Modifier.height(4.dp))
                 top.boluofan.musictv.util.AppText(
-                    text = "这是一段正文预览，展示当前字体大小下的实际显示效果。",
+                    text = "正在播放：晴天 -- 周杰伦",
                     fontSize = scaledBodySize,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     lineHeight = 20.sp * scale
@@ -1378,7 +1353,7 @@ private fun LyricSizePreview(fontSize: Int) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "这是当前正在播放的一行歌词",
+            text = "窗外的麻雀，在电线杆上多嘴。",
             fontSize = (fontSize * 120 / 100).sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -1387,13 +1362,13 @@ private fun LyricSizePreview(fontSize: Int) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "这是下面的翻译文字",
+            text = "(故事的小黄花，从出生那年就飘着)",
             fontSize = (fontSize * 16 / 30).sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "这还未播放的歌词预览",
+            text = "等待你的输入...",
             fontSize = (fontSize * 22 / 30).sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             lineHeight = (fontSize * 30 / 30).sp
