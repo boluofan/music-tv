@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -92,6 +93,9 @@ val TvShapes = Shapes(
     large = RoundedCornerShape(24.dp),
 )
 
+/** 是否使用系统键盘输入（false = 使用内置遥控器屏幕键盘） */
+val LocalUseSystemKeyboard = compositionLocalOf { false }
+
 @Composable
 fun TvTheme(
     content: @Composable () -> Unit
@@ -118,12 +122,20 @@ fun TvTheme(
     }.collectAsState(initial = 1)
     val fontScale = FontScalePreset.scaleForIndex(fontSizeScaleIndex)
 
+    // 输入键盘模式（系统键盘 / 内置遥控器键盘）
+    val useSystemKeyboard by remember {
+        context.dataStore.data.map { it[PreferencesDataStore.USE_SYSTEM_KEYBOARD] ?: false }
+    }.collectAsState(initial = false)
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = scaledTypography(Typography(), fontScale),
         shapes = TvShapes,
         content = {
-            CompositionLocalProvider(LocalFontScale provides fontScale) {
+            CompositionLocalProvider(
+                LocalFontScale provides fontScale,
+                LocalUseSystemKeyboard provides useSystemKeyboard
+            ) {
                 content()
             }
         }

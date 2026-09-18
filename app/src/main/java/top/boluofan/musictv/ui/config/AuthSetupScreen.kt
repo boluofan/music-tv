@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Visibility
@@ -40,6 +42,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -48,7 +51,12 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.ui.components.generateQrBitmap
 import top.boluofan.musictv.ui.search.TvKeyboard
 import top.boluofan.musictv.ui.search.TvKeyboardMode
+import top.boluofan.musictv.ui.theme.LocalUseSystemKeyboard
 
 private enum class ActiveField { NONE, SERVER_URL, USERNAME, PASSWORD }
 
@@ -84,6 +93,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
     val isLoading by viewModel.isLoggingIn.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val configUrl by viewModel.configUrl.collectAsStateWithLifecycle()
+    val useSystemKeyboard = LocalUseSystemKeyboard.current
 
     LaunchedEffect(Unit) { viewModel.startConfigServer() }
 
@@ -155,6 +165,8 @@ private fun LoginForm(viewModel: AuthViewModel) {
                 placeholder = "http://192.168.1.100:9527",
                 focusRequester = serverUrlFocus,
                 isActive = activeField == ActiveField.SERVER_URL,
+                useSystemKeyboard = useSystemKeyboard,
+                keyboardType = KeyboardType.Uri,
                 onTextChange = viewModel::onServerUrlChanged,
                 onActivate = { activeField = ActiveField.SERVER_URL }
             )
@@ -167,6 +179,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
                 placeholder = "lxserver用户名",
                 focusRequester = usernameFocus,
                 isActive = activeField == ActiveField.USERNAME,
+                useSystemKeyboard = useSystemKeyboard,
                 onTextChange = viewModel::onUsernameChanged,
                 onActivate = { activeField = ActiveField.USERNAME }
             )
@@ -183,6 +196,7 @@ private fun LoginForm(viewModel: AuthViewModel) {
                         isPassword = true,
                         passwordVisible = passwordVisible,
                         isActive = activeField == ActiveField.PASSWORD,
+                        useSystemKeyboard = useSystemKeyboard,
                         onTextChange = viewModel::onPasswordChanged,
                         onActivate = { activeField = ActiveField.PASSWORD }
                     )
@@ -431,6 +445,8 @@ private fun InputField(
     isPassword: Boolean = false,
     passwordVisible: Boolean = false,
     isActive: Boolean = false,
+    useSystemKeyboard: Boolean = false,
+    keyboardType: KeyboardType = KeyboardType.Text,
     onTextChange: (String) -> Unit = {},
     onActivate: () -> Unit
 ) {
@@ -457,22 +473,61 @@ private fun InputField(
                     3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
                 ) else Modifier
             )
-            // 仅确认键（点击）激活自定义键盘，焦点经过不弹出
-            .onFocusChanged { focused = it.isFocused }
-            .clickable { onActivate() }
-            .focusRequester(focusRequester)
+            .then(
+                if (useSystemKeyboard) Modifier
+                // 仅确认键（点击）激活自定义键盘，焦点经过不弹出
+                else Modifier
+                    .onFocusChanged { focused = it.isFocused }
+                    .clickable { onActivate() }
+                    .focusRequester(focusRequester)
+            )
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        Text(
-            text = when {
-                value.isNotEmpty() && isPassword && !passwordVisible -> "●".repeat(value.length)
-                value.isNotEmpty() -> value
-                else -> placeholder
-            },
-            fontSize = 16.sp,
-            color = if (value.isNotEmpty()) MaterialTheme.colorScheme.onBackground
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        )
+        if (useSystemKeyboard) {
+            BasicTextField(
+                value = value,
+                onValueChange = onTextChange,
+                singleLine = true,
+                textStyle = TextStyle(
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = if (isPassword) KeyboardType.Password else keyboardType,
+                    imeAction = ImeAction.Done
+                ),
+                visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation()
+                    else VisualTransformation.None,
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty()) {
+                            Text(
+                                placeholder,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { focused = it.isFocused }
+            )
+        } else {
+            Text(
+                text = when {
+                    value.isNotEmpty() && isPassword && !passwordVisible -> "●".repeat(value.length)
+                    value.isNotEmpty() -> value
+                    else -> placeholder
+                },
+                fontSize = 16.sp,
+                color = if (value.isNotEmpty()) MaterialTheme.colorScheme.onBackground
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            )
+        }
     }
 }

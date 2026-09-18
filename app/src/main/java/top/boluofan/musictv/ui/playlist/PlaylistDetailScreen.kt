@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -45,7 +48,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +70,7 @@ import top.boluofan.musictv.ui.components.SongListItem
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.navigation.ListBackToTopHandler
 import top.boluofan.musictv.ui.search.TvKeyboard
+import top.boluofan.musictv.ui.theme.LocalUseSystemKeyboard
 
 @Composable
 fun PlaylistDetailScreen(
@@ -311,6 +318,7 @@ private fun RenamePlaylistDialog(
 ) {
     var name by remember { mutableStateOf(initialName) }
     val firstKeyFocus = remember { FocusRequester() }
+    val useSystemKeyboard = LocalUseSystemKeyboard.current
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -326,35 +334,79 @@ private fun RenamePlaylistDialog(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            Text(
-                text = if (name.isEmpty()) "输入新名称..." else name,
-                fontSize = 18.sp,
-                color = if (name.isEmpty()) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-            )
-            Spacer(Modifier.height(12.dp))
-            TvKeyboard(
-                firstKeyFocusRequester = firstKeyFocus,
-                onKeyPress = { key ->
-                    when (key) {
-                        "←退格" -> name = name.dropLast(1)
-                        "清空" -> name = ""
-                        "确定" -> {
-                            if (name.isNotBlank()) onConfirm(name)
-                            else onDismiss()
+            if (useSystemKeyboard) {
+                BasicTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (name.isNotBlank()) onConfirm(name) else onDismiss()
+                    }),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (name.isEmpty()) {
+                                Text(
+                                    text = "输入新名称...",
+                                    fontSize = 18.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                )
+                            }
+                            innerTextField()
                         }
-                        "空格" -> name += " "
-                        else -> name += key
-                    }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .focusRequester(firstKeyFocus)
+                )
+                Spacer(Modifier.height(16.dp))
+                Row {
+                    DialogButton(text = "取消", onClick = onDismiss)
+                    Spacer(Modifier.width(16.dp))
+                    DialogButton(
+                        text = "确定",
+                        onClick = { if (name.isNotBlank()) onConfirm(name) else onDismiss() }
+                    )
                 }
-            )
+            } else {
+                Text(
+                    text = if (name.isEmpty()) "输入新名称..." else name,
+                    fontSize = 18.sp,
+                    color = if (name.isEmpty()) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+                TvKeyboard(
+                    firstKeyFocusRequester = firstKeyFocus,
+                    onKeyPress = { key ->
+                        when (key) {
+                            "←退格" -> name = name.dropLast(1)
+                            "清空" -> name = ""
+                            "确定" -> {
+                                if (name.isNotBlank()) onConfirm(name)
+                                else onDismiss()
+                            }
+                            "空格" -> name += " "
+                            else -> name += key
+                        }
+                    }
+                )
+            }
         }
     }
 

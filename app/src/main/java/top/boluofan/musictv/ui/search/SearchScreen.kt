@@ -26,6 +26,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -48,13 +51,16 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +85,7 @@ import top.boluofan.musictv.ui.navigation.RestoreFocusEffect
 import top.boluofan.musictv.ui.navigation.ScreenFocusRestorer
 import top.boluofan.musictv.ui.navigation.rememberScreenFocusRestorer
 import top.boluofan.musictv.ui.navigation.restorableFocus
+import top.boluofan.musictv.ui.theme.LocalUseSystemKeyboard
 import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 private val SEARCH_SOURCES = listOf("tx", "kw", "kg", "wy", "mg")
@@ -94,6 +101,7 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val remoteUrl by viewModel.remoteUrl.collectAsStateWithLifecycle()
+    val useSystemKeyboard = LocalUseSystemKeyboard.current
     var showKeyboard by remember { mutableStateOf(false) }
     var showQrDialog by remember { mutableStateOf(false) }
     val searchBoxFocus = remember { FocusRequester() }
@@ -193,21 +201,58 @@ fun SearchScreen(
                             3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)
                         ) else Modifier
                     )
-                    .focusRequester(searchBoxFocus)
-                    .onFocusChanged { searchFocused = it.isFocused }
-                    .clickable { showKeyboard = !showKeyboard }
+                    .then(
+                        if (useSystemKeyboard) Modifier
+                        else Modifier
+                            .focusRequester(searchBoxFocus)
+                            .onFocusChanged { searchFocused = it.isFocused }
+                            .clickable { showKeyboard = !showKeyboard }
+                    )
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (uiState.query.isEmpty()) "点击输入关键词..." else uiState.query,
-                    fontSize = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (uiState.query.isEmpty()) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
+                if (useSystemKeyboard) {
+                    // 系统键盘模式：搜索框为真实输入框，聚焦即弹出系统输入法，IME 搜索键提交
+                    BasicTextField(
+                        value = uiState.query,
+                        onValueChange = viewModel::onQueryChanged,
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { viewModel.search() }),
+                        decorationBox = { innerTextField ->
+                            Box {
+                                if (uiState.query.isEmpty()) {
+                                    Text(
+                                        text = "输入关键词...",
+                                        fontSize = 20.sp,
+                                        maxLines = 1,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(searchBoxFocus)
+                            .onFocusChanged { searchFocused = it.isFocused }
+                    )
+                } else {
+                    Text(
+                        text = if (uiState.query.isEmpty()) "点击输入关键词..." else uiState.query,
+                        fontSize = 20.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (uiState.query.isEmpty()) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
             if (uiState.query.isNotEmpty()) {
                 var clearFocused by remember { mutableStateOf(false) }
@@ -258,6 +303,19 @@ fun SearchScreen(
                     }
                     .padding(horizontal = 10.dp, vertical = 14.dp)
             )
+        }
+
+        // 系统键盘模式：联想词展示在搜索框下方（自定义模式的联想词在内置键盘浮层内）
+        if (useSystemKeyboard && uiState.query.isNotEmpty() && uiState.tips.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(uiState.tips) { tip ->
+                    TagChip(tip) {
+                        viewModel.onQueryChanged(tip)
+                        viewModel.search()
+                    }
+                }
+            }
         }
 
         Spacer(Modifier.height(12.dp))

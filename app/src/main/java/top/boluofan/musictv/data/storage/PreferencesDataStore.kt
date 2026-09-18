@@ -66,6 +66,8 @@ class PreferencesDataStore @Inject constructor(
     val fontSizeScale: Flow<Int> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: 1 }
     // 歌词字号（sp），范围 20-48，默认 30
     val lyricFontSize: Flow<Int> = context.dataStore.data.map { it[LYRIC_FONT_SIZE] ?: 30 }
+    // 使用系统键盘输入（默认 false：使用内置遥控器屏幕键盘）
+    val useSystemKeyboard: Flow<Boolean> = context.dataStore.data.map { it[USE_SYSTEM_KEYBOARD] ?: false }
 
     suspend fun setFontSizeScale(scale: Int) {
         context.dataStore.edit { it[FONT_SIZE_SCALE] = scale }
@@ -73,6 +75,10 @@ class PreferencesDataStore @Inject constructor(
 
     suspend fun setLyricFontSize(size: Int) {
         context.dataStore.edit { it[LYRIC_FONT_SIZE] = size }
+    }
+
+    suspend fun setUseSystemKeyboard(enabled: Boolean) {
+        context.dataStore.edit { it[USE_SYSTEM_KEYBOARD] = enabled }
     }
 
     suspend fun setThemeMode(mode: Int) {
@@ -252,5 +258,6 @@ class PreferencesDataStore @Inject constructor(
         private val PASSWORD = stringPreferencesKey("password")
         val FONT_SIZE_SCALE = intPreferencesKey("font_size_scale")
         val LYRIC_FONT_SIZE = intPreferencesKey("lyric_font_size")
+        val USE_SYSTEM_KEYBOARD = booleanPreferencesKey("use_system_keyboard")
     }
 }

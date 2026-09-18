@@ -48,6 +48,8 @@ data class SettingsUiState(
     val fontSizeScale: Int = 1,
     // 歌词字号（sp），范围 20~48，默认 30
     val lyricFontSize: Int = 30,
+    // 输入键盘模式（true = 系统键盘，false = 内置遥控器屏幕键盘）
+    val useSystemKeyboard: Boolean = false,
     // 崩溃日志
     val crashLogFileNames: List<String> = emptyList(),
     val crashDialogContent: String = "",
@@ -126,6 +128,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            dataStore.useSystemKeyboard.collect { enabled ->
+                _uiState.value = _uiState.value.copy(useSystemKeyboard = enabled)
+            }
+        }
+        viewModelScope.launch {
             playerController.state.collect { s ->
                 _uiState.value = _uiState.value.copy(
                     sleepTimerMinutes = s.sleepTimerMinutes,
@@ -185,6 +192,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setLyricFontSize(size: Int) {
         viewModelScope.launch { dataStore.setLyricFontSize(size) }
+    }
+
+    fun setUseSystemKeyboard(enabled: Boolean) {
+        viewModelScope.launch { dataStore.setUseSystemKeyboard(enabled) }
     }
 
     // 音效总开关：开启时分别校验设备能力，均衡器与音效任一支持即可；都不支持则提示
