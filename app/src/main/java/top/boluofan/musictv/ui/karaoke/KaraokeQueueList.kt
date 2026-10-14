@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -257,6 +258,12 @@ private fun KaraokeQueueRow(
             contentDescription = "置顶",
             onClick = onMoveTop,
             focusRequester = initialFocusRequester
+        )
+        // 切歌：直接演唱该曲（与主控制栏"切歌"语义一致）
+        KaraokeListIconButton(
+            imageVector = Icons.Rounded.SkipNext,
+            contentDescription = "切歌",
+            onClick = onSongClick
         )
         // 删除：移出 K 歌列表（独立可聚焦按钮）
         KaraokeListIconButton(
