@@ -138,6 +138,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: music-tv-apk
+          retention-days: 1
           path: |
             apk-output/*.apk
             apk-output/version.json
