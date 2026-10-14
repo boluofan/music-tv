@@ -170,7 +170,10 @@ class PlayerController @Inject constructor(
             dataStore.playMode.collect { mode ->
                 val playMode = runCatching { PlayMode.valueOf(mode) }.getOrDefault(PlayMode.ORDER)
                 _state.update { it.copy(playMode = playMode) }
-                controller?.let { applyPlayMode(it, playMode) }
+                // K 歌期间只记录主页模式，不打断固定的顺序播放
+                if (!_state.value.karaokeActive) {
+                    controller?.let { applyPlayMode(it, playMode) }
+                }
             }
         }
         // 音效模式配置持久化闭环，同均衡器
@@ -324,7 +327,7 @@ class PlayerController @Inject constructor(
                 if (controller == null) {
                     controller = c
                     c.addListener(listener)
-                    applyPlayMode(c, _state.value.playMode)
+                    applyPlayMode(c, activePlayMode())
                     // 先恢复已保存配置，再查询能力与频段数据，保证 info 反映应用后的状态
                     sendEqApply(eqEnabledCache, eqBandsCache)
                     checkEqSupport(c)
@@ -359,7 +362,7 @@ class PlayerController @Inject constructor(
         }
         withController { c ->
             c.setMediaItems(queue.map { buildMediaItem(it) }, index, startPositionMs)
-            applyPlayMode(c, _state.value.playMode)
+            applyPlayMode(c, activePlayMode())
             c.prepare()
             c.play()
         }
@@ -395,7 +398,9 @@ class PlayerController @Inject constructor(
     fun setPlayMode(mode: PlayMode) {
         _state.update { it.copy(playMode = mode) }
         scope.launch { dataStore.setPlayMode(mode.name) }
-        withController { applyPlayMode(it, mode) }
+        if (!_state.value.karaokeActive) {
+            withController { applyPlayMode(it, mode) }
+        }
     }
 
     fun cyclePlayMode() {
@@ -713,6 +718,10 @@ class PlayerController @Inject constructor(
 
     private fun formatBands(bands: List<Int>): String = bands.joinToString(",")
 
+    /** K 歌期间引擎模式固定顺序，其余场景沿用用户选择的 playMode */
+    private fun activePlayMode(): PlayMode =
+        if (_state.value.karaokeActive) PlayMode.ORDER else _state.value.playMode
+
     private fun applyPlayMode(c: MediaController, mode: PlayMode) {
         when (mode) {
             PlayMode.ORDER -> {
@@ -845,7 +854,8 @@ class PlayerController @Inject constructor(
         val startIndex = _state.value.currentIndex.coerceIn(0, (backup.size - 1).coerceAtLeast(0))
         val list = backup.drop(startIndex)
         _state.update { it.copy(karaokeActive = true, karaokeList = list, currentIndex = 0) }
-        loadIntoEngine(list, 0, mainPosBackup)
+        // K 歌固定顺序播放：置顶/删曲逻辑依赖窗口顺序，不沿用主页模式
+        loadIntoEngine(list, 0, mainPosBackup, PlayMode.ORDER)
     }
 
     /** 退出 K 歌：还原主页队列与播放进度，清空 K 歌列表 */
@@ -867,11 +877,16 @@ class PlayerController @Inject constructor(
     }
 
     /** 仅操作播放引擎媒体项，不触碰主页队列状态（供 K 歌进入/退出时整体替换播放列表） */
-    private fun loadIntoEngine(list: List<MusicInfo>, index: Int, posMs: Long) {
+    private fun loadIntoEngine(
+        list: List<MusicInfo>,
+        index: Int,
+        posMs: Long,
+        mode: PlayMode = activePlayMode()
+    ) {
         withController { c ->
             val start = index.coerceIn(0, (list.size - 1).coerceAtLeast(0))
             c.setMediaItems(list.map { buildMediaItem(it) }, start, posMs)
-            applyPlayMode(c, _state.value.playMode)
+            applyPlayMode(c, mode)
             c.prepare()
             c.play()
         }

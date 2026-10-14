@@ -63,7 +63,6 @@ fun KaraokeControlBar(
     onNext: () -> Unit,
     onSeek: (Long) -> Unit,
     onSeekBy: (Long) -> Unit,
-    onCyclePlayMode: () -> Unit,
     onToggleFavorite: () -> Unit,
     onReSing: () -> Unit,
     onToggleAccompaniment: () -> Unit,

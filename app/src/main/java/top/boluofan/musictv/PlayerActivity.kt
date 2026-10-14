@@ -362,7 +362,6 @@ fun PlayerScreen(
                 onNext = { viewModel.nextTrack() },
                 onSeek = { viewModel.seekTo(it) },
                 onSeekBy = { viewModel.seekBy(it) },
-                onCyclePlayMode = { viewModel.cyclePlayMode() },
                 onToggleFavorite = { viewModel.toggleFavorite() },
                 onReSing = {
                     viewModel.seekTo(0L)
