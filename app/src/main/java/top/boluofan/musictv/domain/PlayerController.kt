@@ -962,9 +962,29 @@ class PlayerController @Inject constructor(
         }
     }
 
-    /** K 歌指定演唱某曲 */
+    /**
+     * K 歌切歌：先把目标曲移到当前演唱曲的下一位再立即播放，
+     * 播完后按其原本顺序的其余曲目继续，不被跳过。
+     */
     fun karaokePlayAt(index: Int) {
         if (!_state.value.karaokeActive) return
+        val cur = _state.value.currentIndex
+        if (index != cur) {
+            val list = _state.value.karaokeList
+            if (index in list.indices && cur in list.indices) {
+                val working = list.toMutableList().apply { removeAt(index) }
+                val insertAt = (cur + 1).coerceIn(0, working.size)
+                working.add(insertAt, list[index])
+                _state.update { it.copy(karaokeList = working) }
+                withController { c ->
+                    if (index in 0 until c.mediaItemCount) {
+                        runCatching { c.moveMediaItem(index, insertAt) }
+                    }
+                    c.seekToDefaultPosition(insertAt)
+                }
+                return
+            }
+        }
         withController { c -> if (index in 0 until c.mediaItemCount) c.seekToDefaultPosition(index) }
     }
 

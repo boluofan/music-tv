@@ -259,7 +259,7 @@ private fun KaraokeQueueRow(
             onClick = onMoveTop,
             focusRequester = initialFocusRequester
         )
-        // 切歌：直接演唱该曲（与主控制栏"切歌"语义一致）
+        // 切歌：置顶该曲并立即演唱，播完后继续原顺序的其余曲目
         KaraokeListIconButton(
             imageVector = Icons.Rounded.SkipNext,
             contentDescription = "切歌",
