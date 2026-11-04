@@ -1,6 +1,7 @@
 package top.boluofan.musictv.data.api
 
 import okhttp3.Interceptor
+import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
@@ -34,7 +35,9 @@ object ApiClient {
         fun retrofit(apiUrl: String): Retrofit = Retrofit.Builder()
             .baseUrl(apiUrl)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(
+                GsonBuilder().registerTypeAdapterFactory(ListCompatAdapterFactory()).create()
+            ))
             .build()
 
         musicApi = retrofit("$baseUrl/api/music/").create(LxMusicApi::class.java)
