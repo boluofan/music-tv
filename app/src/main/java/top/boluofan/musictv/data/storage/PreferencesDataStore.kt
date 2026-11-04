@@ -58,8 +58,8 @@ class PreferencesDataStore @Inject constructor(
     val sfxMode: Flow<String> = context.dataStore.data.map { it[SFX_MODE] ?: "virtualizer" }
     val sfxStrength: Flow<Int> = context.dataStore.data.map { it[SFX_STRENGTH] ?: 50 }
 
-    // 记住登录开关（默认关闭）/ 密码存储（仅勾选时写入）
-    val rememberMe: Flow<Boolean> = context.dataStore.data.map { it[REMEMBER_ME] ?: false }
+    // 记住登录开关（默认开启）/ 密码存储（仅勾选时写入）
+    val rememberMe: Flow<Boolean> = context.dataStore.data.map { it[REMEMBER_ME] ?: true }
     val password: Flow<String?> = context.dataStore.data.map { it[PASSWORD] }
 
     // 全局字体缩放：0=小, 1=中(默认), 2=大, 3=特大
