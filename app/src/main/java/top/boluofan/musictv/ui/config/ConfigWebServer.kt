@@ -88,8 +88,8 @@ class ConfigWebServer(
                 </button>
               </div>
               <label style="margin-top:12px;display:flex;align-items:center;gap:8px">
-                <input type="checkbox" name="remember_me" id="rememberMe" style="width:auto;padding:0;margin:0;accent-color:#38bdf8">
-                <span style="font-size:13px;color:#94a3b8">记住登录（勾选后下次启动自动回填账号密码）</span>
+                <input type="checkbox" name="remember_me" id="rememberMe" checked style="width:auto;padding:0;margin:0;accent-color:#38bdf8">
+                <span style="font-size:13px;color:#94a3b8">记住登录（下次启动自动回填账号密码）</span>
               </label>
               <button class="submit" type="submit">提交到电视</button>
             </form>
