@@ -47,7 +47,7 @@ class AuthViewModel @Inject constructor(
     private val _configUrl = MutableStateFlow<String?>(null)
     val configUrl: StateFlow<String?> = _configUrl.asStateFlow()
 
-    private val _rememberMe = MutableStateFlow(false)
+    private val _rememberMe = MutableStateFlow(true)
     val rememberMe: StateFlow<Boolean> = _rememberMe.asStateFlow()
 
     private var configServer: ConfigWebServer? = null
@@ -167,7 +167,7 @@ class AuthViewModel @Inject constructor(
             _serverUrl.value = ""
             _username.value = ""
             _password.value = ""
-            _rememberMe.value = false
+            _rememberMe.value = true
             _authState.value = AuthState.NotConfigured
         }
     }
