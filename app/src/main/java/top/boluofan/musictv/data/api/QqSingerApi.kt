@@ -1,6 +1,7 @@
 package top.boluofan.musictv.data.api
 
-import com.google.gson.JsonParser
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -53,7 +54,7 @@ object QqSingerApi {
         client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) error("HTTP ${resp.code}")
             val body = resp.body?.string().orEmpty()
-            val list = JsonParser.parseString(body).asJsonObject
+            val list = Gson().fromJson(body, JsonObject::class.java)
                 .getAsJsonObject("data")
                 ?.getAsJsonArray("list")
                 ?: error("响应中没有 data.list")
