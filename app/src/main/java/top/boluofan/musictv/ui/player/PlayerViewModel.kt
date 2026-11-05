@@ -414,7 +414,10 @@ class PlayerViewModel @Inject constructor(
                 onOrderAdd = { song -> karaokeAdd(song) },
                 onOrderTop = { index -> karaokeMoveTop(index) },
                 onOrderRemove = { index -> karaokeRemove(index) },
-                onOrderQueue = { playerController.getKaraokeList() }
+                onOrderQueue = { playerController.getKaraokeList() },
+                // karaokePlayAt 会操作 MediaController，NanoHTTPD 工作线程回调需切回主线程
+                onOrderPlay = { index -> viewModelScope.launch { karaokePlayAt(index) } },
+                onOrderCurrentIndex = { _uiState.value.currentIndex }
             )
             if (runCatching { server.start() }.isSuccess) {
                 karaokeOrderServer = server
