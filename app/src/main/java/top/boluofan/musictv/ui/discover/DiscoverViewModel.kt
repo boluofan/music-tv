@@ -4,6 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +33,8 @@ data class DiscoverUiState(
     val page: Int = 1,
     val hasMore: Boolean = false,
     val boards: List<BoardItem> = emptyList(),
+    // 榜单封面：key 为 bangid（或 id），值为榜单第一首歌的封面地址，异步补全
+    val boardCovers: Map<String, String> = emptyMap(),
     val isLoading: Boolean = true,
     val isLoadingMore: Boolean = false,
     val error: String? = null
@@ -41,6 +48,9 @@ class DiscoverViewModel @Inject constructor() : ViewModel() {
 
     private var loadJob: Job? = null
     private var loadMoreJob: Job? = null
+    private var coverJob: Job? = null
+    // 按平台缓存已取到的榜单封面，来回切换平台时不重复请求
+    private val boardCoverCache = HashMap<String, MutableMap<String, String>>()
 
     init {
         loadSection(DiscoverSection.SQUARE, initial = true)
@@ -97,6 +107,7 @@ class DiscoverViewModel @Inject constructor() : ViewModel() {
 
     private fun loadSection(section: DiscoverSection, initial: Boolean = false) {
         loadJob?.cancel()
+        coverJob?.cancel()
         when (section) {
             DiscoverSection.SQUARE -> {
                 _uiState.value = _uiState.value.copy(playlists = emptyList(), page = 1, hasMore = false, isLoading = true, error = null)
@@ -152,11 +163,14 @@ class DiscoverViewModel @Inject constructor() : ViewModel() {
         loadJob = viewModelScope.launch {
             runCatching { ApiClient.getMusicApi().getLeaderboardBoards(source) }.fold(
                 onSuccess = { resp ->
+                    val boards = resp.list.orEmpty()
                     _uiState.value = _uiState.value.copy(
-                        boards = resp.list.orEmpty(),
+                        boards = boards,
+                        boardCovers = boardCoverCache[source].orEmpty().toMap(),
                         isLoading = false,
                         error = null
                     )
+                    loadBoardCovers(source, boards)
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
@@ -164,4 +178,46 @@ class DiscoverViewModel @Inject constructor() : ViewModel() {
             )
         }
     }
+
+    /**
+     * 榜单接口不带封面，这里取每个榜单的第一页歌曲，用第一首有封面的歌曲作为榜单封面。
+     * 限制并发为 3，取到一个就刷新一个，失败的榜单保持占位图标。
+     */
+    private fun loadBoardCovers(source: String, boards: List<BoardItem>) {
+        coverJob?.cancel()
+        val cache = boardCoverCache.getOrPut(source) { HashMap() }
+        val pending = boards.filter { board ->
+            val key = boardKey(board)
+            key.isNotEmpty() && !board.bangid.isNullOrEmpty() && key !in cache
+        }
+        if (pending.isEmpty()) return
+        coverJob = viewModelScope.launch {
+            val semaphore = Semaphore(3)
+            coroutineScope {
+                pending.map { board ->
+                    async {
+                        semaphore.withPermit {
+                            val cover = runCatching {
+                                ApiClient.getMusicApi()
+                                    .getLeaderboardList(source, board.bangid.orEmpty(), 1)
+                                    .list.orEmpty()
+                                    .take(5)
+                                    .firstNotNullOfOrNull { it.picUrl?.takeIf { url -> url.isNotBlank() } }
+                            }.getOrNull()
+                            if (cover != null) {
+                                val key = boardKey(board)
+                                cache[key] = cover
+                                val current = _uiState.value
+                                if (current.source == source && current.section == DiscoverSection.LEADERBOARD) {
+                                    _uiState.value = current.copy(boardCovers = current.boardCovers + (key to cover))
+                                }
+                            }
+                        }
+                    }
+                }.awaitAll()
+            }
+        }
+    }
+
+    private fun boardKey(board: BoardItem): String = board.bangid ?: board.id ?: ""
 }
