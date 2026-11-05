@@ -21,7 +21,7 @@ object QqSingerApi {
             "&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq&needNewCode=0"
 
     // 接口实际会返回 100 位歌手（pagesize 参数不生效），这里只取前 30 位
-    private const val MAX_COUNT = 30
+    private const val MAX_COUNT = 45
 
     private val BRACKET = Regex("^(.*?)\\s*[（(](.+?)[）)]\\s*$")
     private val HANGUL = Regex("[\\uAC00-\\uD7AF]")
