@@ -290,6 +290,7 @@ private fun LeaderboardContent(
                         val pk = "board:${board.bangid ?: board.id ?: ""}"
                         BoardCard(
                             board = board,
+                            coverUrl = uiState.boardCovers[board.bangid ?: board.id ?: ""],
                             onClick = {
                                 restorer.record(pk)
                                 onBoardClick(board)
@@ -540,6 +541,7 @@ private fun PlaylistCard(
 @Composable
 private fun BoardCard(
     board: BoardItem,
+    coverUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -579,12 +581,21 @@ private fun BoardCard(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Rounded.MusicNote,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                modifier = Modifier.size(44.dp)
-            )
+            if (coverUrl != null) {
+                // 榜单第一首歌的封面；加载中/失败时 CoverImage 自带占位图标
+                CoverImage(
+                    url = coverUrl,
+                    contentDescription = board.name,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(44.dp)
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
         Text(
