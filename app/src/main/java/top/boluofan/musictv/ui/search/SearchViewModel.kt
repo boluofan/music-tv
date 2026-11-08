@@ -17,7 +17,6 @@ import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.data.model.SearchArtistItem
-import top.boluofan.musictv.data.model.SongListPageResponse
 import top.boluofan.musictv.ui.config.ConfigWebServer
 import javax.inject.Inject
 
@@ -128,45 +127,79 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         searchJob?.cancel()
         _uiState.value = state.copy(isSearching = true, hasSearched = true, error = null)
         searchJob = viewModelScope.launch {
-            runCatching {
-                when (state.type) {
-                    SearchType.SONG -> ApiClient.getMusicApi().search(
-                        name = keyword, source = state.source, page = 1, limit = 20,
-                        type = "song", pages = 3
-                    )
-                    SearchType.SINGER -> ApiClient.getMusicApi().searchSingers(
-                        name = keyword, source = state.source, page = 1, limit = 30
-                    )
-                    SearchType.ALBUM -> ApiClient.getMusicApi().searchAlbums(
-                        name = keyword, source = state.source, page = 1, limit = 30
-                    )
-                    SearchType.PLAYLIST -> ApiClient.getMusicApi().searchSongList(
-                        source = state.source, text = keyword, page = state.playlistPage
-                    )
-                }
-            }.fold(
-                onSuccess = { result ->
-                    val current = _uiState.value
-                    @Suppress("UNCHECKED_CAST")
-                    _uiState.value = when (current.type) {
-                        SearchType.SONG -> current.copy(songResults = result as List<MusicInfo>, isSearching = false)
-                        SearchType.SINGER -> current.copy(singerResults = result as List<SearchArtistItem>, isSearching = false)
-                        SearchType.ALBUM -> current.copy(albumResults = result as List<AlbumItem>, isSearching = false)
-                        SearchType.PLAYLIST -> current.copy(
-                            playlistResults = (result as SongListPageResponse).list ?: emptyList(),
-                            isSearching = false
+            runCatching { performSearch(state, keyword) }
+                .fold(
+                    onSuccess = { outcome ->
+                        val current = _uiState.value
+                        _uiState.value = when (current.type) {
+                            SearchType.SONG -> current.copy(songResults = outcome.songs, isSearching = false)
+                            SearchType.SINGER -> current.copy(singerResults = outcome.singers, isSearching = false)
+                            SearchType.ALBUM -> current.copy(albumResults = outcome.albums, isSearching = false)
+                            SearchType.PLAYLIST -> current.copy(playlistResults = outcome.playlists, isSearching = false)
+                        }
+                    },
+                    onFailure = { e ->
+                        _uiState.value = _uiState.value.copy(
+                            isSearching = false,
+                            error = friendlySearchError(e, state.type, state.source)
                         )
                     }
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        isSearching = false,
-                        error = friendlySearchError(e, state.type, state.source)
-                    )
+                )
+        }
+    }
+
+    /**
+     * 按搜索类型取结果，统一产出一个 [SearchOutcome]（不再依赖跨分支的泛型强转）。
+     *
+     * 歌曲搜索同时照顾两代服务端，且以「响应内容」而非版本号判断，双方都不退化：
+     * - 旧版（<= 2.1.2）：`pages=3&limit=20` 一次聚合 3 页 → 60 条裸数组；
+     * - 新版（>= 2.1.3）：`pages` 被忽略、带 `limit` 只给单页 20 条对象，
+     *   且 `stopReason == "single-page"`。命中时再发一次不带 `limit` 的请求，
+     *   让服务端聚合并返回全量结果。
+     */
+    private suspend fun performSearch(state: SearchUiState, keyword: String): SearchOutcome {
+        val api = ApiClient.getMusicApi()
+        return when (state.type) {
+            SearchType.SONG -> {
+                var envelope = api.search(
+                    name = keyword, source = state.source, page = 1, limit = 20,
+                    type = "song", pages = 3
+                )
+                if (envelope.stopReason == "single-page") {
+                    // 补拉失败（网络抖动/超时）时保留第一次的 20 条，不让搜索整体失败
+                    envelope = runCatching {
+                        api.search(
+                            name = keyword, source = state.source, page = 1,
+                            limit = null, type = "song", pages = null
+                        )
+                    }.getOrDefault(envelope)
                 }
+                SearchOutcome(songs = envelope.items.take(MAX_SONG_RESULTS))
+            }
+            SearchType.SINGER -> SearchOutcome(
+                singers = api.searchSingers(
+                    name = keyword, source = state.source, page = 1, limit = 30
+                ).items
+            )
+            SearchType.ALBUM -> SearchOutcome(
+                albums = api.searchAlbums(
+                    name = keyword, source = state.source, page = 1, limit = 30
+                ).items
+            )
+            SearchType.PLAYLIST -> SearchOutcome(
+                playlists = api.searchSongList(
+                    source = state.source, text = keyword, page = state.playlistPage
+                ).list.orEmpty()
             )
         }
     }
+
+    private data class SearchOutcome(
+        val songs: List<MusicInfo> = emptyList(),
+        val singers: List<SearchArtistItem> = emptyList(),
+        val albums: List<AlbumItem> = emptyList(),
+        val playlists: List<Playlist> = emptyList()
+    )
 
     fun clearSearch() {
         searchJob?.cancel()
@@ -228,5 +261,8 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
     companion object {
         private val REMOTE_PORTS = intArrayOf(18903, 18904, 18905, 18906)
+        // 与旧版「3 页 x 20 条」的结果量保持一致；新版后端不带 limit 时最多可回 4000 条，
+        // 全塞进电视列表会拖慢渲染，这里本地截断。
+        private const val MAX_SONG_RESULTS = 60
     }
 }

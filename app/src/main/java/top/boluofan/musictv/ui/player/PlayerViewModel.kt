@@ -434,7 +434,9 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * 扫码点歌搜索：复用 music-tv 现有 LxMusicApi.search（歌曲类型，limit=20）。
+     * 扫码点歌搜索：复用 music-tv 现有 LxMusicApi.search（歌曲类型，单页 20 条即可）。
+     * search 现已统一返回 SearchEnvelope 以兼容新旧两代服务端，这里只取 items；
+     * 点歌场景不需要新版的全量聚合，因此刻意保留 limit=20。
      * 网络异常/未登录等所有错误一律兜底返回空列表（design §6 风险表）。
      * 用 runBlocking 桥接 suspend → 同步回调（NanoHTTPD 工作线程已是后台线程，OK）。
      */
@@ -447,7 +449,7 @@ class PlayerViewModel @Inject constructor(
                     page = 1,
                     limit = 20,
                     type = "song"
-                )
+                ).items
             }
         }.getOrDefault(emptyList())
     }

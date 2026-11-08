@@ -10,9 +10,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.api.ApiClient
 import top.boluofan.musictv.data.repository.AuthRepository
+import top.boluofan.musictv.data.repository.LoginFailureException
 import top.boluofan.musictv.data.storage.PreferencesDataStore
 import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.security.cert.CertificateException
 import javax.inject.Inject
+import javax.net.ssl.SSLHandshakeException
 
 sealed class AuthState {
     data object Loading : AuthState()
@@ -79,10 +85,21 @@ class AuthViewModel @Inject constructor(
         _configUrl.value = null
     }
 
-    /** 无协议前缀时按 https → http 顺序生成候选地址，探测出可用协议 */
-    private fun candidateUrls(url: String): List<String> =
-        if (url.startsWith("http://") || url.startsWith("https://")) listOf(url)
-        else listOf("https://$url", "http://$url")
+    /**
+     * 生成候选服务器地址：优先用户填写的协议，连接层失败时再回退另一种协议。
+     * 以前带 http(s):// 的地址只有一个候选，反代或证书配置不对时完全没有回退机会
+     * （真机实测登录耗时贴近 30s 超时，用户看到的只有「一直卡住」）。
+     */
+    private fun candidateUrls(url: String): List<String> {
+        val normalized = url.trim().trimEnd('/')
+        return when {
+            normalized.startsWith("https://") ->
+                listOf(normalized, "http://" + normalized.removePrefix("https://"))
+            normalized.startsWith("http://") ->
+                listOf(normalized, "https://" + normalized.removePrefix("http://"))
+            else -> listOf("https://$normalized", "http://$normalized")
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -98,7 +115,10 @@ class AuthViewModel @Inject constructor(
                     val name = dataStore.username.first()
                     _authState.value = AuthState.LoggedIn(name ?: "admin")
                 } else {
+                    // token 过期且自动重登未成功（未记住密码 / 密码已改）时给出可操作提示，
+                    // 避免用户只看到「又回到配置页」却不知道发生了什么
                     _authState.value = AuthState.NotConfigured
+                    _error.value = "登录状态已失效，请重新输入账号密码登录"
                 }
             } else {
                 _authState.value = AuthState.NotConfigured
@@ -135,7 +155,9 @@ class AuthViewModel @Inject constructor(
 
         viewModelScope.launch {
             var lastError: Throwable? = null
+            var attempts = 0
             for (candidate in candidateUrls(url)) {
+                attempts++
                 val result = authRepository.login(candidate, username, password, _rememberMe.value)
                 if (result.isSuccess) {
                     _serverUrl.value = candidate
@@ -149,7 +171,26 @@ class AuthViewModel @Inject constructor(
                 if (lastError !is IOException) break
             }
             _isLoggingIn.value = false
-            _error.value = lastError?.message ?: "登录失败"
+            _error.value = buildString {
+                append(friendlyLoginError(lastError))
+                if (attempts > 1) append("（已自动尝试 HTTP 与 HTTPS 两种协议）")
+            }
+        }
+    }
+
+    /** 把底层异常翻译成用户能据此操作的提示，而不是 "timeout" / "HTTP 401" */
+    private fun friendlyLoginError(e: Throwable?): String {
+        if (e == null) return "登录失败"
+        return when {
+            e is LoginFailureException -> e.message ?: "登录失败"
+            e is SocketTimeoutException ->
+                "连接服务器超时（最长等待 60 秒）。请检查网络、服务器是否在线，以及地址端口是否正确"
+            e is SSLHandshakeException || e is CertificateException ->
+                "HTTPS 证书校验失败。可改用 http:// 地址，或在服务器上配置有效证书"
+            e is UnknownHostException -> "找不到服务器主机，请检查地址是否填写正确"
+            e is ConnectException -> "无法连接服务器，请检查地址、端口与服务是否已启动"
+            e is IOException -> "网络连接失败：${e.message ?: "未知原因"}。请检查服务器地址与网络"
+            else -> e.message ?: "登录失败"
         }
     }
 

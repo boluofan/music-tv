@@ -58,17 +58,27 @@ interface LxUserApi {
     suspend fun saveLibraryAlbums(@Body list: List<LibraryAlbumItem>): LibrarySaveResponse
 }
 
-/** 音乐接口，baseUrl = {server}/api/music/ */
+/**
+ * 音乐接口，baseUrl = {server}/api/music/
+ *
+ * lxserver >= 2.1.3 起 `/search` 返回 `{list, ...}` 对象，旧版返回裸数组。
+ * 统一声明为 [SearchEnvelope]，由 [SearchEnvelopeAdapterFactory] 双向兼容解析。
+ */
 interface LxMusicApi {
+    /**
+     * @param limit 传 null 时不带该参数：新版后端会聚合返回全量结果；
+     *              旧版后端仍按其默认分页返回。
+     * @param pages 旧版后端用它一次聚合多页（如 3 页 x 20 条）；新版后端已忽略该参数。
+     */
     @GET("search")
     suspend fun search(
         @Query("name") name: String,
         @Query("source") source: String,
         @Query("page") page: Int,
-        @Query("limit") limit: Int,
+        @Query("limit") limit: Int?,
         @Query("type") type: String = "song",
         @Query("pages") pages: Int? = null
-    ): List<MusicInfo>
+    ): SearchEnvelope<MusicInfo>
 
     @GET("search")
     suspend fun searchSingers(
@@ -77,7 +87,7 @@ interface LxMusicApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
         @Query("type") type: String = "singer"
-    ): List<SearchArtistItem>
+    ): SearchEnvelope<SearchArtistItem>
 
     @GET("search")
     suspend fun searchAlbums(
@@ -86,7 +96,7 @@ interface LxMusicApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
         @Query("type") type: String = "album"
-    ): List<AlbumItem>
+    ): SearchEnvelope<AlbumItem>
 
     @GET("search")
     suspend fun searchPlaylists(
@@ -95,7 +105,7 @@ interface LxMusicApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
         @Query("type") type: String = "playlist"
-    ): List<Playlist>
+    ): SearchEnvelope<Playlist>
 
     @POST("url")
     suspend fun getMusicUrl(@Body body: @JvmSuppressWildcards Map<String, Any>): MusicUrlResponse
