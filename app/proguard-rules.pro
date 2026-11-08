@@ -4,6 +4,12 @@
 # 返回 200 但 LoginResponse 全为默认值，界面报"登录失败"）。
 # -keep 同时禁止删除与改名；类名仍可被其他规则混淆，体积影响极小。
 -keep class top.boluofan.musictv.data.model.** { <fields>; }
+# 搜索响应包装类位于 data.api（不在上面的 data.model 规则内）。R8 full mode 曾把它
+# 改名为 K4.j 并优化掉 Kotlin 全默认值 data class 的合成无参构造器，release 包搜索时报
+# "Unable to invoke no-args constructor ... Registering an InstanceCreator"。
+# 适配器已改为手工构造不依赖反射，这里仍保留类名/字段/构造器作为双保险。
+-keep class top.boluofan.musictv.data.api.SearchEnvelope { *; }
+-keep class top.boluofan.musictv.data.api.SearchEnvelopeAdapterFactory { *; }
 -keep class top.boluofan.musictv.data.repository.AuthRepository$LoginErrorBody { <fields>; }
 -keep class top.boluofan.musictv.data.storage.ResumeSnapshot { <fields>; }
 -keepattributes Signature, InnerClasses, EnclosingMethod, *Annotation*
