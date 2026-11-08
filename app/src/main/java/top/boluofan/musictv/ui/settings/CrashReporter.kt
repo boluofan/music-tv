@@ -1,7 +1,14 @@
 package top.boluofan.musictv.ui.settings
 
+import android.content.ClipData
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.util.Log
+import androidx.core.content.FileProvider
+import top.boluofan.musictv.util.LogStore
 import java.io.File
 import java.io.PrintWriter
 import java.text.SimpleDateFormat
@@ -52,17 +59,29 @@ object CrashReporter {
         return count
     }
 
-    fun createShareIntent(context: Context, content: String, filename: String): android.content.Intent? {
+    fun createShareIntent(context: Context, content: String, filename: String): Intent? {
         return try {
-            val externalDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS) ?: return null
-            val outFile = File(externalDir, filename)
+            // 与日志导出一致：外部目录不可写时回退内部存储，避免部分电视固件分享直接失败
+            val outDir = LogStore.writableDir(
+                context,
+                "share",
+                context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            )
+            val outFile = File(outDir, filename)
             outFile.writeText(content)
-            val fileUri = android.net.Uri.fromFile(outFile)
-            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            // 内部 filesDir 的 file:// URI 对其它应用不可读，统一走 FileProvider
+            val fileUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outFile)
+            } else {
+                Uri.fromFile(outFile)
+            }
+            Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_SUBJECT, "Music TV 崩溃日志")
-                putExtra(android.content.Intent.EXTRA_STREAM, fileUri)
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                putExtra(Intent.EXTRA_SUBJECT, "Music TV 崩溃日志")
+                putExtra(Intent.EXTRA_STREAM, fileUri)
+                // 经 createChooser 转发时，clipData 才能把 URI 读权限带给最终接收者
+                clipData = ClipData.newUri(context.contentResolver, "崩溃日志", fileUri)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create share intent", e)

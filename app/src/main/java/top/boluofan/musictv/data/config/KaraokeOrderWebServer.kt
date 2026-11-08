@@ -8,7 +8,7 @@ import top.boluofan.musictv.data.model.MusicInfo
 /**
  * 扫码点歌服务（K 歌模式专用）：
  * - 手机扫码进入「点歌」页面，可搜索 5 个平台（tx/kw/kg/wy/mg）歌曲并加入 K 歌独立歌单
- * - 端点：/、/order/search、/order/add、/order/top、/order/remove、/order/queue
+ * - 端点：/、/order/search、/order/add、/order/top、/order/play、/order/remove、/order/queue
  * - 端口 9089（与 music-tv 现有 ConfigWebServer 8089/9090 错开，启动失败扫描 9080-9099）
  * - 入口点歌：扫码后由 PlayerViewModel 启动；退出 K 歌时停服，二维码随 URL 失效而消失
  *
@@ -20,7 +20,9 @@ class KaraokeOrderWebServer(
     private val onOrderAdd: ((song: MusicInfo) -> Unit)? = null,
     private val onOrderTop: ((index: Int) -> Unit)? = null,
     private val onOrderRemove: ((index: Int) -> Unit)? = null,
-    private val onOrderQueue: (() -> List<MusicInfo>)? = null
+    private val onOrderQueue: (() -> List<MusicInfo>)? = null,
+    private val onOrderPlay: ((index: Int) -> Unit)? = null,
+    private val onOrderCurrentIndex: (() -> Int)? = null
 ) : NanoHTTPD(port) {
 
     private val gson = Gson()
@@ -29,8 +31,9 @@ class KaraokeOrderWebServer(
         // 当前 K 歌歌单（禁用缓存：手机端 5 秒轮询需实时反映已唱移除/置顶变化）
         if (session.method == Method.GET && session.uri.startsWith("/order/queue")) {
             val queue = onOrderQueue?.invoke().orEmpty()
+            val currentIndex = onOrderCurrentIndex?.invoke() ?: -1
             val json = queue.mapIndexed { index, song ->
-                """{"index":$index,"title":${esc(song.name)},"artist":${esc(song.singer)},"id":${esc(song.songId)},"source":${esc(song.source)}}"""
+                """{"index":$index,"current":${index == currentIndex},"title":${esc(song.name)},"artist":${esc(song.singer)},"id":${esc(song.songId)},"source":${esc(song.source)}}"""
             }.joinToString(",", "[", "]")
             return json(Response.Status.OK, json).apply {
                 addHeader("Cache-Control", "no-store")
@@ -72,26 +75,51 @@ class KaraokeOrderWebServer(
         }
         // 置顶（下一首演唱）
         if (session.method == Method.POST && session.uri == "/order/top") {
-            session.parseBody(HashMap())
             val onOrderTop = onOrderTop
-                ?: return text(Response.Status.BAD_REQUEST, "电视端当前不在 K 歌模式。")
-            val index = session.parameters["index"]?.firstOrNull()?.toIntOrNull() ?: -1
-            if (index < 0) return text(Response.Status.BAD_REQUEST, "无效序号。")
+                ?: return notInKaraokeMode()
+            val index = validQueueIndex(session)
+                ?: return invalidIndex()
             onOrderTop(index)
             return text(Response.Status.OK, "已置顶。")
         }
+        // 切歌（把目标曲移到当前曲下一位并立即演唱，与电视端「切歌」一致）
+        if (session.method == Method.POST && session.uri == "/order/play") {
+            val onOrderPlay = onOrderPlay
+                ?: return notInKaraokeMode()
+            val index = validQueueIndex(session)
+                ?: return invalidIndex()
+            onOrderPlay(index)
+            return text(Response.Status.OK, "已切歌。")
+        }
         // 删除（移出 K 歌歌单）
         if (session.method == Method.POST && session.uri == "/order/remove") {
-            session.parseBody(HashMap())
             val onOrderRemove = onOrderRemove
-                ?: return text(Response.Status.BAD_REQUEST, "电视端当前不在 K 歌模式。")
-            val index = session.parameters["index"]?.firstOrNull()?.toIntOrNull() ?: -1
-            if (index < 0) return text(Response.Status.BAD_REQUEST, "无效序号。")
+                ?: return notInKaraokeMode()
+            val index = validQueueIndex(session)
+                ?: return invalidIndex()
             onOrderRemove(index)
             return text(Response.Status.OK, "已删除。")
         }
         return html(Response.Status.OK, PAGE)
     }
+
+    /**
+     * 解析并校验队列下标。手机端 5 秒轮询，歌单可能在两次刷新之间被电视端改动，
+     * 旧下标必须拒绝，否则会误把别的歌曲置顶/切歌/删除。
+     */
+    private fun validQueueIndex(session: IHTTPSession): Int? {
+        session.parseBody(HashMap())
+        val index = session.parameters["index"]?.firstOrNull()?.toIntOrNull() ?: return null
+        if (index < 0) return null
+        val size = onOrderQueue?.invoke()?.size ?: return index
+        return index.takeIf { it < size }
+    }
+
+    private fun notInKaraokeMode(): Response =
+        text(Response.Status.BAD_REQUEST, "电视端当前不在 K 歌模式。")
+
+    private fun invalidIndex(): Response =
+        text(Response.Status.BAD_REQUEST, "无效序号或歌单已变化，请刷新后重试。")
 
     private fun esc(value: String?): String {
         val s = value.orEmpty()
@@ -153,7 +181,9 @@ class KaraokeOrderWebServer(
             #orderResults .row .meta .src,#orderQueue .row .meta .src{color:#64748b;font-size:12px;margin-left:6px}
             .act{padding:8px 12px;margin-left:6px;font-size:13px;border:none;border-radius:6px;
             background:#38bdf8;color:#0f172a;cursor:pointer}
+            .act.play{background:#0ea5e9;color:#0f172a}
             .act.del{background:#7f1d1d;color:#fff}
+            .cur{color:#38bdf8;font-size:13px;white-space:nowrap;margin-left:6px}
             </style></head><body>
             <h2>菠萝音乐 · 扫码点歌</h2>
             <form id="orderSearchForm">
@@ -221,16 +251,24 @@ class KaraokeOrderWebServer(
                 var el=document.getElementById('orderQueue');
                 if(!list.length){el.innerHTML='<div class="order-hint">队列为空</div>';return;}
                 el.innerHTML=list.map(function(s){
+                  var actions=s.current
+                    ? '<div><span class="cur">演唱中</span></div>'
+                    : '<div><button class="act" data-act="top">置顶</button>'+
+                      '<button class="act play" data-act="play">切歌</button>'+
+                      '<button class="act del" data-act="remove">删除</button></div>';
                   return '<div class="row" data-index="'+s.index+'">'+
                     '<div class="meta">'+escHtml(s.title)+' - '+escHtml(s.artist||'')+
                     '<span class="src">['+escHtml(s.source||'')+']</span></div>'+
-                    '<div><button class="act" data-act="top">置顶</button>'+
-                    '<button class="act del" data-act="remove">删除</button></div></div>';
+                    actions+'</div>';
                 }).join('');
                 el.querySelectorAll('.row').forEach(function(row){
                   var idx=row.getAttribute('data-index');
-                  row.querySelector('button[data-act="top"]').addEventListener('click',function(){orderTop(idx);});
-                  row.querySelector('button[data-act="remove"]').addEventListener('click',function(){orderRemove(idx);});
+                  var top=row.querySelector('button[data-act="top"]');
+                  var play=row.querySelector('button[data-act="play"]');
+                  var rm=row.querySelector('button[data-act="remove"]');
+                  if(top)top.addEventListener('click',function(){orderTop(idx);});
+                  if(play)play.addEventListener('click',function(){orderPlay(idx);});
+                  if(rm)rm.addEventListener('click',function(){orderRemove(idx);});
                 });
               }).catch(function(){
                 document.getElementById('orderQueue').innerHTML='<div class="order-hint">加载失败</div>';
@@ -240,6 +278,14 @@ class KaraokeOrderWebServer(
               fetch('/order/top',{method:'POST',
                 headers:{'Content-Type':'application/x-www-form-urlencoded'},
                 body:'index='+index}).then(function(){loadOrder();});
+            };
+            window.orderPlay=function(index){
+              fetch('/order/play',{method:'POST',
+                headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                body:'index='+encodeURIComponent(index)})
+                .then(function(r){if(!r.ok){return r.text().then(function(t){alert(t||'切歌失败');});}})
+                .catch(function(){})
+                .then(function(){loadOrder();});
             };
             window.orderRemove=function(index){
               if(!confirm('确定要从 K 歌歌单中删除这首歌吗？'))return;
