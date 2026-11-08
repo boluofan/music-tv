@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import top.boluofan.musictv.data.api.ApiClient
+import top.boluofan.musictv.data.api.QqSingerApi
 import top.boluofan.musictv.data.model.AlbumItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
@@ -67,17 +68,45 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
     private var searchJob: Job? = null
     private var tipJob: Job? = null
+    private var hotTagsJob: Job? = null
+
+    /** QQ 热门歌手与当前音乐源无关，切页签时不必重复请求第三方 */
+    private var singerHotCache: List<String>? = null
 
     init {
         loadHotTags()
     }
 
+    /**
+     * 热门推荐词：
+     * - 「歌手」页用 QQ 音乐热门歌手（参考 PR #21），失败时回退到 lxserver 热搜；
+     * - 其它页仍用 lxserver 各音源的官方热搜。
+     */
     fun loadHotTags() {
-        viewModelScope.launch {
-            runCatching { ApiClient.getMusicApi().getHotSearch(_uiState.value.source) }
-                .onSuccess { resp ->
-                    _uiState.value = _uiState.value.copy(hotTags = resp.list.orEmpty())
+        val requestType = _uiState.value.type
+        val requestSource = _uiState.value.source
+        hotTagsJob?.cancel()
+        hotTagsJob = viewModelScope.launch {
+            if (requestType == SearchType.SINGER) {
+                val singers = singerHotCache
+                    ?: runCatching { QqSingerApi.hotSingers() }
+                        .getOrNull()?.takeIf { it.isNotEmpty() }
+                        ?.also { singerHotCache = it }
+                if (singers != null) {
+                    applyHotTags(requestType, requestSource, singers)
+                    return@launch
                 }
+            }
+            runCatching { ApiClient.getMusicApi().getHotSearch(requestSource) }
+                .onSuccess { resp -> applyHotTags(requestType, requestSource, resp.list.orEmpty()) }
+        }
+    }
+
+    // 请求返回时若用户已切换类型/平台，丢弃过期结果
+    private fun applyHotTags(type: SearchType, source: String, tags: List<String>) {
+        val state = _uiState.value
+        if (state.type == type && state.source == source) {
+            _uiState.value = state.copy(hotTags = tags)
         }
     }
 
@@ -95,7 +124,14 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         val supported = supportedSourcesForType(type)
         val source = if (_uiState.value.source in supported) _uiState.value.source
         else supported.firstOrNull() ?: _uiState.value.source
-        _uiState.value = _uiState.value.copy(type = type, source = source, hasSearched = false)
+        val oldType = _uiState.value.type
+        // 进入/离开「歌手」时推荐词数据源不同，先清空避免短暂显示上一次的内容
+        val clearHotTags = type == SearchType.SINGER || oldType == SearchType.SINGER
+        _uiState.value = _uiState.value.copy(
+            type = type, source = source, hasSearched = false,
+            hotTags = if (clearHotTags) emptyList() else _uiState.value.hotTags
+        )
+        if (clearHotTags) loadHotTags()
         if (_uiState.value.query.isNotBlank()) search()
     }
 

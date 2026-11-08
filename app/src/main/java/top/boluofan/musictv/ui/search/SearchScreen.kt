@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -67,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.verticalScroll
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.boluofan.musictv.data.model.AlbumItem
@@ -90,6 +94,7 @@ import top.boluofan.musictv.ui.theme.SelectedFocusBorder
 
 private val SEARCH_SOURCES = listOf("tx", "kw", "kg", "wy", "mg")
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel(),
@@ -332,8 +337,15 @@ fun SearchScreen(
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(uiState.hotTags) { tag ->
+                        // 热门搜索：自动换行多行排列（歌手推荐词有 45 个），可纵向滚动
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            uiState.hotTags.forEach { tag ->
                                 TagChip(tag) {
                                     viewModel.onQueryChanged(tag)
                                     viewModel.search()

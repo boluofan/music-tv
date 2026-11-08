@@ -84,7 +84,7 @@ class AuthInterceptor : Interceptor {
  * 才回退 IPv4 成功 —— 旧版实测 30.1s、放宽后 20.3s，用户看到的就是「登录要等很久」。
  * 这里只调整顺序、不丢弃地址，纯 IPv6 服务器仍能正常连接。
  */
-private object IPv4FirstDns : Dns {
+internal object IPv4FirstDns : Dns {
     override fun lookup(hostname: String): List<InetAddress> {
         val addresses = Dns.SYSTEM.lookup(hostname)
         val (ipv6, ipv4) = addresses.partition { it is Inet6Address }
