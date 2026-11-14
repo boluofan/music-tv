@@ -175,8 +175,8 @@ class PlaylistDetailViewModel @Inject constructor(
                     throw Exception("该歌单已在您的列表中")
                 }
                 
-                // 3. 添加到用户歌单列表
-                val newList = (userListData.userList.orEmpty() + playlist).take(200)
+                // 3. 添加到用户歌单列表（最新收藏的歌单排最前面，与歌单内歌曲顺序一致）
+                val newList = (listOf(playlist) + userListData.userList.orEmpty()).take(200)
                 userRepository.saveUserList(userListData.copy(userList = newList))
                 
                 // 4. 更新 UI 状态

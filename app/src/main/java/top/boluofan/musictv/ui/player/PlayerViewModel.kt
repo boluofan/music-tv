@@ -241,7 +241,7 @@ class PlayerViewModel @Inject constructor(
             val ok = if (wasFavorite) {
                 userRepository.removeFromUserList("love", listOf(song))
             } else {
-                userRepository.addToUserList("love", listOf(song), location = "bottom")
+                userRepository.addToUserList("love", listOf(song))
             }
             if (!ok) {
                 Log.w(TAG, "toggleFavorite failed: wasFavorite=$wasFavorite, song=${song.name}/${song.songId}")

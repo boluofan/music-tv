@@ -35,8 +35,12 @@ class UserRepository @Inject constructor() {
      *
      * lxserver 的 listMusicAdd 按 item.id 去重，缺 id 的 musicInfos 会被静默丢弃却仍返回 200，
      * 因此提交前补齐 id，并在写入后回读 /api/user/list 校验，避免 UI 乐观更新造成假收藏。
+     *
+     * location 与 LX Music 客户端默认配置 list.addMusicLocationType = 'top' 对齐：
+     * 新加的歌插到列表最前面（我的收藏 / 默认列表 / 自定义歌单行为一致）。
+     * 不传 location 时服务端虽然也会读用户配置，但显式指定可避免服务端被改成 bottom 后顺序又不一致。
      */
-    suspend fun addToUserList(listId: String, songs: List<MusicInfo>, location: String = "bottom"): Boolean =
+    suspend fun addToUserList(listId: String, songs: List<MusicInfo>, location: String = "top"): Boolean =
         withContext(Dispatchers.IO) {
             val normalized = songs.map { song ->
                 if (song.id.isNullOrBlank()) song.copy(id = song.listId) else song
@@ -170,7 +174,7 @@ class UserRepository @Inject constructor() {
             saveLibraryArtists(list.filterNot { it.id == item.id && it.source == item.source })
             false
         } else {
-            saveLibraryArtists(list + item)
+            saveLibraryArtists(listOf(item) + list) // 最新收藏的歌手排最前面
             true
         }
     }
@@ -183,7 +187,7 @@ class UserRepository @Inject constructor() {
             saveLibraryAlbums(list.filterNot { it.id == item.id && it.source == item.source })
             false
         } else {
-            saveLibraryAlbums(list + item)
+            saveLibraryAlbums(listOf(item) + list) // 最新收藏的专辑排最前面
             true
         }
     }
