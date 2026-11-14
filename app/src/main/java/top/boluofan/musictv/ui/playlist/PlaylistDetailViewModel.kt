@@ -12,6 +12,7 @@ import top.boluofan.musictv.data.api.ApiClient
 import top.boluofan.musictv.data.model.ListData
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
+import top.boluofan.musictv.data.repository.PlaylistCoverRepository
 import top.boluofan.musictv.data.repository.UserRepository
 import javax.inject.Inject
 
@@ -27,11 +28,17 @@ data class PlaylistDetailUiState(
 
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val playlistCoverRepository: PlaylistCoverRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlaylistDetailUiState())
     val uiState: StateFlow<PlaylistDetailUiState> = _uiState.asStateFlow()
+
+    /** 与应用级封面缓存共享，保证首页与详情页看到同一组拼贴封面 */
+    val playlistCovers: StateFlow<Map<String, List<String>>> = playlistCoverRepository.covers
+
+    fun ensurePlaylistCovers(playlist: Playlist) = playlistCoverRepository.ensureLoaded(playlist)
 
     private var loadJob: Job? = null
 
@@ -74,6 +81,7 @@ class PlaylistDetailViewModel @Inject constructor(
         if (playlist == null) {
             _uiState.value = _uiState.value.copy(isLoading = false, error = "歌单不存在")
         } else {
+            playlistCoverRepository.ensureLoaded(playlist)
             _uiState.value = _uiState.value.copy(
                 playlist = playlist,
                 songs = songs,
@@ -99,6 +107,7 @@ class PlaylistDetailViewModel @Inject constructor(
             ) to resp.list.orEmpty()
         }.fold(
             onSuccess = { (playlist, songs) ->
+                playlistCoverRepository.ensureLoaded(playlist)
                 _uiState.value = _uiState.value.copy(playlist = playlist, songs = songs, isLoading = false)
             },
             onFailure = { e ->

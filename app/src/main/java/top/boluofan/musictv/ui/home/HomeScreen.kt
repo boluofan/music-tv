@@ -66,6 +66,7 @@ import top.boluofan.musictv.data.model.LibraryArtistItem
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.PlaylistCover
 import top.boluofan.musictv.ui.components.sourceLabel
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
@@ -84,6 +85,7 @@ fun HomeScreen(
     onAlbumClick: (LibraryAlbumItem, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val playlistCovers by viewModel.playlistCovers.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
     val firstPlaylistFocus = remember { FocusRequester() }
@@ -194,6 +196,8 @@ fun HomeScreen(
                                 }
                                 PlaylistGridCard(
                                     playlist = playlist,
+                                    songCovers = playlistCovers[playlist.id.orEmpty()].orEmpty(),
+                                    onNeedSongCovers = viewModel::ensurePlaylistCovers,
                                     onClick = {
                                         restorer.record(pk)
                                         onPlaylistClick(playlist)
@@ -342,7 +346,9 @@ private fun RefreshButton(
 private fun PlaylistGridCard(
     playlist: Playlist,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    songCovers: List<String> = emptyList(),
+    onNeedSongCovers: ((Playlist) -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -377,10 +383,10 @@ private fun PlaylistGridCard(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            CoverImage(
-                url = playlist.coverUrl,
-                contentDescription = playlist.name,
-                placeholder = Icons.Rounded.Person,
+            PlaylistCover(
+                playlist = playlist,
+                songCovers = songCovers,
+                onNeedSongCovers = onNeedSongCovers,
                 modifier = Modifier.fillMaxSize()
             )
         }

@@ -13,6 +13,7 @@ import top.boluofan.musictv.data.model.LibraryArtistItem
 import top.boluofan.musictv.data.model.ListData
 import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.data.model.Playlist
+import top.boluofan.musictv.data.repository.PlaylistCoverRepository
 import top.boluofan.musictv.data.repository.UserRepository
 import javax.inject.Inject
 
@@ -29,11 +30,17 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val playlistCoverRepository: PlaylistCoverRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    /** 无自定义封面的歌单：抽出的歌曲封面组合，应用级缓存，跨页面一致 */
+    val playlistCovers: StateFlow<Map<String, List<String>>> = playlistCoverRepository.covers
+
+    fun ensurePlaylistCovers(playlist: Playlist) = playlistCoverRepository.ensureLoaded(playlist)
 
     init {
         load()
@@ -70,6 +77,11 @@ class HomeViewModel @Inject constructor(
         artists: List<LibraryArtistItem>,
         albums: List<LibraryAlbumItem>
     ) {
+        // 歌曲封面组合采样是纯内存操作（歌单歌曲已内嵌在 /api/user/list 里），
+        // 首页加载后立刻预生成，避免卡片先闪一下内置封面再变拼贴。
+        playlistCoverRepository.ensureLoaded(list.defaultPlaylist)
+        playlistCoverRepository.ensureLoaded(list.lovePlaylist)
+        list.userList.orEmpty().forEach(playlistCoverRepository::ensureLoaded)
         _uiState.value = _uiState.value.copy(
             defaultSongs = list.defaultList.orEmpty(),
             loveSongs = list.loveList.orEmpty(),

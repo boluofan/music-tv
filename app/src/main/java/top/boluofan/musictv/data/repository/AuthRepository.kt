@@ -18,13 +18,16 @@ class LoginFailureException(
 
 @Singleton
 class AuthRepository @Inject constructor(
-    private val dataStore: PreferencesDataStore
+    private val dataStore: PreferencesDataStore,
+    private val playlistCoverRepository: PlaylistCoverRepository
 ) {
     suspend fun login(serverUrl: String, username: String, password: String, rememberMe: Boolean = false): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 ApiClient.initialize(serverUrl)
                 UrlHelper.initialize(serverUrl)
+                // 账号/服务器变更后旧封面组合必须作废，避免沿用上一个服务器的歌曲封面
+                playlistCoverRepository.invalidate()
                 // 手动重新登录时不要带上一次已失效的 token
                 ApiClient.authInterceptor.token = null
                 val response = ApiClient.getUserApi().login(

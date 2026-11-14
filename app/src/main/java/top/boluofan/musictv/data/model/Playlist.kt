@@ -26,9 +26,13 @@ data class Playlist(
     val isDefault: Boolean get() = id == "default"
     val isLove: Boolean get() = id == "love"
 
-    val coverUrl: String?
+    /** 歌单自身设置的封面（不含「用第一首歌封面兜底」），供封面三级降级判断使用 */
+    val customCoverUrl: String?
         get() = info?.img?.takeIf { it.isNotEmpty() } ?: picUrl?.takeIf { it.isNotEmpty() }
-            ?: img?.takeIf { it.isNotEmpty() } ?: songs?.firstOrNull()?.picUrl
+            ?: img?.takeIf { it.isNotEmpty() }
+
+    val coverUrl: String?
+        get() = customCoverUrl ?: songs?.firstOrNull()?.picUrl
 
     val creatorName: String?
         get() = info?.author?.takeIf { it.isNotEmpty() } ?: creator?.takeIf { it.isNotEmpty() } ?: author

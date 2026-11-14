@@ -56,7 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.ensureActive
 import top.boluofan.musictv.data.model.BoardItem
 import top.boluofan.musictv.data.model.Playlist
-import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.PlaylistCover
 import top.boluofan.musictv.ui.components.sourceLabel
 import top.boluofan.musictv.ui.components.tvFocusable
 import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
@@ -509,9 +509,8 @@ private fun PlaylistCard(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            CoverImage(
-                url = playlist.coverUrl,
-                contentDescription = playlist.name,
+            PlaylistCover(
+                playlist = playlist,
                 modifier = Modifier.fillMaxSize()
             )
         }

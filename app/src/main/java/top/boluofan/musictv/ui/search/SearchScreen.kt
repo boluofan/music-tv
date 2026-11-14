@@ -81,6 +81,7 @@ import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
 import top.boluofan.musictv.ui.components.sourceLabel
 import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.PlaylistCover
 import top.boluofan.musictv.ui.components.SongListItem
 import top.boluofan.musictv.ui.components.generateQrBitmap
 import top.boluofan.musictv.ui.navigation.DefaultFocusEffect
@@ -994,9 +995,8 @@ private fun PlaylistCard(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            CoverImage(
-                url = playlist.coverUrl,
-                contentDescription = playlist.name,
+            PlaylistCover(
+                playlist = playlist,
                 modifier = Modifier.fillMaxSize()
             )
         }

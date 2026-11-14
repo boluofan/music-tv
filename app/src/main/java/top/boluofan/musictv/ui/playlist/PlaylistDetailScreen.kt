@@ -63,7 +63,7 @@ import top.boluofan.musictv.data.model.MusicInfo
 import top.boluofan.musictv.ui.components.ActionChip
 import top.boluofan.musictv.ui.components.AddToPlaylistHost
 import top.boluofan.musictv.ui.components.AddToPlaylistViewModel
-import top.boluofan.musictv.ui.components.CoverImage
+import top.boluofan.musictv.ui.components.PlaylistCover
 import top.boluofan.musictv.ui.components.SimpleInfoDialog
 import top.boluofan.musictv.ui.components.SongItemFavoriteMode
 import top.boluofan.musictv.ui.components.SongListItem
@@ -84,6 +84,7 @@ fun PlaylistDetailScreen(
     onPlaylistDeleted: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val playlistCovers by viewModel.playlistCovers.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val topFocus = remember { FocusRequester() }
     val playAllFocus = remember { FocusRequester() }
@@ -152,9 +153,10 @@ fun PlaylistDetailScreen(
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
-                            CoverImage(
-                                url = playlist.coverUrl,
-                                contentDescription = playlist.name,
+                            PlaylistCover(
+                                playlist = playlist,
+                                songCovers = playlistCovers[playlist.id.orEmpty()].orEmpty(),
+                                onNeedSongCovers = viewModel::ensurePlaylistCovers,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
