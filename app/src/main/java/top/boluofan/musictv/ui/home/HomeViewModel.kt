@@ -37,6 +37,11 @@ class HomeViewModel @Inject constructor(
 
     init {
         load()
+        // UserRepository 是应用级单例，播放页/加歌弹窗写入成功后都会发事件，
+        // 首页据此自动重拉，无需手动点刷新（MainActivity 在后台时 ViewModel 仍存活）。
+        viewModelScope.launch {
+            userRepository.listChanges.collect { load() }
+        }
     }
 
     fun load() {

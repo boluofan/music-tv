@@ -29,6 +29,14 @@ data class MusicInfo(
             return id.orEmpty()
         }
 
+    /**
+     * 歌单条目的稳定 id。lxserver 的 listMusicAdd / listMusicRemove 均以 item.id 去重与匹配，
+     * 缺 id 的歌曲会被静默丢弃（接口仍返回 200）。优先沿用服务端已有 id 以兼容老数据，
+     * 否则按 LX Music 约定生成 source_songId。
+     */
+    val listId: String
+        get() = id?.takeIf { it.isNotBlank() } ?: "${source.orEmpty()}_${songId}"
+
     val qualityTypes: List<QualityInfo>?
         get() = types ?: meta?.qualitys
 }

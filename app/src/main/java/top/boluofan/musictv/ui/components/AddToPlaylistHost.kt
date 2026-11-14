@@ -37,7 +37,8 @@ data class AddToPlaylistUiState(
     val target: MusicInfo? = null,
     val playlists: List<Playlist> = emptyList(),
     val isLoading: Boolean = false,
-    val addedName: String? = null
+    val addedName: String? = null,
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -64,11 +65,12 @@ class AddToPlaylistViewModel @Inject constructor(
     fun addTo(playlist: Playlist) {
         val music = _uiState.value.target ?: return
         viewModelScope.launch {
-            runCatching { userRepository.addToUserList(playlist.id.orEmpty(), listOf(music)) }
+            val ok = userRepository.addToUserList(playlist.id.orEmpty(), listOf(music))
             _uiState.value = _uiState.value.copy(
                 target = null,
                 playlists = emptyList(),
-                addedName = playlist.name
+                addedName = if (ok) playlist.name else null,
+                error = if (ok) null else "添加失败，请稍后重试"
             )
         }
     }
@@ -78,7 +80,7 @@ class AddToPlaylistViewModel @Inject constructor(
     }
 
     fun dismissAdded() {
-        _uiState.value = _uiState.value.copy(addedName = null)
+        _uiState.value = _uiState.value.copy(addedName = null, error = null)
     }
 }
 
@@ -102,22 +104,24 @@ fun AddToPlaylistHost(
     }
 
     val addedName = uiState.addedName
-    if (addedName != null) {
+    val error = uiState.error
+    val hint = addedName?.let { "已添加到「$it」" } ?: error
+    if (hint != null) {
         Box(
             modifier = Modifier.fillMaxSize().padding(bottom = 48.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
             Text(
-                text = "已添加到「$addedName」",
+                text = hint,
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = if (error != null) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             )
         }
-        LaunchedEffect(addedName) {
+        LaunchedEffect(hint) {
             delay(1800)
             viewModel.dismissAdded()
         }

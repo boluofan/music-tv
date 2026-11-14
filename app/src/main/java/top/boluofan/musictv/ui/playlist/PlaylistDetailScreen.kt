@@ -243,7 +243,7 @@ fun PlaylistDetailScreen(
                                     index = index,
                                     onClick = { onSongClick(uiState.songs, index) },
                                     favoriteMode = SongItemFavoriteMode.REMOVE,
-                                    onFavoriteClick = { viewModel.removeSong(music.songId) },
+                                    onFavoriteClick = { viewModel.removeSong(music) },
                                     showAlbumInSubtitle = false
                                 )
                             } else {

@@ -185,7 +185,7 @@ class PlayerViewModel @Inject constructor(
                     loadLyrics(s.currentSong!!)
                 }
                 _uiState.update {
-                    it.copy(isFavorite = s.currentSong?.let { song -> song.key() in favoriteKeys } == true)
+                    it.copy(isFavorite = s.currentSong?.let { song -> song.isInFavorites(favoriteKeys) } == true)
                 }
             }
         }
@@ -236,16 +236,18 @@ class PlayerViewModel @Inject constructor(
     fun toggleFavorite() {
         val song = _uiState.value.currentSong ?: return
         viewModelScope.launch {
-            val key = song.key()
-            val isFav = key in favoriteKeys
-            if (isFav) {
-                userRepository.removeFromUserList("love", listOf(song.songId))
-                favoriteKeys = favoriteKeys - key
+            val wasFavorite = song.isInFavorites(favoriteKeys)
+            // 服务端存在「200 但静默丢弃」的情况，不做乐观更新；写入结果由 Repository 回读校验
+            val ok = if (wasFavorite) {
+                userRepository.removeFromUserList("love", listOf(song))
             } else {
                 userRepository.addToUserList("love", listOf(song), location = "bottom")
-                favoriteKeys = favoriteKeys + key
             }
-            _uiState.update { it.copy(isFavorite = !isFav) }
+            if (!ok) {
+                Log.w(TAG, "toggleFavorite failed: wasFavorite=$wasFavorite, song=${song.name}/${song.songId}")
+            }
+            // 以服务端真实收藏列表为准刷新心形状态，失败时保持不变
+            refreshFavoriteKeys()
         }
     }
 
@@ -318,11 +320,11 @@ class PlayerViewModel @Inject constructor(
 
     private suspend fun refreshFavoriteKeys() {
         runCatching {
-            userRepository.getLoveSongs().map { it.key() }.toSet()
+            userRepository.getLoveSongs().flatMap { it.identityKeys() }.toSet()
         }.onSuccess {
             favoriteKeys = it
             _uiState.update {
-                it.copy(isFavorite = it.currentSong?.let { song -> song.key() in favoriteKeys } == true)
+                it.copy(isFavorite = it.currentSong?.let { song -> song.isInFavorites(favoriteKeys) } == true)
             }
         }
     }
@@ -461,5 +463,24 @@ class PlayerViewModel @Inject constructor(
 }
 
 private fun MusicInfo.key(): String = "${source}:${songId}"
+
+/**
+ * 收藏判定的候选标识集合。
+ *
+ * 服务端收藏列表里的历史歌曲常缺 songmid、只带形如 kg_543933 的 id，
+ * 与正在播放的搜索结果（无 id、有 songmid）算出的 key 并不相同，
+ * 因此同时收录 id、source_songId 与由 id 还原出的规范 key，避免已收藏却显示未收藏。
+ */
+private fun MusicInfo.identityKeys(): Set<String> {
+    val keys = mutableSetOf(key(), listId)
+    id?.takeIf { it.isNotBlank() }?.let {
+        keys.add(it)
+        keys.add("${source.orEmpty()}:$it")
+        keys.add("${source.orEmpty()}:${it.substringAfter('_', it)}")
+    }
+    return keys
+}
+
+private fun MusicInfo.isInFavorites(keys: Set<String>): Boolean = identityKeys().any { it in keys }
 
 private const val TAG = "PlayerViewModel"

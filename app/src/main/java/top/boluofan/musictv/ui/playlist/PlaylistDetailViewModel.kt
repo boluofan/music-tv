@@ -107,18 +107,19 @@ class PlaylistDetailViewModel @Inject constructor(
         )
     }
 
-    /** 从我的歌单移除单曲（同步更新本地列表） */
-    fun removeSong(songId: String?) {
-        if (songId == null) return
+    /** 从我的歌单移除单曲（以服务端删除结果为准更新本地列表） */
+    fun removeSong(song: MusicInfo) {
         val state = _uiState.value
         val pid = state.playlist?.id ?: return
         viewModelScope.launch {
-            runCatching { userRepository.removeFromUserList(pid, listOf(songId)) }
-                .onSuccess {
-                    _uiState.value = _uiState.value.copy(
-                        songs = state.songs.filterNot { it.songId == songId }
-                    )
-                }
+            val ok = userRepository.removeFromUserList(pid, listOf(song))
+            if (ok) {
+                _uiState.value = _uiState.value.copy(
+                    songs = state.songs.filterNot { it.listId == song.listId || it.songId == song.songId }
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(error = "移除失败，请稍后重试")
+            }
         }
     }
 
